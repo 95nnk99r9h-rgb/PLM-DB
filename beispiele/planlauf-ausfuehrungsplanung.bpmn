@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_Planlauf_AF"
+                  targetNamespace="http://planlauf-management/prozessketten">
+  <bpmn:collaboration id="Collab_AF">
+    <bpmn:participant id="Part_AF" name="Planlauf Ausführungsplanung" processRef="Process_AF" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_AF" name="Planlauf Ausführungsplanung" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_AF">
+      <bpmn:lane id="Lane_OP" name="Objektplanung">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Erstellung</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Einarbeitung</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_PL" name="Projektleitung">
+        <bpmn:flowNodeRef>Task_InternePruefung</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_PS" name="Projektsteuerung">
+        <bpmn:flowNodeRef>Task_Versand</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Verteilung</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_1</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_TGA" name="Fachplanung TGA">
+        <bpmn:flowNodeRef>Task_Fachpruefung</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_BH" name="Bauherr">
+        <bpmn:flowNodeRef>Task_Freigabe</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_1" name="Planlauf gestartet">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_Erstellung" name="Planerstellung">
+      <bpmn:documentation>frist: 10</bpmn:documentation>
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_InternePruefung" name="Interne Prüfung">
+      <bpmn:documentation>frist: 3</bpmn:documentation>
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:sendTask id="Task_Versand" name="Versand an Fachplaner">
+      <bpmn:documentation>frist: 1</bpmn:documentation>
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:userTask id="Task_Fachpruefung" name="Fachplanerprüfung">
+      <bpmn:documentation>frist: 10</bpmn:documentation>
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_Einarbeitung" name="Einarbeitung Kommentare">
+      <bpmn:documentation>frist: 5</bpmn:documentation>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_Freigabe" name="Freigabe Bauherr">
+      <bpmn:documentation>frist: 10</bpmn:documentation>
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:sendTask id="Task_Verteilung" name="Verteilung an Ausführende">
+      <bpmn:documentation>frist: 2</bpmn:documentation>
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="EndEvent_1" name="Plan verteilt">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Erstellung" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Erstellung" targetRef="Task_InternePruefung" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_InternePruefung" targetRef="Task_Versand" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_Versand" targetRef="Task_Fachpruefung" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Fachpruefung" targetRef="Task_Einarbeitung" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Einarbeitung" targetRef="Task_Freigabe" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Freigabe" targetRef="Task_Verteilung" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_Verteilung" targetRef="EndEvent_1" />
+  </bpmn:process>
+</bpmn:definitions>

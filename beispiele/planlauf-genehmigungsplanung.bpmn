@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  id="Definitions_Planlauf_GE"
+                  targetNamespace="http://planlauf-management/prozessketten">
+  <bpmn:process id="Process_GE" name="Planlauf Genehmigungsplanung" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_GE">
+      <bpmn:lane id="Lane_OP2" name="Objektplanung">
+        <bpmn:flowNodeRef>Start_GE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Unterlagen</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_PL2" name="Projektleitung">
+        <bpmn:flowNodeRef>Task_Vollstaendigkeit</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Vollstaendig</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Einreichung</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_TWP" name="Tragwerksplanung">
+        <bpmn:flowNodeRef>Task_Pruefstatik</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_BEH" name="Behörde">
+        <bpmn:flowNodeRef>Task_Genehmigung</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_GE</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_GE" name="Genehmigungsplanung beginnt">
+      <bpmn:outgoing>F_G1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_Unterlagen" name="Zusammenstellung Unterlagen" frist="15">
+      <bpmn:incoming>F_G1</bpmn:incoming>
+      <bpmn:outgoing>F_G2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Vollstaendigkeit" name="Prüfung Vollständigkeit" frist="5">
+      <bpmn:incoming>F_G2</bpmn:incoming>
+      <bpmn:outgoing>F_G3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_Pruefstatik" name="Prüfstatik" frist="20">
+      <bpmn:incoming>F_G3</bpmn:incoming>
+      <bpmn:outgoing>F_G4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_Vollstaendig" name="Unterlagen vollständig?">
+      <bpmn:incoming>F_G4</bpmn:incoming>
+      <bpmn:outgoing>F_G5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="Task_Einreichung" name="Einreichung Behörde" frist="3">
+      <bpmn:incoming>F_G5</bpmn:incoming>
+      <bpmn:outgoing>F_G6</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:receiveTask id="Task_Genehmigung" name="Behördliche Genehmigung" frist="45">
+      <bpmn:incoming>F_G6</bpmn:incoming>
+      <bpmn:outgoing>F_G7</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:endEvent id="End_GE" name="Baugenehmigung erteilt">
+      <bpmn:incoming>F_G7</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="F_G1" sourceRef="Start_GE" targetRef="Task_Unterlagen" />
+    <bpmn:sequenceFlow id="F_G2" sourceRef="Task_Unterlagen" targetRef="Task_Vollstaendigkeit" />
+    <bpmn:sequenceFlow id="F_G3" sourceRef="Task_Vollstaendigkeit" targetRef="Task_Pruefstatik" />
+    <bpmn:sequenceFlow id="F_G4" sourceRef="Task_Pruefstatik" targetRef="Gateway_Vollstaendig" />
+    <bpmn:sequenceFlow id="F_G5" sourceRef="Gateway_Vollstaendig" targetRef="Task_Einreichung" name="ja" />
+    <bpmn:sequenceFlow id="F_G6" sourceRef="Task_Einreichung" targetRef="Task_Genehmigung" />
+    <bpmn:sequenceFlow id="F_G7" sourceRef="Task_Genehmigung" targetRef="End_GE" />
+  </bpmn:process>
+</bpmn:definitions>

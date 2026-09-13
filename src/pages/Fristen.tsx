@@ -1,0 +1,154 @@
+/**
+ * Fristenübersicht mit Erinnerungsfunktion: offene Prozessschritte über alle
+ * Projekte, gefiltert nach Dringlichkeit, mit Button für die vorbereitete E-Mail.
+ */
+import { useMemo, useState } from 'react';
+import { offeneFristen, type Ampel } from '../domain/engine';
+import { formatDate, relativeLabel } from '../lib/dates';
+import type { PlanRun, Project, RunStep } from '../domain/types';
+import type { Route } from '../lib/router';
+import { useStore } from '../store/store';
+import { useToast } from '../components/toast';
+import { AmpelBadge, AmpelPunkt } from '../components/common';
+import { Card, CardHeader, EmptyState, Search, Segmented } from '../components/ui';
+import { EmailDialog } from '../components/EmailDialog';
+import { Icon } from '../components/icons';
+
+type Filter = 'alle' | 'ueberfaellig' | 'faellig' | 'geplant';
+
+export function Fristen({
+  navigate,
+  projectId,
+}: {
+  navigate: (r: Route) => void;
+  projectId?: string;
+}) {
+  const { data, updateStep } = useStore();
+  const toast = useToast();
+  const [filter, setFilter] = useState<Filter>('alle');
+  const [suche, setSuche] = useState('');
+  const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
+
+  const alle = useMemo(() => offeneFristen(data, projectId), [data, projectId]);
+
+  const eintraege = alle.filter((f) => {
+    if (filter !== 'alle' && f.ampel !== (filter as Ampel)) return false;
+    if (!suche.trim()) return true;
+    const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
+    const heu = [f.step.name, f.run.name, f.project.name, f.step.roleName, kontakt?.nachname ?? '', kontakt?.firma ?? '']
+      .join(' ')
+      .toLowerCase();
+    return heu.includes(suche.toLowerCase());
+  });
+
+  const zaehler = (a: Ampel) => alle.filter((f) => f.ampel === a).length;
+
+  const erledigen = (run: PlanRun, step: RunStep) => {
+    updateStep(run.id, step.id, { status: 'erledigt', istDatum: new Date().toISOString().slice(0, 10) });
+    toast(`„${step.name}“ als erledigt vermerkt.`);
+  };
+
+  return (
+    <div className="stack">
+      <div className="row-between wrap">
+        <Segmented<Filter>
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: 'alle', label: `Alle (${alle.length})` },
+            { value: 'ueberfaellig', label: `Überfällig (${zaehler('ueberfaellig')})` },
+            { value: 'faellig', label: `Fällig (${zaehler('faellig')})` },
+            { value: 'geplant', label: `Im Plan (${zaehler('geplant')})` },
+          ]}
+        />
+        <Search value={suche} onChange={setSuche} placeholder="Schritt, Person, Projekt …" />
+      </div>
+
+      <Card>
+        <CardHeader
+          titel="Offene Prozessschritte"
+          sub="Erinnerungen werden aus den E-Mail-Vorlagen des jeweiligen Projekts erzeugt"
+        />
+        {eintraege.length === 0 ? (
+          <EmptyState icon="check" titel="Nichts offen" text="Für diese Auswahl gibt es keine offenen Fristen." />
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: 22 }} />
+                <th>Schritt / Planlauf</th>
+                <th>Rolle & Person</th>
+                <th>Soll-Termin</th>
+                <th>Status</th>
+                <th className="actions">Aktion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eintraege.map((f) => {
+                const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
+                return (
+                  <tr key={`${f.run.id}-${f.step.id}`}>
+                    <td><AmpelPunkt ampel={f.ampel} /></td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        style={{ padding: 0, background: 'none', color: 'inherit', textAlign: 'left' }}
+                        onClick={() => navigate({ view: 'planlauf', projectId: f.project.id, runId: f.run.id })}
+                      >
+                        <strong>{f.step.name}</strong>
+                      </button>
+                      <div className="small tertiary">
+                        {f.run.name} · {f.project.nummer} {f.project.name}
+                      </div>
+                    </td>
+                    <td className="small">
+                      {f.step.roleName || <span className="tertiary">ohne Rolle</span>}
+                      <div className="tertiary small">
+                        {kontakt ? `${kontakt.vorname} ${kontakt.nachname}, ${kontakt.firma}` : 'keine Person zugeordnet'}
+                      </div>
+                    </td>
+                    <td className="small">
+                      {formatDate(f.step.sollDatum)}
+                      <div className="tertiary small">{relativeLabel(f.step.sollDatum)}</div>
+                    </td>
+                    <td>
+                      <AmpelBadge ampel={f.ampel} />
+                      {f.step.letzteErinnerung ? (
+                        <div className="tertiary small" title={new Date(f.step.letzteErinnerung).toLocaleString('de-DE')}>
+                          erinnert am {new Date(f.step.letzteErinnerung).toLocaleDateString('de-DE')}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="actions">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setMail({ project: f.project, run: f.run, step: f.step })}
+                        title="Vorgefertigte E-Mail vorbereiten"
+                      >
+                        <Icon name="mail" size={13} /> Erinnern
+                      </button>{' '}
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        onClick={() => erledigen(f.run, f.step)}
+                        title="Schritt als erledigt vermerken"
+                      >
+                        <Icon name="check" size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      {mail ? (
+        <EmailDialog project={mail.project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
+      ) : null}
+    </div>
+  );
+}
