@@ -24,18 +24,29 @@ Stand jederzeit wiederherstellen, über **Export** der gesamte Bestand als JSON 
 
 ## Veröffentlichen (GitHub Pages)
 
-GitHub Pages liefert nur statische Dateien aus und führt selbst **keinen Build** aus – das
-Repository enthält aber nur den Quellcode. Deshalb liegt unter
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml) ein Workflow, der bei jedem Push
-baut und das Ergebnis (`dist/`) veröffentlicht.
+**Einmalig einzustellen: Settings → Pages → Build and deployment → Source: „GitHub Actions".**
+Ohne diese Umstellung bleibt die Seite weiß – und zwar aus folgendem Grund:
 
-Einmalig einzustellen: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-Danach erscheint die Anwendung unter `https://<konto>.github.io/<repository>/`.
+Steht die Quelle auf „Deploy from a branch", baut GitHub den **Repository-Stamm mit Jekyll** und
+liefert die dortige `index.html` aus. Das ist aber die Einstiegsdatei für die Entwicklung; sie
+verweist auf `/src/main.tsx`, was ein Browser nicht ausführen kann. Dieser Jekyll-Lauf startet bei
+jedem Push zusätzlich zum Workflow und überschreibt dessen Ergebnis, weil er später fertig wird.
 
-Wichtig für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade). Ohne diese
-Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/PLM-DB/` führt das zu einer
-weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/fristen`), daher funktionieren auch
-Direktaufrufe und das Neuladen ohne zusätzliche Serverregeln.
+Nach der Umstellung veröffentlicht ausschließlich
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml): Der Workflow baut bei jedem Push und
+stellt `dist/` bereit. Die Seite erscheint dann unter `https://<konto>.github.io/<repository>/`.
+
+Zwei Hilfen, falls die Einstellung nicht geändert werden kann oder soll:
+
+* Der Workflow legt denselben Build zusätzlich im Branch **`gh-pages`** ab. Damit genügt es auch,
+  unter „Deploy from a branch" den Branch `gh-pages` und den Ordner `/ (root)` zu wählen.
+* Wird versehentlich doch der Quellcode ausgeliefert, erscheint statt einer weißen Seite ein
+  Hinweis mit genau diesem Lösungsweg.
+
+Technische Voraussetzung für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade).
+Ohne diese Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/PLM-DB/` führt das
+ebenfalls zu einer weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/fristen`), daher
+funktionieren Direktaufrufe und das Neuladen ohne zusätzliche Serverregeln.
 
 ## Als App installieren (PWA)
 
