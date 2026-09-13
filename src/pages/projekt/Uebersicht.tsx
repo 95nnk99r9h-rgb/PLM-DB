@@ -92,7 +92,7 @@ export function Uebersicht({
         {aktiv.length === 0 ? (
           <EmptyState icon="kette" titel="Kein aktiver Planlauf" text="Starten Sie einen Lauf für einen Plan oder ein Paket." />
         ) : (
-          <table className="table">
+          <div className="table-scroll"><table className="table">
             <thead>
               <tr>
                 <th>Planlauf</th>
@@ -134,7 +134,7 @@ export function Uebersicht({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
     </div>

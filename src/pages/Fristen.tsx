@@ -72,12 +72,12 @@ export function Fristen({
         {eintraege.length === 0 ? (
           <EmptyState icon="check" titel="Nichts offen" text="Für diese Auswahl gibt es keine offenen Fristen." />
         ) : (
-          <table className="table">
+          <div className="table-scroll"><table className="table table-stack">
             <thead>
               <tr>
-                <th style={{ width: 22 }} />
+                <th className="col-optional" style={{ width: 22 }} />
                 <th>Schritt / Planlauf</th>
-                <th>Rolle & Person</th>
+                <th className="col-optional">Rolle & Person</th>
                 <th>Soll-Termin</th>
                 <th>Status</th>
                 <th className="actions">Aktion</th>
@@ -88,12 +88,11 @@ export function Fristen({
                 const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
                 return (
                   <tr key={`${f.run.id}-${f.step.id}`}>
-                    <td><AmpelPunkt ampel={f.ampel} /></td>
+                    <td className="col-optional"><AmpelPunkt ampel={f.ampel} /></td>
                     <td>
                       <button
                         type="button"
-                        className="btn-ghost"
-                        style={{ padding: 0, background: 'none', color: 'inherit', textAlign: 'left' }}
+                        className="link-btn"
                         onClick={() => navigate({ view: 'planlauf', projectId: f.project.id, runId: f.run.id })}
                       >
                         <strong>{f.step.name}</strong>
@@ -102,7 +101,7 @@ export function Fristen({
                         {f.run.name} · {f.project.nummer} {f.project.name}
                       </div>
                     </td>
-                    <td className="small">
+                    <td className="small col-optional">
                       {f.step.roleName || <span className="tertiary">ohne Rolle</span>}
                       <div className="tertiary small">
                         {kontakt ? `${kontakt.vorname} ${kontakt.nachname}, ${kontakt.firma}` : 'keine Person zugeordnet'}
@@ -142,7 +141,7 @@ export function Fristen({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
 

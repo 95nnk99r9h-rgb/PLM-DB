@@ -62,12 +62,12 @@ export function Adressbuch({ project }: { project: Project }) {
             }
           />
         ) : (
-          <table className="table">
+          <div className="table-scroll"><table className="table">
             <thead>
               <tr>
                 <th>Person</th>
-                <th>Firma</th>
-                <th>Rollen</th>
+                <th className="col-optional">Firma</th>
+                <th className="col-optional">Rollen</th>
                 <th>Kontakt</th>
                 <th className="actions" />
               </tr>
@@ -88,8 +88,8 @@ export function Adressbuch({ project }: { project: Project }) {
                         </span>
                       </span>
                     </td>
-                    <td className="small muted">{c.firma}</td>
-                    <td><RollenChips roles={meine} /></td>
+                    <td className="small muted col-optional">{c.firma}</td>
+                    <td className="col-optional"><RollenChips roles={meine} /></td>
                     <td className="small">
                       <a href={`mailto:${c.email}`} onClick={(e) => e.stopPropagation()}>
                         {c.email}
@@ -105,7 +105,7 @@ export function Adressbuch({ project }: { project: Project }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
 

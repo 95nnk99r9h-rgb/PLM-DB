@@ -209,7 +209,7 @@ function KettenEditor({
         </div>
 
         <div className="card">
-          <table className="table">
+          <div className="table-scroll"><table className="table">
             <thead>
               <tr>
                 <th style={{ width: 30 }}>#</th>
@@ -282,7 +282,7 @@ function KettenEditor({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           <datalist id="rollen-liste">
             {rollen.map((r) => (
               <option key={r} value={r} />
@@ -427,7 +427,7 @@ function BpmnImport({ projectId, onClose }: { projectId: string | null; onClose:
             ) : null}
 
             <div className="card">
-              <table className="table">
+              <div className="table-scroll"><table className="table">
                 <thead>
                   <tr>
                     <th style={{ width: 30 }}>#</th>
@@ -474,7 +474,7 @@ function BpmnImport({ projectId, onClose }: { projectId: string | null; onClose:
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </>
         ) : (

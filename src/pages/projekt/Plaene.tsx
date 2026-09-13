@@ -93,16 +93,16 @@ export function Plaene({
             }
           />
         ) : (
-          <table className="table">
+          <div className="table-scroll"><table className="table">
             <thead>
               <tr>
                 <th>Nummer / Titel</th>
-                <th>Art</th>
+                <th className="col-optional">Art</th>
                 <th>Index</th>
-                <th>Gewerk</th>
-                <th>Verantwortlich</th>
+                <th className="col-optional">Gewerk</th>
+                <th className="col-optional">Verantwortlich</th>
                 <th>Status</th>
-                <th>Planläufe</th>
+                <th className="col-optional">Planläufe</th>
                 <th className="actions" />
               </tr>
             </thead>
@@ -123,10 +123,10 @@ export function Plaene({
                         </span>
                       </span>
                     </td>
-                    <td className="small muted">{DOCUMENT_KIND_LABEL[doc.kind]}</td>
+                    <td className="small muted col-optional">{DOCUMENT_KIND_LABEL[doc.kind]}</td>
                     <td className="num">{doc.index || '–'}</td>
-                    <td className="small muted">{doc.gewerk || '–'}</td>
-                    <td className="small">
+                    <td className="small muted col-optional">{doc.gewerk || '–'}</td>
+                    <td className="small col-optional">
                       {verantwortlich ? (
                         `${verantwortlich.vorname} ${verantwortlich.nachname}`
                       ) : (
@@ -134,7 +134,7 @@ export function Plaene({
                       )}
                     </td>
                     <td><DocStatusBadge status={doc.status} /></td>
-                    <td className="small muted">{laeufe.length > 0 ? `${laeufe.length}` : <span className="tertiary">–</span>}</td>
+                    <td className="small muted col-optional">{laeufe.length > 0 ? `${laeufe.length}` : <span className="tertiary">–</span>}</td>
                     <td className="actions">
                       <button
                         type="button"
@@ -152,7 +152,7 @@ export function Plaene({
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
 

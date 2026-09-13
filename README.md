@@ -5,7 +5,7 @@ Prozessketten, die diese durchlaufen – mit Soll-/Ist-Terminen, Fristenüberwac
 vorbereiteten Erinnerungs-E-Mails.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
-(`localStorage`). Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
+(`localStorage`). Die Anwendung ist responsiv und als PWA installierbar. Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
 der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
 ## Starten
@@ -21,6 +21,40 @@ npm run typecheck
 Beim ersten Start wird ein Demodatenbestand mit zwei Projekten, Adressbüchern, Plänen und
 laufenden Planläufen geladen. Über **Zurücksetzen** (unten in der Seitenleiste) lässt sich dieser
 Stand jederzeit wiederherstellen, über **Export** der gesamte Bestand als JSON sichern.
+
+## Veröffentlichen (GitHub Pages)
+
+GitHub Pages liefert nur statische Dateien aus und führt selbst **keinen Build** aus – das
+Repository enthält aber nur den Quellcode. Deshalb liegt unter
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) ein Workflow, der bei jedem Push
+baut und das Ergebnis (`dist/`) veröffentlicht.
+
+Einmalig einzustellen: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Danach erscheint die Anwendung unter `https://<konto>.github.io/<repository>/`.
+
+Wichtig für Unterverzeichnisse: Der Build verwendet `base: './'` (relative Pfade). Ohne diese
+Einstellung verweisen die Dateien auf `/assets/…` – unter `https://…/PLM-DB/` führt das zu einer
+weißen Seite. Die Navigation arbeitet mit Hash-Adressen (`#/fristen`), daher funktionieren auch
+Direktaufrufe und das Neuladen ohne zusätzliche Serverregeln.
+
+## Als App installieren (PWA)
+
+Die Anwendung ist eine installierbare Progressive Web App und läuft nach dem ersten Aufruf auch
+ohne Netzverbindung – die Daten liegen ohnehin lokal im Browser.
+
+* **iPhone/iPad (Safari):** Teilen → *Zum Home-Bildschirm*
+* **Android (Chrome):** Menü → *App installieren*
+* **Desktop (Chrome/Edge):** Installationssymbol in der Adressleiste
+
+Enthalten sind `manifest.webmanifest`, App-Symbole (192/512 px, maskable und Apple-Touch-Icon)
+sowie ein Service Worker (`public/sw.js`): Seitenaufrufe werden zuerst aus dem Netz geladen und
+bei fehlender Verbindung aus dem Zwischenspeicher beantwortet, Programmdateien kommen direkt aus
+dem Zwischenspeicher. Der Service Worker ist nur im Produktionsbuild aktiv, in der Entwicklung
+stört er also nicht.
+
+Die Oberfläche ist durchgehend responsiv: Ab etwa 860 px klappt die Seitenleiste in ein Menü, auf
+Telefonbreite stehen die Kennzahlen zweispaltig, Tabellen scrollen quer bzw. werden – wie die
+Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar bleiben.
 
 ## Funktionsumfang
 

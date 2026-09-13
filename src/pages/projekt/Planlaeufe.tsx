@@ -95,14 +95,14 @@ function LaufTabelle({
           }
         />
       ) : (
-        <table className="table">
+        <div className="table-scroll"><table className="table">
           <thead>
             <tr>
               <th>Planlauf</th>
-              <th>Plan / Paket</th>
+              <th className="col-optional">Plan / Paket</th>
               <th>Aktueller Schritt</th>
               <th style={{ width: 140 }}>Fortschritt</th>
-              <th>Ende (Soll)</th>
+              <th className="col-optional">Ende (Soll)</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -123,7 +123,7 @@ function LaufTabelle({
                       {abweichungen > 0 ? ` · ${abweichungen} Abweichung${abweichungen > 1 ? 'en' : ''}` : ''}
                     </div>
                   </td>
-                  <td className="small muted">
+                  <td className="small muted col-optional">
                     {doc ? (
                       <>
                         <span className="num">{doc.nummer}</span> {doc.titel}
@@ -145,13 +145,13 @@ function LaufTabelle({
                       <span className="small tertiary">{pct}%</span>
                     </span>
                   </td>
-                  <td className="small">{formatDate(ende)}</td>
+                  <td className="small col-optional">{formatDate(ende)}</td>
                   <td><RunStatusBadge status={run.status} /></td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
     </Card>
   );
@@ -275,7 +275,7 @@ function StartDialog({
           <div>
             <h3 style={{ marginBottom: 8 }}>Vorschau der Schritte</h3>
             <div className="card">
-              <table className="table">
+              <div className="table-scroll"><table className="table">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -306,7 +306,7 @@ function StartDialog({
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             </div>
             <p className="small tertiary" style={{ marginTop: 8 }}>
               Gesamtdauer laut Vorlage: {templateDauer(template)} {project.settings.fristenInArbeitstagen ? 'Arbeitstage' : 'Kalendertage'} · Status:{' '}

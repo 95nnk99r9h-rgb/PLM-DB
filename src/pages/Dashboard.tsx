@@ -37,13 +37,13 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
         {fristen.length === 0 ? (
           <EmptyState icon="check" titel="Keine offenen Fristen" text="Alle Prozessschritte sind erledigt." />
         ) : (
-          <table className="table">
+          <div className="table-scroll"><table className="table">
             <thead>
               <tr>
                 <th style={{ width: 22 }} />
                 <th>Schritt</th>
-                <th>Planlauf</th>
-                <th>Zuständig</th>
+                <th className="col-optional">Planlauf</th>
+                <th className="col-optional">Zuständig</th>
                 <th>Soll</th>
                 <th>Status</th>
               </tr>
@@ -62,8 +62,8 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                       <strong>{f.step.name}</strong>
                       <div className="small tertiary">{f.project.name}</div>
                     </td>
-                    <td className="small muted">{f.run.name}</td>
-                    <td className="small">
+                    <td className="small muted col-optional">{f.run.name}</td>
+                    <td className="small col-optional">
                       {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : <span className="tertiary">offen</span>}
                     </td>
                     <td className="small">
@@ -75,7 +75,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
 
@@ -84,11 +84,11 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
         {laufend.length === 0 ? (
           <EmptyState icon="kette" titel="Kein Planlauf aktiv" text="Starten Sie einen Planlauf in einem Projekt." />
         ) : (
-          <table className="table">
+          <div className="table-scroll"><table className="table">
             <thead>
               <tr>
                 <th>Planlauf</th>
-                <th>Projekt</th>
+                <th className="col-optional">Projekt</th>
                 <th>Aktueller Schritt</th>
                 <th style={{ width: 150 }}>Fortschritt</th>
                 <th>Status</th>
@@ -107,7 +107,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                     onClick={() => navigate({ view: 'planlauf', projectId: run.projectId, runId: run.id })}
                   >
                     <td><strong>{run.name}</strong></td>
-                    <td className="small muted">{project?.name ?? '–'}</td>
+                    <td className="small muted col-optional">{project?.name ?? '–'}</td>
                     <td className="small">
                       <span className="row" style={{ gap: 7 }}>
                         <AmpelPunkt ampel={ampel} />
@@ -126,7 +126,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </Card>
     </div>
