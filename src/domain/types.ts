@@ -14,6 +14,14 @@ export type ISODate = string;
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
 export const DATEN_VERSION = 4;
 
+/**
+ * Fassung der mitgelieferten Stammdaten (Standardrollen und Standard-Prozess-
+ * ketten). Wird sie erhöht, übernimmt ein vorhandener Bestand beim nächsten
+ * Laden die neuen Stammdaten – eigene Rollen, Varianten und laufende Planläufe
+ * bleiben dabei unangetastet.
+ */
+export const STAMMDATEN_VERSION = 2;
+
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
 /* ------------------------------------------------------------------ */
@@ -334,6 +342,8 @@ export interface RunStep {
 
 export interface AppData {
   version: number;
+  /** Fassung der übernommenen Stammdaten (siehe STAMMDATEN_VERSION). */
+  stammdatenVersion: number;
   bearbeiter: Bearbeiter;
   /** Projektübergreifende Standardrollen. */
   standardRollen: StandardRolle[];

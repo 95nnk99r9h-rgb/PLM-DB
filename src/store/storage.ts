@@ -3,8 +3,17 @@
  * schmal gehalten, damit sie später gegen eine echte Datenbank-API getauscht
  * werden kann, ohne die Oberfläche anzufassen.
  */
-import { DATEN_VERSION, EIGENE_ROLLE, type AppData, type StepType } from '../domain/types';
-import { STANDARD_ROLLEN, seedData } from '../domain/seed';
+import {
+  DATEN_VERSION,
+  EIGENE_ROLLE,
+  STAMMDATEN_VERSION,
+  type AppData,
+  type ProcessTemplate,
+  type Role,
+  type StandardRolle,
+  type StepType,
+} from '../domain/types';
+import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData } from '../domain/seed';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
@@ -20,10 +29,59 @@ export function ladeDaten(): AppData {
     if (!roh) return seedData();
     const daten = JSON.parse(roh) as AppData;
     if (!daten || !Array.isArray(daten.projects)) return seedData();
-    return migriere(daten);
+    return stammdatenAktualisieren(migriere(daten));
   } catch {
     return seedData();
   }
+}
+
+const neueId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+
+/**
+ * Übernimmt neue mitgelieferte Stammdaten in einen bestehenden Bestand:
+ * Standardrollen und Standard-Prozessketten werden auf den aktuellen Stand
+ * gebracht und fehlende Rollen in jedes Projekt ergänzt. Eigene Rollen,
+ * eigene Ketten, Projektvarianten und laufende Planläufe bleiben erhalten.
+ */
+function stammdatenAktualisieren(daten: AppData): AppData {
+  if ((daten.stammdatenVersion ?? 0) >= STAMMDATEN_VERSION) return daten;
+
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  // Standardrollen: mitgelieferte übernehmen, eigene behalten
+  const eigeneStandards = (daten.standardRollen ?? []).filter(
+    (r) => !STANDARD_ROLLEN.some((s) => gleich(s.name, r.name)),
+  );
+  const standardRollen: StandardRolle[] = [
+    ...STANDARD_ROLLEN.map((r) => ({ ...r })),
+    ...eigeneStandards,
+  ];
+
+  // Standardketten ersetzen, eigene Ketten und Projektvarianten behalten
+  const eigeneKetten = (daten.templates ?? []).filter(
+    (t) => t.projectId !== null || t.herkunft !== 'standard',
+  );
+  const templates: ProcessTemplate[] = [...STANDARD_TEMPLATES.map((t) => ({ ...t })), ...eigeneKetten];
+
+  // Fehlende Rollen in jedes Projekt ergänzen
+  const roles: Role[] = [...(daten.roles ?? [])];
+  for (const projekt of daten.projects) {
+    for (const standard of STANDARD_ROLLEN) {
+      const vorhanden = roles.some((r) => r.projectId === projekt.id && gleich(r.name, standard.name));
+      if (vorhanden) continue;
+      roles.push({
+        id: neueId('rol'),
+        projectId: projekt.id,
+        name: standard.name,
+        kuerzel: standard.kuerzel,
+        farbe: standard.farbe,
+        beschreibung: standard.beschreibung,
+        gewerkBezug: standard.gewerkBezug,
+      });
+    }
+  }
+
+  return { ...daten, stammdatenVersion: STAMMDATEN_VERSION, standardRollen, templates, roles };
 }
 
 /** Ordnet die früheren Schrittarten den drei aktuellen Arten zu. */
@@ -52,12 +110,13 @@ function migriere(daten: AppData): AppData {
 
   return {
     version: DATEN_VERSION,
+    stammdatenVersion: daten.stammdatenVersion ?? 0,
     bearbeiter: daten.bearbeiter
       ? { ...daten.bearbeiter, rolle: rollenName(daten.bearbeiter.rolle) }
       : { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
-        ? daten.standardRollen
+        ? daten.standardRollen.map((r) => ({ ...r, name: rollenName(r.name) }))
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: (daten.projects ?? []).map((p) => ({ ...p, markiert: p.markiert ?? true })),
     roles: (daten.roles ?? []).map((r) => ({

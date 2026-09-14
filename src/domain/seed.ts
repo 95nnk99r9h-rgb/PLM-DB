@@ -11,6 +11,7 @@ import { recalcSollDaten } from './engine';
 import {
   DATEN_VERSION,
   EIGENE_ROLLE,
+  STAMMDATEN_VERSION,
   type AppData,
   type Antwort,
   type EmailTemplate,
@@ -275,6 +276,7 @@ export function seedData(): AppData {
 
   const data: AppData = {
     version: DATEN_VERSION,
+    stammdatenVersion: STAMMDATEN_VERSION,
     bearbeiter: { name: 'PLM', rolle: EIGENE_ROLLE, email: 'planlauf@example.de' },
     standardRollen: STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: [
