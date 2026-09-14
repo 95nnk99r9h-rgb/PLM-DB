@@ -172,7 +172,12 @@ export function PlanlaufDetail({
           titel={doc ? `${doc.nummer} · ${doc.titel}` : run.name}
           sub={
             <>
-              {doc ? `${doc.nummer} · ${doc.titel}${doc.index ? ` (Index ${doc.index})` : ''}` : 'ohne Plan'} · Start{' '}
+              {doc
+                ? `${doc.nummer} · ${doc.titel}${
+                    doc.index ? ` (${INDEX_LABEL[doc.kind]} ${doc.index})` : ''
+                  }`
+                : 'ohne Plan'}{' '}
+              · Start{' '}
               {formatDate(run.start)} · Vorlage: {run.templateName}
             </>
           }
@@ -467,6 +472,7 @@ export function PlanlaufDetail({
                 templateId: run.templateId,
                 templateName: run.templateName,
                 name: `Planlauf ${doc.nummer} ${INDEX_LABEL[doc.kind]} ${neuerIndex}`,
+                index: neuerIndex,
                 start: today(),
                 status: 'laufend',
                 abbruchGrund: null,

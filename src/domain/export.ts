@@ -12,6 +12,7 @@ import type { Zelle } from '../lib/xlsx';
 import { AMPEL_LABEL, aktuellerSchritt, ampelFuerSchritt, fortschritt, istAktiv, pfad } from './engine';
 import {
   DOCUMENT_KIND_LABEL,
+  INDEX_LABEL,
   NACHWEIS_LABEL,
   RUN_STATUS_LABEL,
   STEP_STATUS_LABEL,
@@ -35,7 +36,7 @@ const KURZ_KOPF = [
   'Art',
   'Plancodierung',
   'Titel',
-  'Index',
+  'Index / Ausgabe',
   'Gewerk',
   'Planungsphase',
   'Eingang Soll',
@@ -220,7 +221,7 @@ export function exportHtml(
   // Langfassung: je Eintrag ein Abschnitt mit allen Schritten
   const abschnitte = zeilen(data, docIds)
     .map(({ doc, run }) => {
-      const titel = `<h2>${html(DOCUMENT_KIND_LABEL[doc.kind])} ${html(doc.nummer)} – ${html(doc.titel)}${doc.index ? ` (Index ${html(doc.index)})` : ''}</h2>`;
+      const titel = `<h2>${html(DOCUMENT_KIND_LABEL[doc.kind])} ${html(doc.nummer)} – ${html(doc.titel)}${doc.index ? ` (${INDEX_LABEL[doc.kind]} ${html(doc.index)})` : ''}</h2>`;
       const meta = `<div class="meta grau">Gewerk: ${html(doc.gewerk || '–')} · ${html(doc.planungsphase || 'ohne Phase')} ·
         Eingang Soll: ${doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'} ·
         ${run ? `Planlauf „${html(run.name)}“ (${html(RUN_STATUS_LABEL[run.status])}, ${fortschritt(run)} %)` : 'kein Planlauf gestartet'}</div>`;

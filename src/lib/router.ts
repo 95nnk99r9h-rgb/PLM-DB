@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
-export type ProjektTab = 'uebersicht' | 'plaene' | 'adressbuch' | 'ketten' | 'einstellungen';
+export type ProjektTab = 'uebersicht' | 'plaene' | 'pakete' | 'adressbuch' | 'ketten' | 'einstellungen';
 
 export type Route =
   | { view: 'dashboard' }
@@ -13,7 +13,7 @@ export type Route =
   | { view: 'projekt'; projectId: ID; tab: ProjektTab }
   | { view: 'planlauf'; projectId: ID; runId: ID };
 
-const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'adressbuch', 'ketten', 'einstellungen'];
+const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'pakete', 'adressbuch', 'ketten', 'einstellungen'];
 
 export function routeToHash(r: Route): string {
   switch (r.view) {

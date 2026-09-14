@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 5;
+export const DATEN_VERSION = 6;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -20,7 +20,7 @@ export const DATEN_VERSION = 5;
  * Laden die neuen Stammdaten – eigene Rollen, Varianten und laufende Planläufe
  * bleiben dabei unangetastet.
  */
-export const STAMMDATEN_VERSION = 3;
+export const STAMMDATEN_VERSION = 4;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -105,17 +105,23 @@ export interface StandardRolle {
   farbe: string;
   beschreibung: string;
   /**
-   * Gewerke, in denen die Funktion vorkommt. Eine leere Liste bedeutet
-   * „übergreifend“: die Funktion gilt für alle Gewerke und wird einmal besetzt.
+   * Gewerk, zu dem die Funktion gehört. Jedes Gewerk hat eigene Funktionen:
+   * „Fachplaner OLA“ und „Fachplaner KIB“ sind zwei verschiedene Funktionen.
+   * `null` steht für übergreifende Funktionen, die einmal besetzt werden.
    */
-  gewerke: string[];
+  gewerk: string | null;
 }
 
 /** Übergreifende Funktionen gelten für alle Gewerke. */
 export const UEBERGREIFEND = 'Übergreifend';
 
-export function istUebergreifend(funktion: { gewerke: string[] }): boolean {
-  return funktion.gewerke.length === 0;
+export function istUebergreifend(funktion: { gewerk: string | null }): boolean {
+  return funktion.gewerk === null;
+}
+
+/** Vollständige Bezeichnung einer Funktion inklusive Gewerk. */
+export function funktionsName(funktion: { name: string; gewerk: string | null }): string {
+  return funktion.gewerk ? `${funktion.name} ${funktion.gewerk}` : funktion.name;
 }
 
 /** Frei definierbare Projektrolle, z.B. "PLM" oder "Prüfstatiker". */
@@ -126,8 +132,8 @@ export interface Role {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
-  /** Gewerke, in denen die Funktion vorkommt; leer = übergreifend. */
-  gewerke: string[];
+  /** Gewerk der Funktion; null = übergreifend (siehe StandardRolle). */
+  gewerk: string | null;
 }
 
 /**
@@ -192,11 +198,16 @@ export interface PlanDocument {
   projectId: ID;
   kind: DocumentKind;
   /**
-   * Übergeordnetes Planpaket bzw. Planverzeichnis. Untergeordnete Pläne
+   * Übergeordnetes Planverzeichnis eines Plans. Pläne eines Verzeichnisses
    * durchlaufen keinen eigenen Planlauf – maßgeblich ist der Lauf des
-   * übergeordneten Eintrags.
+   * Verzeichnisses. Pläne ohne Verzeichnis sind Einzelpläne mit eigenem Lauf.
    */
   parentId: ID | null;
+  /**
+   * Planpaket, dem der Eintrag zugeordnet ist. Reines Ordnungsmerkmal ohne
+   * Auswirkung auf Planläufe und Fristen.
+   */
+  paketId: ID | null;
   /** Plancodierung bzw. Name des Pakets / Verzeichnisses. */
   nummer: string;
   titel: string;
@@ -206,7 +217,20 @@ export interface PlanDocument {
   planungsphase: string;
   /** Soll-Termin für den Eingang der Unterlage. */
   eingangSoll: ISODate | null;
+  /** Datum der Ausgabe – nur bei Planverzeichnissen geführt. */
+  datum: ISODate | null;
   bemerkung: string;
+}
+
+/**
+ * Einträge mit eigenem Planlauf: Planverzeichnisse und Einzelpläne.
+ * Planpakete sind reine Ordnungsmerkmale, Pläne eines Verzeichnisses laufen
+ * im Lauf des Verzeichnisses mit.
+ */
+export function hatEigenenPlanlauf(doc: { kind: DocumentKind; parentId: ID | null }): boolean {
+  if (doc.kind === 'paket') return false;
+  if (doc.kind === 'verzeichnis') return true;
+  return doc.parentId === null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -311,6 +335,8 @@ export interface PlanRun {
   templateId: ID | null;
   templateName: string;
   name: string;
+  /** Index bzw. Ausgabe, für die dieser Lauf geführt wird. */
+  index: string;
   start: ISODate;
   status: RunStatus;
   /** Begründung, falls der Lauf abgebrochen wurde. */

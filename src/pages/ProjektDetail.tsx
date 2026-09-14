@@ -6,14 +6,15 @@ import { Adressbuch } from './projekt/Adressbuch';
 import { Einstellungen } from './projekt/Einstellungen';
 import { ExportDialog } from './projekt/ExportDialog';
 import { Plaene } from './projekt/Plaene';
+import { Planpakete } from './projekt/Planpakete';
 import { Uebersicht } from './projekt/Uebersicht';
 import { Workflows } from './Workflows';
-import { Fristen } from './Fristen';
 import { Icon } from '../components/icons';
 
 const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
   { id: 'plaene', label: 'Pläne & Planläufe' },
+  { id: 'pakete', label: 'Planpakete' },
   { id: 'adressbuch', label: 'Adressbuch' },
   { id: 'ketten', label: 'Workflows' },
   { id: 'einstellungen', label: 'Einstellungen' },
@@ -48,15 +49,8 @@ export function ProjektDetail({
       </div>
 
       {tab === 'uebersicht' ? <Uebersicht project={project} gotoTab={gotoTab} oeffneLauf={oeffneLauf} /> : null}
-      {tab === 'plaene' ? (
-        <>
-          <Plaene project={project} oeffneLauf={oeffneLauf} />
-          <div style={{ marginTop: 18 }}>
-            <h2 style={{ marginBottom: 10 }}>Fristen in diesem Projekt</h2>
-            <Fristen navigate={navigate} projectId={project.id} />
-          </div>
-        </>
-      ) : null}
+      {tab === 'plaene' ? <Plaene project={project} oeffneLauf={oeffneLauf} /> : null}
+      {tab === 'pakete' ? <Planpakete project={project} /> : null}
       {tab === 'adressbuch' ? <Adressbuch project={project} /> : null}
       {tab === 'ketten' ? <Workflows projectId={project.id} /> : null}
       {tab === 'einstellungen' ? <Einstellungen project={project} /> : null}

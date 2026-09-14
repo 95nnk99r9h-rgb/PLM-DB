@@ -1,9 +1,11 @@
 /**
- * Pläne, Planpakete und Planverzeichnisse eines Projekts – jeweils mit ihrem
- * Planlauf. Zu jedem Eintrag gehört genau ein Planlauf; er entsteht zusammen
- * mit dem Eintrag.
+ * Pläne und Planverzeichnisse eines Projekts – jeweils mit ihrem Planlauf.
+ *
+ * Einen eigenen Planlauf haben Planverzeichnisse und Einzelpläne; Pläne eines
+ * Verzeichnisses laufen in dessen Lauf mit. Planpakete sind reine
+ * Ordnungsmerkmale und werden auf einer eigenen Seite gepflegt.
  */
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   aktuellerSchritt,
   ampelFuerSchritt,
@@ -50,7 +52,7 @@ import {
 import { Icon } from '../../components/icons';
 import { ErledigtButton, useSchrittStatus } from '../../components/SchrittStatus';
 
-type Filter = 'alle' | DocumentKind;
+type Filter = 'alle' | 'plan' | 'verzeichnis';
 type SortFeld = 'nummer' | 'titel' | 'gewerk' | 'planungsphase' | 'eingangSoll' | 'stand';
 
 /** Ableitbarer Bearbeitungsstand eines Eintrags. */
@@ -62,8 +64,9 @@ interface Stand {
 }
 
 export function standFuer(doc: PlanDocument, runs: PlanRun[]): Stand {
-  // Untergeordnete Pläne laufen im Planlauf des übergeordneten Eintrags mit.
-  if (doc.parentId) return { text: 'im übergeordneten Planlauf', ton: '', rang: 4 };
+  if (doc.kind === 'paket') return { text: 'Planpaket', ton: '', rang: 5 };
+  // Pläne eines Verzeichnisses laufen im Lauf des Verzeichnisses mit.
+  if (doc.parentId) return { text: 'im Planlauf des Verzeichnisses', ton: '', rang: 4 };
   const eigene = runs.filter((r) => r.documentId === doc.id);
   const aktiv = eigene.find(istAktiv);
   if (aktiv) {
@@ -88,7 +91,9 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const [importOffen, setImportOffen] = useState(false);
 
   const runs = useMemo(() => data.runs.filter((r) => r.projectId === project.id), [data.runs, project.id]);
-  const alle = data.documents.filter((d) => d.projectId === project.id);
+  // Planpakete werden auf einer eigenen Seite gepflegt
+  const alle = data.documents.filter((d) => d.projectId === project.id && d.kind !== 'paket');
+  const pakete = data.documents.filter((d) => d.projectId === project.id && d.kind === 'paket');
 
   const passt = (d: PlanDocument) =>
     (filter === 'alle' || d.kind === filter) &&
@@ -146,7 +151,6 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             onChange={setFilter}
             options={[
               { value: 'alle', label: `Alle (${alle.length})` },
-              { value: 'paket', label: 'Pakete' },
               { value: 'plan', label: 'Pläne' },
               { value: 'verzeichnis', label: 'Verzeichnisse' },
             ]}
@@ -190,7 +194,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 <tr>
                   <Kopf feld="nummer">Bezeichnung / Titel</Kopf>
                   <Kopf feld="gewerk" klasse="col-optional">Gewerk</Kopf>
-                  <Kopf feld="planungsphase" klasse="col-optional">Phase</Kopf>
+                  <th className="col-optional">Planpaket</th>
                   <Kopf feld="eingangSoll" klasse="col-optional">Eingang Soll</Kopf>
                   <Kopf feld="stand">Aktueller Schritt</Kopf>
                   <th className="col-optional" style={{ width: 140 }}>Fortschritt</th>
@@ -203,11 +207,15 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                   const run = stand.run;
                   const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
                   const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
+                  // Abgebrochene Vorgänger – etwa nach einem neuen Index – bleiben
+                  // als graue Zeile sichtbar.
+                  const abgebrochene = runs.filter(
+                    (r) => r.documentId === doc.id && r.status === 'abgebrochen' && r.id !== run?.id,
+                  );
                   return (
+                    <Fragment key={doc.id}>
                     <tr
-                      key={doc.id}
-                      className="clickable"
-                      style={run?.status === 'abgebrochen' ? { opacity: 0.55 } : undefined}
+                      className={`clickable ${run?.status === 'abgebrochen' ? 'zeile-verworfen' : ''}`}
                       onClick={() => (run ? oeffneLauf(run.id) : setDialog({ doc }))}
                     >
                       <td style={{ paddingLeft: 14 + tiefe * 22 }}>
@@ -216,7 +224,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                           <span style={{ minWidth: 0 }}>
                             <span className="num">
                               {doc.nummer}
-                              {doc.index ? ` · Index ${doc.index}` : ''}
+                              {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
                             </span>
                             <div>
                               <strong>{doc.titel}</strong>
@@ -225,7 +233,9 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                         </span>
                       </td>
                       <td className="small muted col-optional">{doc.gewerk || '–'}</td>
-                      <td className="small muted col-optional">{doc.planungsphase || '–'}</td>
+                      <td className="small muted col-optional">
+                        {pakete.find((p) => p.id === doc.paketId)?.titel ?? '–'}
+                      </td>
                       <td className="small col-optional">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
                       <td>
                         {run && istAktiv(run) ? (
@@ -283,6 +293,46 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                         </button>
                       </td>
                     </tr>
+
+                    {abgebrochene.map((alt) => (
+                      <tr
+                        key={alt.id}
+                        className="clickable zeile-verworfen"
+                        onClick={() => oeffneLauf(alt.id)}
+                      >
+                        <td style={{ paddingLeft: 14 + tiefe * 22 }}>
+                          <span className="row" style={{ gap: 9 }}>
+                            <DocKindIcon kind={doc.kind} />
+                            <span style={{ minWidth: 0 }}>
+                              <span className="num">
+                                {doc.nummer}
+                                {alt.index ? ` · ${INDEX_LABEL[doc.kind]} ${alt.index}` : ''}
+                              </span>
+                              <div className="small">{doc.titel}</div>
+                            </span>
+                          </span>
+                        </td>
+                        <td className="small col-optional">{doc.gewerk || '–'}</td>
+                        <td className="small col-optional">
+                          {pakete.find((p) => p.id === doc.paketId)?.titel ?? '–'}
+                        </td>
+                        <td className="small col-optional">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
+                        <td>
+                          <Badge>Abgebrochen</Badge>
+                          <div className="small tertiary truncate">
+                            {alt.abbruchDatum ? `${formatDate(alt.abbruchDatum)} · ` : ''}
+                            {alt.abbruchArt === 'neuer_index' && alt.abbruchNeuerIndex
+                              ? `ersetzt durch ${INDEX_LABEL[doc.kind]} ${alt.abbruchNeuerIndex}`
+                              : (alt.abbruchGrund || 'ersatzlos')}
+                          </div>
+                        </td>
+                        <td className="col-optional">
+                          <span className="small tertiary">–</span>
+                        </td>
+                        <td className="actions" />
+                      </tr>
+                    ))}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -335,24 +385,28 @@ function PlanDialog({
   const [form, setForm] = useState({
     kind: doc?.kind ?? ('plan' as DocumentKind),
     parentId: doc?.parentId ?? (null as ID | null),
+    paketId: doc?.paketId ?? (null as ID | null),
     nummer: doc?.nummer ?? '',
     titel: doc?.titel ?? '',
     index: doc?.index ?? '',
     gewerk: doc?.gewerk ?? '',
     planungsphase: doc?.planungsphase ?? '',
     eingangSoll: doc?.eingangSoll ?? '',
+    datum: doc?.datum ?? '',
     bemerkung: doc?.bemerkung ?? '',
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Untergeordnete Pläne laufen im Planlauf des übergeordneten Eintrags mit
-  const untergeordnet = form.parentId !== null;
+  // Pläne eines Verzeichnisses laufen im Planlauf des Verzeichnisses mit
+  const untergeordnet = form.kind === 'plan' && form.parentId !== null;
   const braucheLauf = !vorhandenerLauf && !untergeordnet;
 
+  /** Planverzeichnisse des Projekts – mögliche „Eltern“ eines Plans. */
   const moeglicheEltern = data.documents.filter(
-    (d) => d.projectId === project.id && d.id !== doc?.id && d.kind !== 'plan',
+    (d) => d.projectId === project.id && d.id !== doc?.id && d.kind === 'verzeichnis',
   );
+  const pakete = data.documents.filter((d) => d.projectId === project.id && d.kind === 'paket');
 
   /** Bearbeitbare Kopie der Vorlagenschritte. */
   const kopie = (id: string): ProcessTemplateStep[] => {
@@ -391,7 +445,12 @@ function PlanDialog({
       toast('Bitte einen Titel angeben.');
       return;
     }
-    const werte = { ...form, eingangSoll: form.eingangSoll || null };
+    const werte = {
+      ...form,
+      eingangSoll: form.eingangSoll || null,
+      datum: form.kind === 'verzeichnis' ? form.datum || null : null,
+      parentId: form.kind === 'plan' ? form.parentId : null,
+    };
 
     // Bestehenden Eintrag mit Planlauf nur aktualisieren
     if (doc && !braucheLauf) {
@@ -433,7 +492,10 @@ function PlanDialog({
       documentId,
       templateId: template?.id ?? null,
       templateName: template?.name ?? 'Individuelle Kette',
-      name: `Planlauf ${form.nummer || form.titel}${form.index ? ` Index ${form.index}` : ''}`,
+      name: `Planlauf ${form.nummer || form.titel}${
+        form.index ? ` ${INDEX_LABEL[form.kind]} ${form.index}` : ''
+      }`,
+      index: form.index,
       start,
       status: 'laufend',
       abbruchGrund: null,
@@ -489,22 +551,33 @@ function PlanDialog({
                   set('kind', v as DocumentKind);
                   if (v !== 'plan') set('parentId', null);
                 }}
-                options={Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => ({ value, label }))}
+                options={[
+                  { value: 'plan', label: DOCUMENT_KIND_LABEL.plan },
+                  { value: 'verzeichnis', label: DOCUMENT_KIND_LABEL.verzeichnis },
+                ]}
               />
             </Field>
             {form.kind === 'plan' ? (
               <Field
-                label="Übergeordnet"
-                hint="Untergeordnete Pläne laufen im Planlauf des Pakets bzw. Verzeichnisses mit."
+                label="Planverzeichnis"
+                hint="Pläne eines Verzeichnisses laufen in dessen Planlauf mit; ohne Verzeichnis erhält der Plan einen eigenen Lauf."
               >
                 <Select
                   value={form.parentId ?? ''}
                   onChange={(v) => set('parentId', v || null)}
-                  placeholder="– eigenständig –"
+                  placeholder="– Einzelplan –"
                   options={moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
                 />
               </Field>
             ) : null}
+            <Field label="Planpaket" hint="Ordnungsmerkmal ohne Einfluss auf den Planlauf">
+              <Select
+                value={form.paketId ?? ''}
+                onChange={(v) => set('paketId', v || null)}
+                placeholder="– keinem Paket zugeordnet –"
+                options={pakete.map((d) => ({ value: d.id, label: d.titel || d.nummer }))}
+              />
+            </Field>
             <Field label={NUMMER_LABEL[form.kind]}>
               <TextInput
                 value={form.nummer}
@@ -549,6 +622,11 @@ function PlanDialog({
             <Field label="Eingang Soll">
               <TextInput value={form.eingangSoll} onChange={(v) => set('eingangSoll', v)} type="date" />
             </Field>
+            {form.kind === 'verzeichnis' ? (
+              <Field label="Datum der Ausgabe">
+                <TextInput value={form.datum} onChange={(v) => set('datum', v)} type="date" />
+              </Field>
+            ) : null}
             <Field label="Bemerkung" full>
               <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
             </Field>
@@ -587,8 +665,8 @@ function PlanDialog({
             </>
           ) : untergeordnet ? (
             <Callout icon="i">
-              Untergeordnete Pläne erhalten keinen eigenen Planlauf – maßgeblich ist der Lauf des übergeordneten
-              Planpakets bzw. Planverzeichnisses.
+              Pläne eines Planverzeichnisses erhalten keinen eigenen Planlauf – maßgeblich ist der Lauf des
+              Verzeichnisses.
             </Callout>
           ) : (
             <Callout icon="i">
@@ -602,7 +680,7 @@ function PlanDialog({
       {loeschen && doc ? (
         <ConfirmDialog
           titel="Eintrag löschen?"
-          text={`„${doc.titel}“ wird mit seinem Planlauf gelöscht. Untergeordnete Einträge bleiben erhalten.`}
+          text={`„${doc.titel}“ wird mit seinem Planlauf gelöscht. Zugeordnete Pläne bleiben erhalten.`}
           onConfirm={() => {
             deleteDocument(doc.id);
             toast('Eintrag gelöscht.');

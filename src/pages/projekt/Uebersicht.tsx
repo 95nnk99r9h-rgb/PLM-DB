@@ -1,13 +1,11 @@
 /** Projektübersicht: Kennzahlen, Fristenlage und letzte Aktivitäten. */
-import { aktuellerSchritt, ampelFuerSchritt, fortschritt, offeneFristen } from '../../domain/engine';
-import { formatDate, relativeLabel } from '../../lib/dates';
+import { offeneFristen } from '../../domain/engine';
 import { DOCUMENT_KIND_LABEL, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { AmpelPunkt, RunStatusBadge } from '../../components/common';
 import { Card, CardHeader, EmptyState, Progress, Stat } from '../../components/ui';
 import { Icon } from '../../components/icons';
-import { ErledigtButton, useSchrittStatus } from '../../components/SchrittStatus';
+import { PlanlaufListe } from '../../components/PlanlaufListe';
 
 export function Uebersicht({
   project,
@@ -19,7 +17,6 @@ export function Uebersicht({
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
-  const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   const laeufe = data.runs.filter((r) => r.projectId === project.id);
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
@@ -90,73 +87,9 @@ export function Uebersicht({
         {aktiv.length === 0 ? (
           <EmptyState icon="kette" titel="Kein aktiver Planlauf" text="Starten Sie einen Lauf für einen Plan oder ein Paket." />
         ) : (
-          <div className="table-scroll"><table className="table">
-            <thead>
-              <tr>
-                <th>Plan / Paket / Verzeichnis</th>
-                <th>Aktueller Schritt</th>
-                <th>Soll</th>
-                <th style={{ width: 140 }}>Fortschritt</th>
-                <th>Status</th>
-                <th className="actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {aktiv.map((run) => {
-                const step = aktuellerSchritt(run);
-                const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
-                const pct = fortschritt(run);
-                return (
-                  <tr key={run.id} className="clickable" onClick={() => oeffneLauf(run.id)}>
-                    <td>
-                      {(() => {
-                        const doc = data.documents.find((d) => d.id === run.documentId);
-                        return (
-                          <>
-                            <span className="num">{doc?.nummer}</span>
-                            <div>
-                              <strong>{doc?.titel ?? run.name}</strong>
-                            </div>
-                            <div className="small tertiary">{run.templateName}</div>
-                          </>
-                        );
-                      })()}
-                    </td>
-                    <td className="small">
-                      <span className="row" style={{ gap: 7 }}>
-                        <AmpelPunkt ampel={ampel} />
-                        {step?.name ?? '–'}
-                      </span>
-                    </td>
-                    <td className="small">
-                      {formatDate(step?.sollDatum ?? null)}
-                      <div className="tertiary small">{relativeLabel(step?.sollDatum ?? null)}</div>
-                    </td>
-                    <td>
-                      <span className="row" style={{ gap: 8 }}>
-                        <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : ''} />
-                        <span className="small tertiary">{pct}%</span>
-                      </span>
-                    </td>
-                    <td><RunStatusBadge status={run.status} /></td>
-                    <td className="actions">
-                      {step ? (
-                        <ErledigtButton
-                          run={run}
-                          step={step}
-                          onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table></div>
+          <PlanlaufListe project={project} runs={aktiv} oeffneLauf={oeffneLauf} />
         )}
       </Card>
-
-      {nachweisDialog}
     </div>
   );
 }

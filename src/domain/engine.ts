@@ -256,23 +256,12 @@ export function kontaktFuerRolleUndGewerk(
   roleName: string,
   gewerk: string,
 ): ID | null {
-  const rolle = rollen.find((r) => r.name.trim().toLowerCase() === roleName.trim().toLowerCase());
+  const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const passende = rollen.filter((r) => gleich(r.name, roleName));
+  // Funktion des Gewerks; ersatzweise die übergreifende Funktion gleichen Namens
+  const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
   if (!rolle) return null;
-
-  const passend = (nurGewerk: boolean) =>
-    kontakte.find((c) =>
-      c.zuordnungen.some(
-        (z) =>
-          z.roleId === rolle.id &&
-          (nurGewerk ? z.gewerk === gewerk : z.gewerk === null || z.gewerk === gewerk),
-      ),
-    );
-
-  // Funktionen ohne Gewerkliste sind übergreifend und einmal besetzt.
-  if (rolle.gewerke.length > 0) {
-    return (passend(true) ?? passend(false))?.id ?? null;
-  }
-  return passend(false)?.id ?? null;
+  return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
 }
 
 /** Erzeugt aus einer Vorlage die Schritte eines neuen Laufs. */

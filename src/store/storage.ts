@@ -23,14 +23,36 @@ const ALTE_EIGENE_ROLLE = 'PLM';
 const rollenName = (name: string) => (name === ALTE_EIGENE_ROLLE ? EIGENE_ROLLE : name);
 
 /**
- * Frühere Fassungen kannten nur „individuell“ bzw. „übergreifend“. Daraus wird
- * die Liste der Gewerke: individuell gilt zunächst für alle Gewerke.
+ * Frühere Fassungen führten je Funktion eine Liste von Gewerken bzw. nur
+ * „individuell“/„übergreifend“. Daraus wird die Liste der Gewerke, aus der
+ * anschließend je Gewerk eine eigene Funktion entsteht.
  */
-function gewerkeVon(rolle: { gewerke?: string[]; gewerkBezug?: string; name: string }): string[] {
+function gewerkeVon(rolle: { gewerke?: string[]; gewerk?: string | null; gewerkBezug?: string; name: string }): string[] {
+  if (rolle.gewerk !== undefined) return rolle.gewerk === null ? [] : [rolle.gewerk];
   if (Array.isArray(rolle.gewerke)) return rolle.gewerke;
   if (rolle.gewerkBezug === 'uebergreifend') return [];
   if (rolle.gewerkBezug === 'individuell') return [...GEWERKE];
-  return STANDARD_ROLLEN.find((s) => s.name === rollenName(rolle.name))?.gewerke ?? [...GEWERKE];
+  const standard = STANDARD_ROLLEN.filter((s) => s.name === rollenName(rolle.name));
+  if (standard.length === 0) return [...GEWERKE];
+  return standard.every((s) => s.gewerk === null) ? [] : standard.map((s) => s.gewerk!).filter(Boolean);
+}
+
+/** Kennung der aus einer früheren Funktion je Gewerk entstehenden Funktion. */
+const gewerkId = (id: string, gewerk: string | null) => (gewerk ? `${id}~${gewerk}` : id);
+
+/**
+ * Teilt eine Funktion mit mehreren Gewerken in je eine Funktion pro Gewerk auf
+ * („Fachplaner OLA“ und „Fachplaner KIB“ sind verschiedene Funktionen).
+ */
+function rollenAufteilen<T extends { id: string; name: string }>(rollen: T[]): (Omit<T, 'gewerke'> & { gewerk: string | null })[] {
+  return rollen.flatMap((r) => {
+    const { gewerke: _alt, ...rest } = r as T & { gewerke?: string[] };
+    const gewerke = gewerkeVon(r as never);
+    if (gewerke.length === 0) return [{ ...rest, name: rollenName(r.name), gewerk: null } as never];
+    return gewerke.map(
+      (g) => ({ ...rest, id: gewerkId(r.id, g), name: rollenName(r.name), gewerk: g }) as never,
+    );
+  });
 }
 
 const KEY = 'planlauf-management.data.v1';
@@ -59,10 +81,13 @@ function stammdatenAktualisieren(daten: AppData): AppData {
   if ((daten.stammdatenVersion ?? 0) >= STAMMDATEN_VERSION) return daten;
 
   const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  /** Funktionen sind gleich, wenn Bezeichnung und Gewerk übereinstimmen. */
+  const gleicheFunktion = (a: { name: string; gewerk: string | null }, b: { name: string; gewerk: string | null }) =>
+    gleich(a.name, b.name) && (a.gewerk ?? '') === (b.gewerk ?? '');
 
   // Funktionen: mitgelieferte übernehmen, eigene behalten
   const eigeneStandards = (daten.standardRollen ?? []).filter(
-    (r) => !STANDARD_ROLLEN.some((s) => gleich(s.name, r.name)),
+    (r) => !STANDARD_ROLLEN.some((s) => gleicheFunktion(s, r)),
   );
   const standardRollen: StandardRolle[] = [
     ...STANDARD_ROLLEN.map((r) => ({ ...r })),
@@ -79,7 +104,7 @@ function stammdatenAktualisieren(daten: AppData): AppData {
   const roles: Role[] = [...(daten.roles ?? [])];
   for (const projekt of daten.projects) {
     for (const standard of STANDARD_ROLLEN) {
-      const vorhanden = roles.some((r) => r.projectId === projekt.id && gleich(r.name, standard.name));
+      const vorhanden = roles.some((r) => r.projectId === projekt.id && gleicheFunktion(r, standard));
       if (vorhanden) continue;
       roles.push({
         id: neueId('rol'),
@@ -88,7 +113,7 @@ function stammdatenAktualisieren(daten: AppData): AppData {
         kuerzel: standard.kuerzel,
         farbe: standard.farbe,
         beschreibung: standard.beschreibung,
-        gewerke: [...standard.gewerke],
+        gewerk: standard.gewerk,
       });
     }
   }
@@ -128,37 +153,54 @@ function migriere(daten: AppData): AppData {
       : { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
-        ? daten.standardRollen.map((r) => ({ ...r, name: rollenName(r.name), gewerke: gewerkeVon(r) }))
+        ? rollenAufteilen(daten.standardRollen)
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: (daten.projects ?? []).map((p) => ({ ...p, markiert: p.markiert ?? true })),
-    roles: (daten.roles ?? []).map((r) => ({
-      ...r,
-      name: rollenName(r.name),
-      gewerke: gewerkeVon(r),
-    })),
+    roles: rollenAufteilen(daten.roles ?? []),
     contacts: (daten.contacts ?? []).map((c) => {
       const alt = c as unknown as { roleIds?: string[] };
+      const alteRollen = daten.roles ?? [];
+      const zuordnungen = c.zuordnungen ?? (alt.roleIds ?? []).map((roleId) => ({ roleId, gewerk: null }));
       return {
         ...c,
         anschrift: c.anschrift ?? '',
-        // Frühere Rollenzuordnungen galten für alle Gewerke
-        zuordnungen:
-          c.zuordnungen ?? (alt.roleIds ?? []).map((roleId) => ({ roleId, gewerk: null })),
+        // Zuordnungen zeigen jetzt auf die Funktion des jeweiligen Gewerks
+        zuordnungen: zuordnungen.flatMap((z) => {
+          const alteRolle = alteRollen.find((r) => r.id === z.roleId);
+          if (!alteRolle) return [z];
+          const gewerke = gewerkeVon(alteRolle as never);
+          if (gewerke.length === 0) return [{ roleId: z.roleId, gewerk: null }];
+          // Ohne angegebenes Gewerk galt die Besetzung für alle Gewerke der Funktion
+          const ziele = z.gewerk ? [z.gewerk] : gewerke;
+          return ziele
+            .filter((g) => gewerke.includes(g))
+            .map((g) => ({ roleId: gewerkId(z.roleId, g), gewerk: g }));
+        }),
       };
     }),
     documents: (daten.documents ?? []).map((d) => {
       const alt = d as unknown as Record<string, unknown>;
+      // Planpakete haben keinen eigenen Planlauf mehr. Pakete, an denen ein
+      // Lauf hängt, werden daher zu Planverzeichnissen – der Lauf und die
+      // untergeordneten Pläne bleiben so erhalten.
+      const mitLauf = (x: { id: string; kind: string }) =>
+        x.kind === 'paket' && (daten.runs ?? []).some((r) => r.documentId === x.id);
+      const eltern = (daten.documents ?? []).find((x) => x.id === d.parentId);
+      // Ein übergeordnetes Paket ohne Lauf wird zum reinen Ordnungsmerkmal.
+      const paketEltern = Boolean(eltern && eltern.kind === 'paket' && !mitLauf(eltern));
       return {
         id: d.id,
         projectId: d.projectId,
-        kind: d.kind,
-        parentId: d.parentId ?? null,
+        kind: mitLauf(d) ? ('verzeichnis' as const) : d.kind,
+        parentId: paketEltern ? null : (d.parentId ?? null),
+        paketId: (alt.paketId as string) ?? (paketEltern ? eltern!.id : null),
         nummer: d.nummer,
         titel: d.titel,
         index: d.index ?? '',
         gewerk: d.gewerk ?? '',
         planungsphase: (alt.planungsphase as string) ?? '',
         eingangSoll: (alt.eingangSoll as string) ?? null,
+        datum: (alt.datum as string) ?? null,
         bemerkung: d.bemerkung ?? '',
       };
     }),
@@ -179,6 +221,7 @@ function migriere(daten: AppData): AppData {
     })),
     runs: (daten.runs ?? []).map((r) => ({
       ...r,
+      index: r.index ?? (daten.documents ?? []).find((d) => d.id === r.documentId)?.index ?? '',
       status: r.status === 'abgeschlossen' || r.status === 'abgebrochen' ? r.status : 'laufend',
       abbruchGrund: r.abbruchGrund ?? null,
       abbruchDatum: r.abbruchDatum ?? null,

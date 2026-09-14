@@ -116,14 +116,20 @@ export function KontakteImport({ project, onClose }: { project: Project; onClose
 
         let zuordnungen: Zuordnung[] = [];
         if (funktion) {
-          const rolle = rollen.find((r) => r.name.trim().toLowerCase() === funktion.toLowerCase());
-          if (!rolle) hinweise.push(`Funktion „${funktion}“ ist im Projekt nicht hinterlegt`);
-          else {
-            const uebergreifend = !gewerk || gewerk.toLowerCase() === UEBERGREIFEND.toLowerCase();
-            if (!uebergreifend && rolle.gewerke.length > 0 && !rolle.gewerke.includes(gewerk)) {
-              hinweise.push(`„${funktion}“ ist für ${gewerk} nicht hinterlegt`);
-            }
-            zuordnungen = [{ roleId: rolle.id, gewerk: uebergreifend ? null : gewerk }];
+          // Jedes Gewerk führt eigene Funktionen – gesucht wird Bezeichnung + Gewerk
+          const uebergreifend = !gewerk || gewerk.toLowerCase() === UEBERGREIFEND.toLowerCase();
+          const gleich = (r: { name: string }) => r.name.trim().toLowerCase() === funktion.toLowerCase();
+          const rolle = uebergreifend
+            ? rollen.find((r) => gleich(r) && r.gewerk === null)
+            : rollen.find((r) => gleich(r) && r.gewerk === gewerk);
+          if (!rolle) {
+            hinweise.push(
+              uebergreifend
+                ? `Übergreifende Funktion „${funktion}“ ist im Projekt nicht hinterlegt`
+                : `„${funktion}“ ist für ${gewerk} nicht hinterlegt`,
+            );
+          } else {
+            zuordnungen = [{ roleId: rolle.id, gewerk: rolle.gewerk }];
           }
         }
 

@@ -1,10 +1,18 @@
 /**
- * Projektbezogenes Adressbuch. Je Kontakt werden Gewerk und Funktion
- * zugewiesen; zur Auswahl stehen dabei nur die Funktionen, die im Reiter
+ * Projektbezogenes Adressbuch. Je Kontakt lassen sich mehrere Funktionen
+ * zuweisen; zur Auswahl stehen dabei nur die Funktionen, die im Reiter
  * „Funktionen“ für das gewählte Gewerk hinterlegt sind.
  */
 import { useState } from 'react';
-import { GEWERKE, UEBERGREIFEND, type Contact, type ID, type Project, type Role } from '../../domain/types';
+import {
+  GEWERKE,
+  UEBERGREIFEND,
+  type Contact,
+  type ID,
+  type Project,
+  type Role,
+  type Zuordnung,
+} from '../../domain/types';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { KontakteImport } from './KontakteImport';
@@ -188,42 +196,47 @@ function KontaktDialog({
     notiz: contact?.notiz ?? '',
   });
 
-  // Gewerk und Funktion der (ersten) Zuordnung
-  const ersteZuordnung = contact?.zuordnungen[0];
-  const [gewerk, setGewerk] = useState<string>(ersteZuordnung?.gewerk ?? UEBERGREIFEND);
-  const [roleId, setRoleId] = useState<ID>(ersteZuordnung?.roleId ?? '');
+  // Mehrere Funktionen je Kontakt – jede mit ihrem Gewerk
+  const [zuordnungen, setZuordnungen] = useState<Zuordnung[]>(contact?.zuordnungen ?? []);
+  const [gewerk, setGewerk] = useState<string>(UEBERGREIFEND);
+  const [roleId, setRoleId] = useState<ID>('');
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   // Gewerke aus den hinterlegten Funktionen, ergänzt um die vorgegebenen
   const gewerkeListe = [
     UEBERGREIFEND,
-    ...[...new Set([...GEWERKE, ...rollen.flatMap((r) => r.gewerke)])].sort((a, b) => a.localeCompare(b, 'de')),
+    ...[...new Set([...GEWERKE, ...rollen.map((r) => r.gewerk).filter((g): g is string => Boolean(g))])].sort(
+      (a, b) => a.localeCompare(b, 'de'),
+    ),
   ];
 
-  /** Nur Funktionen, die für das gewählte Gewerk hinterlegt sind. */
-  const moeglicheFunktionen = rollen.filter((r) =>
-    gewerk === UEBERGREIFEND ? r.gewerke.length === 0 : r.gewerke.includes(gewerk),
+  /** Nur Funktionen des gewählten Gewerks, die noch nicht zugewiesen sind. */
+  const moeglicheFunktionen = rollen.filter(
+    (r) =>
+      (gewerk === UEBERGREIFEND ? r.gewerk === null : r.gewerk === gewerk) &&
+      !zuordnungen.some((z) => z.roleId === r.id),
   );
 
   const gewerkWechseln = (g: string) => {
     setGewerk(g);
-    // Funktion zurücksetzen, wenn sie im neuen Gewerk nicht vorkommt
-    const weiterhin = rollen.find(
-      (r) => r.id === roleId && (g === UEBERGREIFEND ? r.gewerke.length === 0 : r.gewerke.includes(g)),
-    );
-    if (!weiterhin) setRoleId('');
+    setRoleId('');
   };
+
+  const funktionHinzufuegen = (id: ID) => {
+    const rolle = rollen.find((r) => r.id === id);
+    if (!rolle) return;
+    setZuordnungen((z) => [...z, { roleId: rolle.id, gewerk: rolle.gewerk }]);
+    setRoleId('');
+  };
+
+  const funktionEntfernen = (id: ID) => setZuordnungen((z) => z.filter((x) => x.roleId !== id));
 
   const speichern = () => {
     if (!form.nachname.trim()) {
       toast('Bitte einen Nachnamen angeben.');
       return;
     }
-    const zuordnungen = roleId
-      ? [{ roleId, gewerk: gewerk === UEBERGREIFEND ? null : gewerk }]
-      : (contact?.zuordnungen ?? []);
-
     if (contact) updateContact(contact.id, { ...form, zuordnungen });
     else addContact({ ...form, projectId: project.id, zuordnungen });
     toast(contact ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.');
@@ -253,27 +266,47 @@ function KontaktDialog({
         }
       >
         <div className="form-grid">
-          <Field label="Gewerk" hint="bestimmt die wählbaren Funktionen">
-            <Select
-              value={gewerk}
-              onChange={gewerkWechseln}
-              options={gewerkeListe.map((g) => ({ value: g, label: g }))}
-            />
-          </Field>
-          <Field
-            label="Funktion"
-            hint={
-              moeglicheFunktionen.length === 0
-                ? 'Für dieses Gewerk ist noch keine Funktion hinterlegt.'
-                : undefined
-            }
-          >
-            <Select
-              value={roleId}
-              onChange={setRoleId}
-              placeholder="– keine –"
-              options={moeglicheFunktionen.map((r) => ({ value: r.id, label: r.name }))}
-            />
+          <Field label="Funktionen" full hint="Mehrere Funktionen sind möglich – je Gewerk eine eigene.">
+            {zuordnungen.length > 0 ? (
+              <div className="row wrap" style={{ gap: 6, marginBottom: 8 }}>
+                {zuordnungen.map((z) => {
+                  const rolle = rollen.find((r) => r.id === z.roleId);
+                  return (
+                    <span key={z.roleId} className="role-chip" style={{ color: rolle?.farbe }}>
+                      {z.gewerk ? `${z.gewerk} · ` : ''}
+                      {rolle?.name ?? 'unbekannte Funktion'}
+                      <button
+                        type="button"
+                        className="chip-weg"
+                        aria-label="Funktion entfernen"
+                        onClick={() => funktionEntfernen(z.roleId)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="small tertiary" style={{ marginBottom: 8 }}>
+                Noch keine Funktion zugewiesen.
+              </p>
+            )}
+            <div className="row wrap" style={{ gap: 8 }}>
+              <Select
+                value={gewerk}
+                onChange={gewerkWechseln}
+                options={gewerkeListe.map((g) => ({ value: g, label: g }))}
+              />
+              <Select
+                value={roleId}
+                onChange={funktionHinzufuegen}
+                placeholder={
+                  moeglicheFunktionen.length === 0 ? '– keine Funktion offen –' : '– Funktion hinzufügen –'
+                }
+                options={moeglicheFunktionen.map((r) => ({ value: r.id, label: r.name }))}
+              />
+            </div>
           </Field>
           <Field label="Anrede">
             <Select

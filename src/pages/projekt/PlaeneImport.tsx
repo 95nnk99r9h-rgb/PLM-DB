@@ -9,6 +9,7 @@
 import { useRef, useState } from 'react';
 import {
   DOCUMENT_KIND_LABEL,
+  hatEigenenPlanlauf,
   type DocumentKind,
   type PlanDocument,
   type Project,
@@ -45,7 +46,8 @@ const SPALTEN: Record<string, string[]> = {
   bemerkung: ['Bemerkung', 'Notiz'],
   workflow: ['Workflow', 'Prozesskette', 'Kette'],
   // Nicht Teil der Vorgabe, wird aber ausgewertet, falls vorhanden
-  parent: ['Übergeordnet', 'Gehört zu'],
+  parent: ['Übergeordnet', 'Planverzeichnis', 'Gehört zu'],
+  paket: ['Planpaket', 'Paket'],
 };
 
 const KOPFZEILE = [
@@ -56,6 +58,8 @@ const KOPFZEILE = [
   'Gewerk',
   'Planungsphase',
   'Eingang Soll',
+  'Planpaket',
+  'Planverzeichnis',
   'Bemerkung',
   'Workflow',
 ];
@@ -69,8 +73,10 @@ function artLesen(wert: string): DocumentKind {
 }
 
 interface Zeile {
-  doc: Omit<PlanDocument, 'id' | 'parentId'>;
+  doc: Omit<PlanDocument, 'id' | 'parentId' | 'paketId'>;
   parentNummer: string;
+  /** Name des Planpakets; leer = keinem Paket zugeordnet. */
+  paketName: string;
   /** Name des Workflows aus der Liste; leer = kein Planlauf starten. */
   workflow: string;
   workflowId: string | null;
@@ -93,9 +99,10 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
 
   const vorlage = () => {
     const beispiele = [
-      ['Planpaket', 'NK-KIB-EÜ-001', 'C', 'Eisenbahnüberführung Nordkanal', 'KIB', 'Ausführungsplanung', '14.10.2026', '', 'VVBau mit Prüfstatik'],
-      ['Plan', 'NK-LST-SP-102', 'B', 'Signallageplan Bereich Nord', 'LST', 'Ausführungsplanung', '30.10.2026', '', 'VVBau STE'],
-      ['Planverzeichnis', 'NK-VA-PV-001', '02', 'Planverzeichnis Verkehrsanlagen', 'VA', 'Entwurfsplanung', '30.11.2026', '', ''],
+      ['Planpaket', 'PP-Nordkanal', '', 'Eisenbahnüberführung Nordkanal', 'KIB', '', '', '', '', '', ''],
+      ['Planverzeichnis', 'NK-KIB-PV-001', 'C', 'Planverzeichnis Überbau', 'KIB', 'Ausführungsplanung', '14.10.2026', 'Eisenbahnüberführung Nordkanal', '', '', 'VVBau mit Prüfstatik'],
+      ['Plan', 'NK-KIB-EÜ-001-GR', 'C', 'Grundriss Überbau', 'KIB', 'Ausführungsplanung', '14.10.2026', 'Eisenbahnüberführung Nordkanal', 'NK-KIB-PV-001', '', ''],
+      ['Plan', 'NK-LST-SP-102', 'B', 'Signallageplan Bereich Nord', 'LST', 'Ausführungsplanung', '30.10.2026', '', '', '', 'VVBau STE'],
     ];
     dateiLaden(
       xlsxErzeugen([{ name: 'Pläne', zeilen: [KOPFZEILE, ...beispiele] }]),
@@ -130,13 +137,14 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         const art = artLesen(wert(zeile, 'art'));
         const nummer = wert(zeile, 'nummer');
         const parentNummer = wert(zeile, 'parent');
+        const paketName = wert(zeile, 'paket');
         const workflow = wert(zeile, 'workflow');
         const hinweise: string[] = [];
 
         if (vorhandene.some((d) => d.nummer && d.nummer === nummer)) {
           hinweise.push('Eintrag mit dieser Bezeichnung ist bereits vorhanden');
         }
-        if (parentNummer && art !== 'plan') hinweise.push('nur Pläne können untergeordnet werden');
+        if (parentNummer && art !== 'plan') hinweise.push('nur Pläne können einem Planverzeichnis zugeordnet werden');
 
         const vorlage = workflow
           ? vorlagen.find((t) => t.name.trim().toLowerCase() === workflow.toLowerCase())
@@ -153,9 +161,11 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
             gewerk: wert(zeile, 'gewerk'),
             planungsphase: wert(zeile, 'planungsphase'),
             eingangSoll: datumLesen(wert(zeile, 'eingangSoll')),
+            datum: art === 'verzeichnis' ? datumLesen(wert(zeile, 'eingangSoll')) : null,
             bemerkung: wert(zeile, 'bemerkung'),
           },
           parentNummer: art === 'plan' ? parentNummer : '',
+          paketName: art === 'paket' ? '' : paketName,
           workflow,
           workflowId: vorlage?.id ?? null,
           hinweis: hinweise.join('; '),
@@ -174,8 +184,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
     const reihenfolge = [...vorschau].sort((a, b) => (a.parentNummer ? 1 : 0) - (b.parentNummer ? 1 : 0));
 
     for (const z of reihenfolge) {
-      const id = addDocument({ ...z.doc, parentId: null });
+      const id = addDocument({ ...z.doc, parentId: null, paketId: null });
       if (z.doc.nummer) neueIds.set(z.doc.nummer, id);
+      if (z.doc.kind === 'paket' && z.doc.titel) neueIds.set(z.doc.titel, id);
     }
 
     let laeufe = 0;
@@ -183,15 +194,24 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       const eigeneId = z.doc.nummer ? neueIds.get(z.doc.nummer) : undefined;
       if (!eigeneId) continue;
 
-      // Zuordnung nachziehen (auch auf bereits vorhandene Pakete)
+      // Zuordnungen nachziehen (auch auf bereits vorhandene Einträge)
       const parentId = z.parentNummer
-        ? (neueIds.get(z.parentNummer) ?? vorhandene.find((d) => d.nummer === z.parentNummer)?.id ?? null)
+        ? (neueIds.get(z.parentNummer) ??
+           vorhandene.find((d) => d.kind === 'verzeichnis' && d.nummer === z.parentNummer)?.id ??
+           null)
         : null;
-      if (parentId) updateDocument(eigeneId, { parentId });
+      const paketId = z.paketName
+        ? (neueIds.get(z.paketName) ??
+           vorhandene.find(
+             (d) => d.kind === 'paket' && (d.titel === z.paketName || d.nummer === z.paketName),
+           )?.id ??
+           null)
+        : null;
+      if (parentId || paketId) updateDocument(eigeneId, { parentId, paketId });
 
-      // Planlauf starten, sofern ein Workflow benannt und der Eintrag eigenständig ist
+      // Planlauf starten, sofern ein Workflow benannt ist und der Eintrag einen eigenen Lauf hat
       const vorlage = vorlagen.find((t) => t.id === z.workflowId);
-      if (!vorlage || parentId) continue;
+      if (!vorlage || !hatEigenenPlanlauf({ kind: z.doc.kind, parentId })) continue;
 
       const steps = stepsAusTemplate(
         vorlage,
@@ -204,6 +224,7 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         templateId: vorlage.id,
         templateName: vorlage.name,
         name: `Planlauf ${z.doc.nummer || z.doc.titel}${z.doc.index ? ` ${z.doc.index}` : ''}`,
+        index: z.doc.index,
         start: today(),
         status: 'laufend',
         abbruchGrund: null,
@@ -299,8 +320,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           <Callout icon="i">
             Erwartete Spalten: <strong>{KOPFZEILE.join(' · ')}</strong>. In <em>Art</em> steht Plan, Planpaket
             oder Planverzeichnis. Ist in <em>Workflow</em> ein hinterlegter Workflow benannt, wird der Planlauf
-            beim Import gleich gestartet. Eine zusätzliche Spalte <em>Übergeordnet</em> ordnet Pläne einem Paket
-            oder Verzeichnis unter; solche Pläne erhalten keinen eigenen Planlauf. Über <em>Vorlage</em> erhalten
+            beim Import gleich gestartet. <em>Planpaket</em> ordnet den Eintrag einem Paket zu (reines
+            Ordnungsmerkmal), <em>Planverzeichnis</em> ordnet einen Plan einem Verzeichnis unter – solche Pläne
+            laufen im Planlauf des Verzeichnisses mit und erhalten keinen eigenen. Über <em>Vorlage</em> erhalten
             Sie eine Datei mit genau diesen Spalten.
           </Callout>
         ) : null}

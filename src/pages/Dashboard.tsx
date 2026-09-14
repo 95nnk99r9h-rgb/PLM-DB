@@ -2,20 +2,16 @@
  * Startseite: Kennzahlen, eigene To-Dos und die laufenden Planläufe,
  * nach Projekten gegliedert. Angezeigt werden die markierten Projekte.
  */
-import {
-  aktuellerSchritt,
-  ampelFuerSchritt,
-  eigeneTodos,
-  fortschritt,
-  istAktiv,
-  offeneFristen,
-} from '../domain/engine';
+import { eigeneTodos, istAktiv, offeneFristen } from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
-import type { Project } from '../domain/types';
+import { useState } from 'react';
+import type { PlanRun, Project, RunStep } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
-import { AmpelBadge, AmpelPunkt, RunStatusBadge } from '../components/common';
-import { Card, CardHeader, EmptyState, Progress, Stat } from '../components/ui';
+import { AmpelBadge, AmpelPunkt } from '../components/common';
+import { Card, CardHeader, EmptyState, Stat } from '../components/ui';
+import { PlanlaufListe } from '../components/PlanlaufListe';
+import { EmailDialog } from '../components/EmailDialog';
 import { Icon } from '../components/icons';
 import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
 
@@ -28,6 +24,7 @@ export function sichtbareProjekte(projects: Project[]): Project[] {
 export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
+  const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
   const projekte = sichtbareProjekte(data.projects);
   const ids = projekte.map((p) => p.id);
 
@@ -79,6 +76,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                 <tr>
                   <th className="col-optional" style={{ width: 22 }} />
                   <th>Schritt / Planlauf</th>
+                  <th>Gewerk</th>
                   <th className="col-optional">Projekt</th>
                   <th>Soll-Termin</th>
                   <th>Status</th>
@@ -104,6 +102,9 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                         })()}
                       </div>
                     </td>
+                    <td className="small muted">
+                      {data.documents.find((d) => d.id === f.run.documentId)?.gewerk || '–'}
+                    </td>
                     <td className="small muted col-optional">
                       {f.project.nummer} {f.project.name}
                     </td>
@@ -115,6 +116,18 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                       <AmpelBadge ampel={f.ampel} />
                     </td>
                     <td className="actions">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline"
+                        title="Vorbereitete E-Mail an die zuständige Person"
+                        aria-label="Erinnerung vorbereiten"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMail({ project: f.project, run: f.run, step: f.step });
+                        }}
+                      >
+                        <Icon name="mail" size={13} />
+                      </button>{' '}
                       <ErledigtButton
                         run={f.run}
                         step={f.step}
@@ -159,85 +172,19 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                     </button>
                   }
                 />
-                <div className="table-scroll">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Plan / Paket / Verzeichnis</th>
-                        <th>Aktueller Schritt</th>
-                        <th className="col-optional">Verantwortlich</th>
-                        <th style={{ width: 150 }}>Fortschritt</th>
-                        <th>Status</th>
-                        <th className="actions" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {laeufe.map((run) => {
-                        const step = aktuellerSchritt(run);
-                        const ampel = step
-                          ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage)
-                          : 'erledigt';
-                        const pct = fortschritt(run);
-                        const kontakt = data.contacts.find((c) => c.id === step?.contactId);
-                        const doc = data.documents.find((d) => d.id === run.documentId);
-                        return (
-                          <tr
-                            key={run.id}
-                            className="clickable"
-                            onClick={() => navigate({ view: 'planlauf', projectId: run.projectId, runId: run.id })}
-                          >
-                            <td>
-                              <span className="num">{doc?.nummer}</span>
-                              <div>
-                                <strong>{doc?.titel ?? run.name}</strong>
-                              </div>
-                              <div className="small tertiary">
-                                {doc?.gewerk ? `${doc.gewerk} · ` : ''}
-                                {run.templateName}
-                              </div>
-                            </td>
-                            <td className="small">
-                              <span className="row" style={{ gap: 7 }}>
-                                <AmpelPunkt ampel={ampel} />
-                                {step?.name ?? 'abgeschlossen'}
-                              </span>
-                              <span className="tertiary small">{relativeLabel(step?.sollDatum ?? null)}</span>
-                            </td>
-                            <td className="small col-optional">
-                              {step?.roleName || '–'}
-                              <div className="tertiary small">
-                                {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person'}
-                              </div>
-                            </td>
-                            <td>
-                              <span className="row" style={{ gap: 8 }}>
-                                <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : ''} />
-                                <span className="small tertiary">{pct}%</span>
-                              </span>
-                            </td>
-                            <td>
-                              <RunStatusBadge status={run.status} />
-                            </td>
-                            <td className="actions">
-                              {step ? (
-                                <ErledigtButton
-                                  run={run}
-                                  step={step}
-                                  onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
-                                />
-                              ) : null}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <PlanlaufListe
+                  project={project}
+                  runs={laeufe}
+                  oeffneLauf={(runId) => navigate({ view: 'planlauf', projectId: project.id, runId })}
+                />
               </Card>
             );
           })
       )}
 
+      {mail ? (
+        <EmailDialog project={mail.project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
+      ) : null}
       {nachweisDialog}
     </div>
   );

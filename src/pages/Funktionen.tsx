@@ -17,6 +17,7 @@ import {
   EmptyState,
   Field,
   Modal,
+  Select,
   TextArea,
   TextInput,
 } from '../components/ui';
@@ -25,7 +26,7 @@ import { Icon } from '../components/icons';
 const FARBEN = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
 export function Funktionen() {
-  const { data, addStandardRolle, updateStandardRolle, deleteStandardRolle } = useStore();
+  const { data, addStandardRolle, deleteStandardRolle } = useStore();
   const toast = useToast();
   const [seite, setSeite] = useState<string>(UEBERGREIFEND);
   const [dialog, setDialog] = useState<{ funktion?: StandardRolle } | null>(null);
@@ -34,22 +35,20 @@ export function Funktionen() {
 
   // Alle vorkommenden Gewerke – vorgegebene und selbst ergänzte
   const gewerke = [
-    ...new Set([...GEWERKE, ...data.standardRollen.flatMap((r) => r.gewerke)]),
+    ...new Set([...GEWERKE, ...data.standardRollen.map((r) => r.gewerk).filter((g): g is string => Boolean(g))]),
   ].sort((a, b) => a.localeCompare(b, 'de'));
 
   const uebergreifend = seite === UEBERGREIFEND;
-  const funktionen = data.standardRollen.filter((r) =>
-    uebergreifend ? r.gewerke.length === 0 : r.gewerke.includes(seite),
-  );
-  const ergaenzbar = data.standardRollen.filter(
-    (r) => !uebergreifend && r.gewerke.length > 0 && !r.gewerke.includes(seite),
-  );
+  const funktionen = data.standardRollen.filter((r) => (uebergreifend ? r.gewerk === null : r.gewerk === seite));
 
-  /** Entfernt die Funktion aus dem aktuellen Gewerk. */
-  const ausGewerkEntfernen = (f: StandardRolle) => {
-    updateStandardRolle(f.id, { gewerke: f.gewerke.filter((g) => g !== seite) });
-    toast(`„${f.name}“ ist in ${seite} nicht mehr hinterlegt.`);
-  };
+  // Funktionen, die es in anderen Gewerken schon gibt, hier aber noch nicht
+  const ergaenzbar = uebergreifend
+    ? []
+    : [...new Map(
+        data.standardRollen
+          .filter((r) => r.gewerk !== null && r.gewerk !== seite && !funktionen.some((f) => f.name === r.name))
+          .map((r) => [r.name, r]),
+      ).values()];
 
   return (
     <div className="stack">
@@ -68,7 +67,9 @@ export function Funktionen() {
         <p className="muted small" style={{ maxWidth: 640 }}>
           {uebergreifend
             ? 'Übergreifende Funktionen gelten für alle Gewerke und werden im Projekt einmal besetzt.'
-            : `Funktionen des Gewerks ${seite}. Im Projekt wird für jedes Gewerk eine eigene Person zugewiesen.`}
+            : `Funktionen des Gewerks ${seite}. Jedes Gewerk führt eigene Funktionen: „${
+                funktionen[0]?.name ?? 'Planprüfer'
+              } ${seite}“ ist eine andere Funktion als dieselbe Bezeichnung in einem anderen Gewerk.`}
         </p>
         <div className="row">
           {!uebergreifend && ergaenzbar.length > 0 ? (
@@ -109,7 +110,7 @@ export function Funktionen() {
                 <tr>
                   <th>Funktion</th>
                   <th>Kürzel</th>
-                  <th className="col-optional">Gewerke</th>
+                  <th className="col-optional">Gewerk</th>
                   <th className="col-optional">Beschreibung</th>
                   <th className="actions" />
                 </tr>
@@ -125,27 +126,10 @@ export function Funktionen() {
                     </td>
                     <td className="num">{f.kuerzel || '–'}</td>
                     <td className="col-optional">
-                      {f.gewerke.length === 0 ? (
-                        <Badge ton="blue">{UEBERGREIFEND}</Badge>
-                      ) : (
-                        <span className="small muted">{f.gewerke.join(', ')}</span>
-                      )}
+                      {f.gewerk === null ? <Badge ton="blue">{UEBERGREIFEND}</Badge> : <Badge>{f.gewerk}</Badge>}
                     </td>
                     <td className="small muted col-optional">{f.beschreibung || '–'}</td>
                     <td className="actions">
-                      {!uebergreifend ? (
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          title={`Aus ${seite} entfernen`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            ausGewerkEntfernen(f);
-                          }}
-                        >
-                          Aus {seite} entfernen
-                        </button>
-                      ) : null}
                       <button
                         type="button"
                         className="btn-icon"
@@ -169,7 +153,7 @@ export function Funktionen() {
       {ergaenzen ? (
         <Modal
           titel={`Funktion in ${seite} ergänzen`}
-          sub="Bereits vorhandene Funktion diesem Gewerk zuordnen"
+          sub="Aus einem anderen Gewerk übernehmen – als eigene Funktion dieses Gewerks"
           onClose={() => setErgaenzen(false)}
           footer={
             <button type="button" className="btn btn-primary" onClick={() => setErgaenzen(false)}>
@@ -185,8 +169,9 @@ export function Funktionen() {
                 className="role-chip"
                 style={{ color: f.farbe, cursor: 'pointer', padding: '4px 11px' }}
                 onClick={() => {
-                  updateStandardRolle(f.id, { gewerke: [...f.gewerke, seite] });
-                  toast(`„${f.name}“ ist jetzt in ${seite} hinterlegt.`);
+                  const { id: _id, ...werte } = f;
+                  addStandardRolle({ ...werte, gewerk: seite });
+                  toast(`„${f.name} ${seite}“ angelegt.`);
                 }}
               >
                 <Icon name="plus" size={12} /> {f.name}
@@ -201,7 +186,7 @@ export function Funktionen() {
           funktion={dialog.funktion}
           anzahl={data.standardRollen.length}
           gewerke={gewerke}
-          vorauswahl={uebergreifend ? [] : [seite]}
+          vorauswahl={uebergreifend ? null : seite}
           onClose={() => setDialog(null)}
           onAnlegen={(werte) => {
             addStandardRolle(werte);
@@ -236,7 +221,7 @@ function FunktionsDialog({
   funktion?: StandardRolle;
   anzahl: number;
   gewerke: string[];
-  vorauswahl: string[];
+  vorauswahl: string | null;
   onClose: () => void;
   onAnlegen: (werte: Omit<StandardRolle, 'id'>) => void;
 }) {
@@ -247,13 +232,10 @@ function FunktionsDialog({
     kuerzel: funktion?.kuerzel ?? '',
     farbe: funktion?.farbe ?? FARBEN[anzahl % FARBEN.length],
     beschreibung: funktion?.beschreibung ?? '',
-    gewerke: funktion?.gewerke ?? vorauswahl,
+    gewerk: funktion?.gewerk ?? vorauswahl,
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
-
-  const toggleGewerk = (g: string) =>
-    set('gewerke', form.gewerke.includes(g) ? form.gewerke.filter((x) => x !== g) : [...form.gewerke, g]);
 
   const speichern = () => {
     if (!form.name.trim()) {
@@ -305,25 +287,15 @@ function FunktionsDialog({
           />
         </Field>
         <Field
-          label="Gewerke"
+          label="Gewerk"
           full
-          hint="Keine Auswahl bedeutet übergreifend: eine Besetzung für alle Gewerke."
+          hint="Übergreifend bedeutet: eine Besetzung für alle Gewerke. Sonst gehört die Funktion genau zu diesem Gewerk."
         >
-          <div className="row wrap" style={{ gap: 6 }}>
-            {gewerke.map((g) => {
-              const aktiv = form.gewerke.includes(g);
-              return (
-                <button
-                  key={g}
-                  type="button"
-                  className={`antwort-chip ${aktiv ? 'gewaehlt' : ''}`}
-                  onClick={() => toggleGewerk(g)}
-                >
-                  {g}
-                </button>
-              );
-            })}
-          </div>
+          <Select
+            value={form.gewerk ?? UEBERGREIFEND}
+            onChange={(v) => set('gewerk', v === UEBERGREIFEND ? null : v)}
+            options={[UEBERGREIFEND, ...gewerke].map((g) => ({ value: g, label: g }))}
+          />
         </Field>
         <Field label="Beschreibung" full>
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={2} />

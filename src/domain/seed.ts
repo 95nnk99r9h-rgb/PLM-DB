@@ -36,26 +36,45 @@ export const ROLLE_BVB = 'Bauvorlageberechtiger';
 export const ROLLE_PL = 'Projektleitung';
 export const ROLLE_PSV = 'Fachtechnischer Prüfer';
 
-/** Alle Gewerke – für Funktionen, die in jedem Gewerk besetzt werden. */
-const ALLE: string[] = [...GEWERKE];
+/**
+ * Vorlage einer Funktion. `jeGewerk` bedeutet: die Funktion wird für jedes
+ * Gewerk einzeln geführt und besetzt – „Fachplaner OLA“ ist damit eine andere
+ * Funktion als „Fachplaner KIB“. Sonst gilt die Funktion übergreifend.
+ */
+interface RollenVorlage {
+  id: string;
+  name: string;
+  kuerzel: string;
+  farbe: string;
+  beschreibung: string;
+  jeGewerk: boolean;
+}
 
-export const STANDARD_ROLLEN: StandardRolle[] = [
-  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#0071e3', beschreibung: 'Eigene Bearbeitung', gewerke: [] },
-  { id: 'srol-pl', name: ROLLE_PL, kuerzel: 'PL', farbe: '#5856d6', beschreibung: '', gewerke: [] },
-  { id: 'srol-fp', name: ROLLE_PLANER, kuerzel: 'FP', farbe: '#ff9500', beschreibung: 'Je Gewerk ein Planer', gewerke: ALLE },
-  { id: 'srol-fs', name: 'Fachspezialist', kuerzel: 'FS', farbe: '#c77700', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-bvb', name: ROLLE_BVB, kuerzel: 'BVB', farbe: '#ff3b30', beschreibung: 'Freigabeberechtigt', gewerke: ALLE },
-  { id: 'srol-an', name: 'Bau AN', kuerzel: 'AN', farbe: '#af52de', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-buew', name: 'Bauüberwachung', kuerzel: 'BÜW', farbe: '#00a0a0', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-psv', name: ROLLE_PSV, kuerzel: 'PSV', farbe: '#34c759', beschreibung: 'Planprüfer', gewerke: ALLE },
-  { id: 'srol-prst', name: 'Prüfstatiker', kuerzel: 'PrSt', farbe: '#248a3d', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-vep', name: 'Vermessungsprüfer', kuerzel: 'VeP', farbe: '#2a9d8f', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-erp', name: 'Erdungsprüfer', kuerzel: 'ErP', farbe: '#457b9d', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-stp', name: 'Schweißtechnischer Prüfer', kuerzel: 'StP', farbe: '#6d597a', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-kop', name: 'Korrosionsschutzprüfer', kuerzel: 'KoP', farbe: '#b56576', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-ggp', name: 'Gleisgeometrie Prüfer', kuerzel: 'GgP', farbe: '#e07a5f', beschreibung: '', gewerke: ALLE },
-  { id: 'srol-gtp', name: 'Geotechnischer Prüfer', kuerzel: 'GtP', farbe: '#8a5a44', beschreibung: '', gewerke: ALLE },
+const ROLLEN_VORLAGEN: RollenVorlage[] = [
+  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#0071e3', beschreibung: 'Eigene Bearbeitung', jeGewerk: false },
+  { id: 'srol-pl', name: ROLLE_PL, kuerzel: 'PL', farbe: '#5856d6', beschreibung: '', jeGewerk: false },
+  { id: 'srol-fp', name: ROLLE_PLANER, kuerzel: 'FP', farbe: '#ff9500', beschreibung: 'Fachplanung des Gewerks', jeGewerk: true },
+  { id: 'srol-fs', name: 'Fachspezialist', kuerzel: 'FS', farbe: '#c77700', beschreibung: '', jeGewerk: true },
+  { id: 'srol-bvb', name: ROLLE_BVB, kuerzel: 'BVB', farbe: '#ff3b30', beschreibung: 'Freigabeberechtigt', jeGewerk: true },
+  { id: 'srol-an', name: 'Bau AN', kuerzel: 'AN', farbe: '#af52de', beschreibung: '', jeGewerk: true },
+  { id: 'srol-buew', name: 'Bauüberwachung', kuerzel: 'BÜW', farbe: '#00a0a0', beschreibung: '', jeGewerk: true },
+  { id: 'srol-psv', name: ROLLE_PSV, kuerzel: 'PSV', farbe: '#34c759', beschreibung: 'Planprüfer des Gewerks', jeGewerk: true },
+  { id: 'srol-prst', name: 'Prüfstatiker', kuerzel: 'PrSt', farbe: '#248a3d', beschreibung: '', jeGewerk: true },
+  { id: 'srol-vep', name: 'Vermessungsprüfer', kuerzel: 'VeP', farbe: '#2a9d8f', beschreibung: '', jeGewerk: true },
+  { id: 'srol-erp', name: 'Erdungsprüfer', kuerzel: 'ErP', farbe: '#457b9d', beschreibung: '', jeGewerk: true },
+  { id: 'srol-stp', name: 'Schweißtechnischer Prüfer', kuerzel: 'StP', farbe: '#6d597a', beschreibung: '', jeGewerk: true },
+  { id: 'srol-kop', name: 'Korrosionsschutzprüfer', kuerzel: 'KoP', farbe: '#b56576', beschreibung: '', jeGewerk: true },
+  { id: 'srol-ggp', name: 'Gleisgeometrie Prüfer', kuerzel: 'GgP', farbe: '#e07a5f', beschreibung: '', jeGewerk: true },
+  { id: 'srol-gtp', name: 'Geotechnischer Prüfer', kuerzel: 'GtP', farbe: '#8a5a44', beschreibung: '', jeGewerk: true },
 ];
+
+/** Funktionen je Gewerk: aus jeder Vorlage entsteht eine Funktion pro Gewerk. */
+export const STANDARD_ROLLEN: StandardRolle[] = ROLLEN_VORLAGEN.flatMap((v) => {
+  const { jeGewerk, id, ...rest } = v;
+  return jeGewerk
+    ? GEWERKE.map((g) => ({ ...rest, id: `${id}-${g.toLowerCase()}`, gewerk: g as string | null }))
+    : [{ ...rest, id, gewerk: null }];
+});
 
 /* ------------------------------------------------------------------ */
 /* Workflows (VVBau)                                               */
@@ -270,13 +289,15 @@ function projektRollen(projectId: string) {
     kuerzel: r.kuerzel,
     farbe: r.farbe,
     beschreibung: r.beschreibung,
-    gewerke: [...r.gewerke],
+    gewerk: r.gewerk,
   }));
 }
 
 export function seedData(): AppData {
   const rollen = projektRollen('prj-1');
-  const rolle = (kuerzel: string) => rollen.find((r) => r.kuerzel === kuerzel)!.id;
+  /** Funktion eines Gewerks (bzw. die übergreifende Funktion) im Projekt. */
+  const rolle = (kuerzel: string, gewerk: string | null = null) =>
+    rollen.find((r) => r.kuerzel === kuerzel && r.gewerk === gewerk)!.id;
 
   const data: AppData = {
     version: DATEN_VERSION,
@@ -305,24 +326,28 @@ export function seedData(): AppData {
     contacts: [
       { id: 'con-plm', projectId: 'prj-1', anrede: 'Herr', vorname: 'Jonas', nachname: 'Mehltretter', firma: 'Planlaufmanagement', email: 'j.mehltretter@example.de', telefon: '+49 40 123456-04', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PLM'), gewerk: null }], notiz: '' },
       { id: 'con-pl', projectId: 'prj-1', anrede: 'Frau', vorname: 'Sabine', nachname: 'Ortmann', firma: 'Projektleitung', email: 's.ortmann@example.de', telefon: '+49 40 123456-01', anschrift: 'Hafenstraße 12\n20359 Hamburg', zuordnungen: [{ roleId: rolle('PL'), gewerk: null }], notiz: '' },
-      { id: 'con-fp-kib', projectId: 'prj-1', anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' },
-      { id: 'con-fp-lst', projectId: 'prj-1', anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' },
-      { id: 'con-fp-ola', projectId: 'prj-1', anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' },
-      { id: 'con-bvb-kib', projectId: 'prj-1', anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags' },
-      { id: 'con-bvb-lst', projectId: 'prj-1', anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB'), gewerk: 'LST' }, { roleId: rolle('BVB'), gewerk: 'OLA' }], notiz: '' },
-      { id: 'con-psv-lst', projectId: 'prj-1', anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST' },
-      { id: 'con-psv-kib', projectId: 'prj-1', anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV'), gewerk: 'KIB' }, { roleId: rolle('PrSt'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB' },
-      { id: 'con-erp', projectId: 'prj-1', anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('ErP'), gewerk: 'OLA' }], notiz: 'Erdungsprüfung' },
-      { id: 'con-an', projectId: 'prj-1', anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: [{ roleId: rolle('AN'), gewerk: null }], notiz: '' },
-      { id: 'con-buew', projectId: 'prj-1', anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BÜW'), gewerk: null }], notiz: '' },
+      { id: 'con-fp-kib', projectId: 'prj-1', anrede: 'Frau', vorname: 'Katrin', nachname: 'Berger', firma: 'Ingenieurbüro Berger', email: 'k.berger@example.de', telefon: '+49 40 998877-12', anschrift: 'Billstraße 88\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachplanung Ingenieurbau' },
+      { id: 'con-fp-lst', projectId: 'prj-1', anrede: 'Herr', vorname: 'Ali', nachname: 'Sarikaya', firma: 'LST Nord Ingenieure', email: 'sarikaya@example.de', telefon: '+49 40 998877-30', anschrift: 'Billstraße 90\n20539 Hamburg', zuordnungen: [{ roleId: rolle('FP', 'LST'), gewerk: 'LST' }], notiz: 'Fachplanung Leit- und Sicherungstechnik' },
+      { id: 'con-fp-ola', projectId: 'prj-1', anrede: 'Herr', vorname: 'Piet', nachname: 'Osterkamp', firma: 'Osterkamp Fahrleitungsbau', email: 'p.osterkamp@example.de', telefon: '+49 4101 7788-0', anschrift: 'Industriering 9\n25436 Tornesch', zuordnungen: [{ roleId: rolle('FP', 'OLA'), gewerk: 'OLA' }], notiz: 'Fachplanung Oberleitung' },
+      { id: 'con-bvb-kib', projectId: 'prj-1', anrede: 'Herr', vorname: 'Robert', nachname: 'Lindqvist', firma: 'Bauvorlageberechtigung Nord', email: 'r.lindqvist@example.de', telefon: '+49 40 224466-0', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'KIB'), gewerk: 'KIB' }], notiz: 'Freigaben nur donnerstags' },
+      { id: 'con-bvb-lst', projectId: 'prj-1', anrede: 'Frau', vorname: 'Marlene', nachname: 'Hoffstedt', firma: 'Bauvorlageberechtigung Nord', email: 'm.hoffstedt@example.de', telefon: '+49 40 224466-4', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BVB', 'LST'), gewerk: 'LST' }, { roleId: rolle('BVB', 'OLA'), gewerk: 'OLA' }], notiz: '' },
+      { id: 'con-psv-lst', projectId: 'prj-1', anrede: 'Herr', vorname: 'Dietmar', nachname: 'Krause', firma: 'Prüfstelle Krause', email: 'd.krause@example.de', telefon: '+49 4131 309-0', anschrift: 'Am Ochsenmarkt 1\n21335 Lüneburg', zuordnungen: [{ roleId: rolle('PSV', 'LST'), gewerk: 'LST' }], notiz: 'Fachtechnische Prüfung LST' },
+      { id: 'con-psv-kib', projectId: 'prj-1', anrede: 'Frau', vorname: 'Yuki', nachname: 'Tanaka', firma: 'Prüfstelle Tanaka', email: 'y.tanaka@example.de', telefon: '+49 40 556677-1', anschrift: 'Alsterdorfer Damm 4\n22297 Hamburg', zuordnungen: [{ roleId: rolle('PSV', 'KIB'), gewerk: 'KIB' }, { roleId: rolle('PrSt', 'KIB'), gewerk: 'KIB' }], notiz: 'Fachtechnische Prüfung und Prüfstatik KIB' },
+      { id: 'con-erp', projectId: 'prj-1', anrede: 'Herr', vorname: 'Tobias', nachname: 'Reinhold', firma: 'Prüfstelle Erdung', email: 't.reinhold@example.de', telefon: '+49 40 445566-8', anschrift: 'Wandsbeker Chaussee 3\n22089 Hamburg', zuordnungen: [{ roleId: rolle('ErP', 'OLA'), gewerk: 'OLA' }], notiz: 'Erdungsprüfung' },
+      { id: 'con-an', projectId: 'prj-1', anrede: 'Herr', vorname: 'Sven', nachname: 'Dallmann', firma: 'Dallmann Bau GmbH', email: 's.dallmann@example.de', telefon: '+49 4101 5566-0', anschrift: 'Gewerbepark 4\n25469 Halstenbek', zuordnungen: ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle('AN', g), gewerk: g })), notiz: '' },
+      { id: 'con-buew', projectId: 'prj-1', anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: ['KIB', 'LST', 'OLA', 'VA'].map((g) => ({ roleId: rolle('BÜW', g), gewerk: g })), notiz: '' },
     ],
     documents: [
-      { id: 'doc-1', projectId: 'prj-1', kind: 'paket', parentId: null, nummer: 'NK-KIB-EÜ-001', titel: 'Eisenbahnüberführung Nordkanal', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
-      { id: 'doc-1a', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', nummer: 'NK-KIB-EÜ-001-GR', titel: 'Grundriss Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
-      { id: 'doc-1b', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', nummer: 'NK-KIB-EÜ-001-SC', titel: 'Längsschnitt', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
-      { id: 'doc-2', projectId: 'prj-1', kind: 'plan', parentId: null, nummer: 'NK-LST-SP-102', titel: 'Signallageplan Bereich Nord', index: 'B', gewerk: 'LST', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -12), bemerkung: '' },
-      { id: 'doc-3', projectId: 'prj-1', kind: 'plan', parentId: null, nummer: 'NK-OLA-FL-210', titel: 'Fahrleitungsplan km 12,4 – 13,8', index: '', gewerk: 'OLA', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, 14), bemerkung: '' },
-      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), bemerkung: 'noch kein Planlauf gestartet' },
+      // Planpaket – reines Ordnungsmerkmal, ohne eigenen Planlauf
+      { id: 'doc-p1', projectId: 'prj-1', kind: 'paket', parentId: null, paketId: null, nummer: 'PP-Nordkanal', titel: 'Eisenbahnüberführung Nordkanal', index: '', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: null, datum: null, bemerkung: 'Bündelt die Unterlagen zum Bauwerk' },
+      // Planverzeichnis mit eigenem Planlauf; die Pläne laufen darin mit
+      { id: 'doc-1', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, paketId: 'doc-p1', nummer: 'NK-KIB-PV-001', titel: 'Planverzeichnis Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), datum: addDays(heute, -45), bemerkung: '' },
+      { id: 'doc-1a', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', paketId: 'doc-p1', nummer: 'NK-KIB-EÜ-001-GR', titel: 'Grundriss Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), datum: null, bemerkung: '' },
+      { id: 'doc-1b', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', paketId: 'doc-p1', nummer: 'NK-KIB-EÜ-001-SC', titel: 'Längsschnitt', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), datum: null, bemerkung: '' },
+      // Einzelpläne mit eigenem Planlauf
+      { id: 'doc-2', projectId: 'prj-1', kind: 'plan', parentId: null, paketId: 'doc-p1', nummer: 'NK-LST-SP-102', titel: 'Signallageplan Bereich Nord', index: 'B', gewerk: 'LST', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -12), datum: null, bemerkung: '' },
+      { id: 'doc-3', projectId: 'prj-1', kind: 'plan', parentId: null, paketId: null, nummer: 'NK-OLA-FL-210', titel: 'Fahrleitungsplan km 12,4 – 13,8', index: '', gewerk: 'OLA', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, 14), datum: null, bemerkung: '' },
+      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, paketId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), datum: null, bemerkung: 'noch kein Planlauf gestartet' },
     ],
     templates: STANDARD_TEMPLATES,
     runs: [],
@@ -330,10 +355,11 @@ export function seedData(): AppData {
 
   /* Planläufe aus den Ketten erzeugen – je Gewerk mit eigenen Verantwortlichen */
   const kontaktFuer = (roleKuerzel: string, gewerk: string): ID | null => {
-    const roleId = rolle(roleKuerzel);
-    const treffer = data.contacts.find((c) =>
-      c.zuordnungen.some((z) => z.roleId === roleId && (z.gewerk === gewerk || z.gewerk === null)),
-    );
+    // Funktion des Gewerks, sonst die übergreifende Funktion
+    const roleId =
+      rollen.find((r) => r.kuerzel === roleKuerzel && r.gewerk === gewerk)?.id ??
+      rollen.find((r) => r.kuerzel === roleKuerzel && r.gewerk === null)?.id;
+    const treffer = data.contacts.find((c) => c.zuordnungen.some((z) => z.roleId === roleId));
     return treffer?.id ?? null;
   };
 
@@ -394,6 +420,7 @@ export function seedData(): AppData {
       templateId: template.id,
       templateName: template.name,
       name: `Planlauf ${data.documents.find((d) => d.id === documentId)?.nummer ?? ''}`,
+      index: data.documents.find((d) => d.id === documentId)?.index ?? '',
       start,
       status: 'laufend' as const,
       abbruchGrund: null,
