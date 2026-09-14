@@ -48,6 +48,7 @@ import {
   TextInput,
 } from '../../components/ui';
 import { Icon } from '../../components/icons';
+import { ErledigtButton, useSchrittStatus } from '../../components/SchrittStatus';
 
 type Filter = 'alle' | DocumentKind;
 type SortFeld = 'nummer' | 'titel' | 'gewerk' | 'planungsphase' | 'eingangSoll' | 'stand';
@@ -78,6 +79,7 @@ export function standFuer(doc: PlanDocument, runs: PlanRun[]): Stand {
 
 export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: (runId: ID) => void }) {
   const { data } = useStore();
+  const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [suche, setSuche] = useState('');
   const [filter, setFilter] = useState<Filter>('alle');
   const [sortFeld, setSortFeld] = useState<SortFeld>('nummer');
@@ -260,6 +262,13 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                         )}
                       </td>
                       <td className="actions">
+                        {run && step ? (
+                          <ErledigtButton
+                            run={run}
+                            step={step}
+                            onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
+                          />
+                        ) : null}
                         <button
                           type="button"
                           className="btn-icon"
@@ -281,6 +290,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
           </div>
         )}
       </Card>
+
+      {nachweisDialog}
 
       {importOffen ? <PlaeneImport project={project} onClose={() => setImportOffen(false)} /> : null}
 

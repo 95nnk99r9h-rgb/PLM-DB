@@ -8,10 +8,10 @@ import { formatDate, relativeLabel } from '../lib/dates';
 import type { PlanRun, Project, RunStep } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
-import { useToast } from '../components/toast';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
 import { Card, CardHeader, EmptyState, Search, Segmented } from '../components/ui';
 import { EmailDialog } from '../components/EmailDialog';
+import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
 import { Icon } from '../components/icons';
 
 type Filter = 'alle' | 'ueberfaellig' | 'faellig' | 'geplant';
@@ -23,8 +23,8 @@ export function Fristen({
   navigate: (r: Route) => void;
   projectId?: string;
 }) {
-  const { data, updateStep } = useStore();
-  const toast = useToast();
+  const { data } = useStore();
+  const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [filter, setFilter] = useState<Filter>('alle');
   const [suche, setSuche] = useState('');
   const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
@@ -42,11 +42,6 @@ export function Fristen({
   });
 
   const zaehler = (a: Ampel) => alle.filter((f) => f.ampel === a).length;
-
-  const erledigen = (run: PlanRun, step: RunStep) => {
-    updateStep(run.id, step.id, { status: 'erledigt', istDatum: new Date().toISOString().slice(0, 10) });
-    toast(`„${step.name}“ als erledigt vermerkt.`);
-  };
 
   return (
     <div className="stack">
@@ -132,14 +127,11 @@ export function Fristen({
                       >
                         <Icon name="mail" size={13} /> Erinnern
                       </button>{' '}
-                      <button
-                        type="button"
-                        className="btn btn-sm"
-                        onClick={() => erledigen(f.run, f.step)}
-                        title="Schritt als erledigt vermerken"
-                      >
-                        <Icon name="check" size={13} />
-                      </button>
+                      <ErledigtButton
+                        run={f.run}
+                        step={f.step}
+                        onErledigen={(run, step) => setzeStatus(run, step, 'erledigt')}
+                      />
                     </td>
                   </tr>
                 );
@@ -152,6 +144,7 @@ export function Fristen({
       {mail ? (
         <EmailDialog project={mail.project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
       ) : null}
+      {nachweisDialog}
     </div>
   );
 }

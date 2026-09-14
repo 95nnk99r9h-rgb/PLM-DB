@@ -7,6 +7,7 @@ import { useStore } from '../../store/store';
 import { AmpelPunkt, RunStatusBadge } from '../../components/common';
 import { Card, CardHeader, EmptyState, Progress, Stat } from '../../components/ui';
 import { Icon } from '../../components/icons';
+import { ErledigtButton, useSchrittStatus } from '../../components/SchrittStatus';
 
 export function Uebersicht({
   project,
@@ -18,6 +19,7 @@ export function Uebersicht({
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
+  const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   const laeufe = data.runs.filter((r) => r.projectId === project.id);
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
@@ -96,6 +98,7 @@ export function Uebersicht({
                 <th>Soll</th>
                 <th style={{ width: 140 }}>Fortschritt</th>
                 <th>Status</th>
+                <th className="actions" />
               </tr>
             </thead>
             <tbody>
@@ -136,6 +139,15 @@ export function Uebersicht({
                       </span>
                     </td>
                     <td><RunStatusBadge status={run.status} /></td>
+                    <td className="actions">
+                      {step ? (
+                        <ErledigtButton
+                          run={run}
+                          step={step}
+                          onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
+                        />
+                      ) : null}
+                    </td>
                   </tr>
                 );
               })}
@@ -143,6 +155,8 @@ export function Uebersicht({
           </table></div>
         )}
       </Card>
+
+      {nachweisDialog}
     </div>
   );
 }

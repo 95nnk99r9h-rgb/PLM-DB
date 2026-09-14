@@ -8,7 +8,6 @@ import {
   ampelFuerSchritt,
   massgeblicheAntwort,
   nichtImPfad,
-  rueckSprungAnwenden,
   verlaufDerKette,
   type Ampel,
 } from '../../domain/engine';
@@ -44,6 +43,7 @@ import {
   TextInput,
 } from '../../components/ui';
 import { EmailDialog } from '../../components/EmailDialog';
+import { useSchrittStatus } from '../../components/SchrittStatus';
 import { Icon } from '../../components/icons';
 
 export function PlanlaufDetail({
@@ -65,7 +65,8 @@ export function PlanlaufDetail({
   const [neuerSchritt, setNeuerSchritt] = useState(false);
   const [laufLoeschen, setLaufLoeschen] = useState(false);
   const [abbrechen, setAbbrechen] = useState(false);
-  const [nachweisFuer, setNachweisFuer] = useState<RunStep | null>(null);
+  const { setzeStatus: statusSetzen, nachweisDialog } = useSchrittStatus();
+  const [aufgeklappt, setAufgeklappt] = useState<string[]>([]);
 
   const doc = data.documents.find((d) => d.id === run.documentId);
   const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
@@ -75,73 +76,12 @@ export function PlanlaufDetail({
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
   const beendet = run.status !== 'laufend';
 
-  /**
-   * Ein Nachweis wird verlangt, wenn der Schritt erfolgreich abgeschlossen
-   * wird: bei Entscheidungen nur bei der ersten (zustimmenden) Antwort.
-   */
-  const braucheNachweis = (step: RunStep, status: StepStatus) => {
-    if (status !== 'erledigt' || step.nachweis === 'keine' || step.nachweisNummer) return false;
-    if (step.typ !== 'entscheidung') return true;
-    return massgeblicheAntwort(step)?.id === step.antworten[0]?.id;
-  };
+  /** Klappt einen erledigten oder künftigen Schritt auf bzw. wieder zu. */
+  const klappen = (stepId: string) =>
+    setAufgeklappt((a) => (a.includes(stepId) ? a.filter((x) => x !== stepId) : [...a, stepId]));
 
-  /** Setzt den Status eines Schritts und rückt den Lauf ggf. weiter. */
-  const setzeStatus = (step: RunStep, status: StepStatus, nachweisNummer?: string) => {
-    // Führt die Antwort einer Entscheidung zu einem bereits durchlaufenen
-    // Schritt zurück, beginnt dort ein weiterer Durchlauf.
-    if (braucheNachweis(step, status) && nachweisNummer === undefined) {
-      setNachweisFuer(step);
-      return;
-    }
-    if (nachweisNummer !== undefined) {
-      updateStep(run.id, step.id, { nachweisNummer });
-      step = { ...step, nachweisNummer };
-    }
-
-    if (step.typ === 'entscheidung' && status === 'erledigt') {
-      const antwort = massgeblicheAntwort(step);
-      const ziel = antwort?.ziel && antwort.ziel !== 'ende' ? antwort.ziel : null;
-      const zielIstFrueher =
-        ziel !== null &&
-        verlauf.findIndex((s) => s.id === ziel) >= 0 &&
-        verlauf.findIndex((s) => s.id === ziel) < verlauf.findIndex((s) => s.id === step.id);
-      if (zielIstFrueher && ziel) {
-        const erledigt = run.steps.map((s) =>
-          s.id === step.id
-            ? {
-                ...s,
-                status: 'erledigt' as const,
-                istDatum: s.istDatum ?? today(),
-                nachweisNummer: step.nachweisNummer,
-              }
-            : s,
-        );
-        updateRun(run.id, { steps: rueckSprungAnwenden(erledigt, step.id, ziel) });
-        const zielName = run.steps.find((s) => s.id === ziel)?.name ?? '';
-        toast(`Rücksprung zu „${zielName}“ – weiterer Durchlauf gestartet.`);
-        return;
-      }
-    }
-
-    const patch: Partial<RunStep> = { status };
-    if ((status === 'erledigt' || status === 'uebersprungen') && !step.istDatum) patch.istDatum = today();
-    if (status === 'offen' || status === 'laufend') patch.istDatum = null;
-    updateStep(run.id, step.id, patch);
-
-    if (status === 'erledigt' || status === 'uebersprungen') {
-      const aktualisiert = run.steps.map((s) => (s.id === step.id ? { ...s, ...patch } : s));
-      const rest = verlaufDerKette(aktualisiert).schritte.filter(
-        (s) => s.status !== 'erledigt' && s.status !== 'uebersprungen',
-      );
-      if (rest.length === 0) {
-        updateRun(run.id, { status: 'abgeschlossen' });
-        toast('Alle Schritte erledigt – Planlauf abgeschlossen.');
-        return;
-      }
-      if (rest[0].status === 'offen') updateStep(run.id, rest[0].id, { status: 'laufend' });
-    }
-    toast(`„${step.name}“: ${STEP_STATUS_LABEL[status]}`);
-  };
+  /** Setzt den Status eines Schritts; die Ablauflogik liegt in `abschluss.ts`. */
+  const setzeStatus = (step: RunStep, status: StepStatus) => statusSetzen(run, step, status);
 
   /**
    * Fügt einen Schritt hinter einem Schritt des Verlaufs ein und verkettet ihn:
@@ -268,8 +208,15 @@ export function PlanlaufDetail({
           const kontakt = data.contacts.find((c) => c.id === step.contactId);
           const istAktiv = step.id === aktiv?.id;
           const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
+          // Erledigte und künftige Schritte bleiben auf Titel und Nummer
+          // reduziert; per Klick auf den Titel lassen sie sich aufklappen.
+          const dauerhaftOffen = istAktiv && !beendet;
+          const details = dauerhaftOffen || aufgeklappt.includes(step.id);
           return (
-            <div className={`step-row mit-aktion ${istAktiv && !beendet ? 'aktiv' : ''}`} key={step.id}>
+            <div
+              className={`step-row mit-aktion ${dauerhaftOffen ? 'aktiv' : ''} ${details ? '' : 'kompakt'}`}
+              key={step.id}
+            >
               <div className="step-marker">
                 <div
                   className={`step-num ${
@@ -283,101 +230,127 @@ export function PlanlaufDetail({
 
               <div className="step-body">
                 <div className="step-title">
-                  <strong>{step.name}</strong>
-                  <StepTypBadge typ={step.typ} />
-                  {step.status === 'uebersprungen' ? <Badge>Übersprungen</Badge> : <AmpelBadge ampel={ampel} />}
-                  {step.abweichung ? <Badge ton="orange">Abweichung</Badge> : null}
-                  {(step.durchlauf ?? 1) > 1 ? <Badge ton="purple">{step.durchlauf}. Durchlauf</Badge> : null}
-                </div>
-
-                <div className="step-meta">
-                  <span>
-                    Verantwortlich: <b>{step.roleName || '–'}</b>
-                  </span>
-                  <span>
-                    Person: <b>{kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'nicht zugeordnet'}</b>
-                  </span>
-                  <span>
-                    Frist: <b>{tageLabel(step.fristTage)}</b>
-                  </span>
-                  <span>
-                    Soll: <b>{formatDate(step.sollDatum)}</b>
-                    {step.sollManuell ? ' (fest)' : ''}
-                  </span>
-                  <span>
-                    Ist: <b>{formatDate(step.istDatum)}</b>
-                  </span>
-                  {step.nachweisNummer ? (
-                    <span>
-                      {NACHWEIS_LABEL[step.nachweis]} <b>{step.nachweisNummer}</b>
-                    </span>
-                  ) : step.nachweis !== 'keine' ? (
-                    <span className="tertiary">{NACHWEIS_LABEL[step.nachweis]} wird beim Erledigen erfasst</span>
+                  {dauerhaftOffen ? (
+                    <strong>{step.name}</strong>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`step-aufklappen ${details ? 'offen' : ''}`}
+                      onClick={() => klappen(step.id)}
+                      title={details ? 'Details ausblenden' : 'Details anzeigen'}
+                    >
+                      <strong>{step.name}</strong>
+                      <span className="chev">
+                        <Icon name="chevron" size={13} />
+                      </span>
+                    </button>
+                  )}
+                  {details ? (
+                    <>
+                      <StepTypBadge typ={step.typ} />
+                      {step.status === 'uebersprungen' ? <Badge>Übersprungen</Badge> : <AmpelBadge ampel={ampel} />}
+                      {step.abweichung ? <Badge ton="orange">Abweichung</Badge> : null}
+                      {(step.durchlauf ?? 1) > 1 ? <Badge ton="purple">{step.durchlauf}. Durchlauf</Badge> : null}
+                    </>
                   ) : null}
                 </div>
 
-                {step.typ === 'entscheidung' && step.antworten.length > 0 ? (
-                  <div className="row wrap" style={{ gap: 6 }}>
-                    <span className="small muted">Antwort:</span>
-                    {step.antworten.map((a) => {
-                      const gewaehlt = massgeblicheAntwort(step)?.id === a.id;
-                      const gesetzt = step.gewaehlteAntwortId === a.id;
-                      return (
-                        <button
-                          key={a.id}
-                          type="button"
-                          className={`antwort-chip ${gewaehlt ? 'gewaehlt' : ''}`}
-                          onClick={() => waehleAntwort(step, a.id)}
-                          disabled={beendet || !istAktiv}
-                          title={
-                            a.ziel === 'ende'
-                              ? 'beendet den Planlauf'
-                              : a.ziel
-                                ? `weiter mit „${run.steps.find((s) => s.id === a.ziel)?.name ?? '?'}“`
-                                : 'weiter mit dem nächsten Schritt'
-                          }
-                        >
-                          {a.text}
-                          {gesetzt ? ' ✓' : ''}
-                        </button>
-                      );
-                    })}
-                    {!step.gewaehlteAntwortId ? (
-                      <span className="small tertiary">(Vorschau: erste Möglichkeit)</span>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {step.bemerkung ? <p className="small tertiary">{step.bemerkung}</p> : null}
-
-                {!beendet && istAktiv ? (
-                  <div className="step-actions">
-                    <button type="button" className="btn btn-sm btn-primary" onClick={() => setzeStatus(step, 'erledigt')}>
-                      <Icon name="check" size={13} /> Erledigt
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'uebersprungen')}>
-                      Überspringen
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={() => setMailStep(step)}
-                      title="Vorbereitete E-Mail an die zuständige Person"
-                    >
-                      <Icon name="mail" size={13} /> Erinnern
-                    </button>
-                    {step.letzteErinnerung ? (
-                      <span className="small tertiary">
-                        erinnert am {new Date(step.letzteErinnerung).toLocaleDateString('de-DE')}
+                {details ? (
+                  <>
+                    <div className="step-meta">
+                      <span>
+                        Verantwortlich: <b>{step.roleName || '–'}</b>
                       </span>
+                      <span>
+                        Person: <b>{kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'nicht zugeordnet'}</b>
+                      </span>
+                      <span>
+                        Frist: <b>{tageLabel(step.fristTage)}</b>
+                      </span>
+                      <span>
+                        Soll: <b>{formatDate(step.sollDatum)}</b>
+                        {step.sollManuell ? ' (fest)' : ''}
+                      </span>
+                      <span>
+                        Ist: <b>{formatDate(step.istDatum)}</b>
+                      </span>
+                      {step.nachweisNummer ? (
+                        <span>
+                          {NACHWEIS_LABEL[step.nachweis]} <b>{step.nachweisNummer}</b>
+                        </span>
+                      ) : step.nachweis !== 'keine' ? (
+                        <span className="tertiary">{NACHWEIS_LABEL[step.nachweis]} wird beim Erledigen erfasst</span>
+                      ) : null}
+                    </div>
+
+                    {step.typ === 'entscheidung' && step.antworten.length > 0 ? (
+                      <div className="row wrap" style={{ gap: 6 }}>
+                        <span className="small muted">Antwort:</span>
+                        {step.antworten.map((a) => {
+                          const gewaehlt = massgeblicheAntwort(step)?.id === a.id;
+                          const gesetzt = step.gewaehlteAntwortId === a.id;
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              className={`antwort-chip ${gewaehlt ? 'gewaehlt' : ''}`}
+                              onClick={() => waehleAntwort(step, a.id)}
+                              disabled={beendet || !istAktiv}
+                              title={
+                                a.ziel === 'ende'
+                                  ? 'beendet den Planlauf'
+                                  : a.ziel
+                                    ? `weiter mit „${run.steps.find((s) => s.id === a.ziel)?.name ?? '?'}“`
+                                    : 'weiter mit dem nächsten Schritt'
+                              }
+                            >
+                              {a.text}
+                              {gesetzt ? ' ✓' : ''}
+                            </button>
+                          );
+                        })}
+                        {!step.gewaehlteAntwortId ? (
+                          <span className="small tertiary">(Vorschau: erste Möglichkeit)</span>
+                        ) : null}
+                      </div>
                     ) : null}
-                  </div>
-                ) : !beendet && erledigt ? (
-                  <div className="step-actions">
-                    <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
-                      Wieder öffnen
-                    </button>
-                  </div>
+
+                    {step.bemerkung ? <p className="small tertiary">{step.bemerkung}</p> : null}
+
+                    {dauerhaftOffen ? (
+                      <div className="step-actions">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => setzeStatus(step, 'erledigt')}
+                        >
+                          <Icon name="check" size={13} /> Erledigt
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'uebersprungen')}>
+                          Überspringen
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline"
+                          onClick={() => setMailStep(step)}
+                          title="Vorbereitete E-Mail an die zuständige Person"
+                        >
+                          <Icon name="mail" size={13} /> Erinnern
+                        </button>
+                        {step.letzteErinnerung ? (
+                          <span className="small tertiary">
+                            erinnert am {new Date(step.letzteErinnerung).toLocaleDateString('de-DE')}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : !beendet && erledigt ? (
+                      <div className="step-actions">
+                        <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
+                          Wieder öffnen
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
 
@@ -452,13 +425,7 @@ export function PlanlaufDetail({
         />
       ) : null}
 
-      {nachweisFuer ? (
-        <NachweisDialog
-          step={nachweisFuer}
-          onClose={() => setNachweisFuer(null)}
-          onErfassen={(nummer) => setzeStatus(nachweisFuer, 'erledigt', nummer)}
-        />
-      ) : null}
+      {nachweisDialog}
 
       {abbrechen ? (
         <AbbruchDialog
@@ -642,58 +609,6 @@ function AbbruchDialog({
           />
         </Field>
       </div>
-    </Modal>
-  );
-}
-
-/** Erfasst die Freigabe- bzw. Prüfbericht-Nummer beim Abschluss eines Schritts. */
-function NachweisDialog({
-  step,
-  onClose,
-  onErfassen,
-}: {
-  step: RunStep;
-  onClose: () => void;
-  onErfassen: (nummer: string) => void;
-}) {
-  const toast = useToast();
-  const [nummer, setNummer] = useState('');
-  const bezeichnung = NACHWEIS_LABEL[step.nachweis];
-
-  const uebernehmen = () => {
-    if (!nummer.trim()) {
-      toast(`Bitte die ${bezeichnung} angeben.`);
-      return;
-    }
-    onErfassen(nummer.trim());
-    onClose();
-  };
-
-  return (
-    <Modal
-      titel={`${bezeichnung} erfassen`}
-      sub={`${step.name} – wird am Schritt und im Export dokumentiert`}
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button type="button" className="btn btn-primary" onClick={uebernehmen}>
-            Übernehmen und erledigen
-          </button>
-        </>
-      }
-    >
-      <Field label={bezeichnung}>
-        <TextInput
-          value={nummer}
-          onChange={setNummer}
-          autoFocus
-          placeholder={step.nachweis === 'freigabe' ? 'z.B. FG-2026-0147' : 'z.B. PB-2026-0032'}
-          onKeyDown={(e) => e.key === 'Enter' && uebernehmen()}
-        />
-      </Field>
     </Modal>
   );
 }

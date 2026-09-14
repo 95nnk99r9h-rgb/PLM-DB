@@ -17,6 +17,7 @@ import { useStore } from '../store/store';
 import { AmpelBadge, AmpelPunkt, RunStatusBadge } from '../components/common';
 import { Card, CardHeader, EmptyState, Progress, Stat } from '../components/ui';
 import { Icon } from '../components/icons';
+import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
 
 /** Markierte Projekte; ohne Markierung werden alle angezeigt. */
 export function sichtbareProjekte(projects: Project[]): Project[] {
@@ -26,6 +27,7 @@ export function sichtbareProjekte(projects: Project[]): Project[] {
 
 export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   const { data } = useStore();
+  const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const projekte = sichtbareProjekte(data.projects);
   const ids = projekte.map((p) => p.id);
 
@@ -80,6 +82,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                   <th className="col-optional">Projekt</th>
                   <th>Soll-Termin</th>
                   <th>Status</th>
+                  <th className="actions" />
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +113,13 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                     </td>
                     <td>
                       <AmpelBadge ampel={f.ampel} />
+                    </td>
+                    <td className="actions">
+                      <ErledigtButton
+                        run={f.run}
+                        step={f.step}
+                        onErledigen={(run, step) => setzeStatus(run, step, 'erledigt')}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -158,6 +168,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                         <th className="col-optional">Verantwortlich</th>
                         <th style={{ width: 150 }}>Fortschritt</th>
                         <th>Status</th>
+                        <th className="actions" />
                       </tr>
                     </thead>
                     <tbody>
@@ -207,6 +218,15 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                             <td>
                               <RunStatusBadge status={run.status} />
                             </td>
+                            <td className="actions">
+                              {step ? (
+                                <ErledigtButton
+                                  run={run}
+                                  step={step}
+                                  onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
+                                />
+                              ) : null}
+                            </td>
                           </tr>
                         );
                       })}
@@ -217,6 +237,8 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
             );
           })
       )}
+
+      {nachweisDialog}
     </div>
   );
 }

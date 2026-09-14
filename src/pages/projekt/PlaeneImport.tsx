@@ -43,7 +43,7 @@ const SPALTEN: Record<string, string[]> = {
   planungsphase: ['Planungsphase', 'Phase'],
   eingangSoll: ['Eingang Soll', 'Eingang', 'Soll'],
   bemerkung: ['Bemerkung', 'Notiz'],
-  workflow: ['Workflow', 'Workflow', 'Kette'],
+  workflow: ['Workflow', 'Prozesskette', 'Kette'],
   // Nicht Teil der Vorgabe, wird aber ausgewertet, falls vorhanden
   parent: ['Übergeordnet', 'Gehört zu'],
 };
