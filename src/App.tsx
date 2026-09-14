@@ -9,8 +9,8 @@ import { Dashboard, sichtbareProjekte } from './pages/Dashboard';
 import { Fristen } from './pages/Fristen';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
-import { Prozessketten } from './pages/Prozessketten';
-import { Rollen } from './pages/Rollen';
+import { Workflows } from './pages/Workflows';
+import { Funktionen } from './pages/Funktionen';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from './components/ui';
 import { Icon } from './components/icons';
@@ -26,7 +26,6 @@ export function App() {
 
   const markierte = sichtbareProjekte(data.projects);
   const markierteIds = markierte.map((p) => p.id);
-  const ueberfaellig = offeneFristen(data, markierteIds).filter((f) => f.ampel === 'ueberfaellig').length;
   const todos = eigeneTodos(data, markierteIds).length;
   const projekt =
     route.view === 'projekt' || route.view === 'planlauf'
@@ -59,17 +58,9 @@ export function App() {
           badge={todos > 0 ? String(todos) : undefined}
           onClick={() => gehe({ view: 'dashboard' })}
         />
-        <NavItem
-          icon="frist"
-          label="Fristen"
-          aktiv={route.view === 'fristen'}
-          badge={ueberfaellig > 0 ? String(ueberfaellig) : undefined}
-          badgeAlarm
-          onClick={() => gehe({ view: 'fristen' })}
-        />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
-        <NavItem icon="kette" label="Prozessketten" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
-        <NavItem icon="person" label="Rollen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
+        <NavItem icon="kette" label="Workflows" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
+        <NavItem icon="person" label="Funktionen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
 
         <div className="nav-group-label">
           Projekte
@@ -133,8 +124,8 @@ export function App() {
             {route.view === 'dashboard' ? <Dashboard navigate={gehe} /> : null}
             {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
-            {route.view === 'ketten' ? <Prozessketten /> : null}
-            {route.view === 'rollen' ? <Rollen /> : null}
+            {route.view === 'ketten' ? <Workflows /> : null}
+            {route.view === 'rollen' ? <Funktionen /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
                 <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
@@ -148,6 +139,7 @@ export function App() {
                   project={projekt}
                   run={lauf}
                   onZurueck={() => gehe({ view: 'projekt', projectId: projekt.id, tab: 'uebersicht' })}
+                  oeffneLauf={(runId) => gehe({ view: 'planlauf', projectId: projekt.id, runId })}
                 />
               ) : (
                 <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
@@ -280,13 +272,13 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
     case 'dashboard':
       return { titel: 'Übersicht', sub: 'Alle Projekte auf einen Blick' };
     case 'fristen':
-      return { titel: 'Fristen & Erinnerungen', sub: 'Offene Prozessschritte über alle Projekte' };
+      return { titel: 'Fristen & Erinnerungen', sub: 'Anstehende Prozessschritte über alle Projekte' };
     case 'projekte':
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'ketten':
-      return { titel: 'Prozessketten', sub: 'Standardketten und Projektvarianten' };
+      return { titel: 'Workflows', sub: 'Standard-Workflows und Projektvarianten' };
     case 'rollen':
-      return { titel: 'Rollen', sub: 'Projektübergreifende Standardrollen' };
+      return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':

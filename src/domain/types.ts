@@ -12,15 +12,15 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 4;
+export const DATEN_VERSION = 5;
 
 /**
- * Fassung der mitgelieferten Stammdaten (Standardrollen und Standard-Prozess-
+ * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
  * ketten). Wird sie erhöht, übernimmt ein vorhandener Bestand beim nächsten
  * Laden die neuen Stammdaten – eigene Rollen, Varianten und laufende Planläufe
  * bleiben dabei unangetastet.
  */
-export const STAMMDATEN_VERSION = 2;
+export const STAMMDATEN_VERSION = 3;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -96,7 +96,7 @@ export const EMAIL_ANLASS_LABEL: Record<EmailAnlass, string> = {
 
 /**
  * Projektübergreifend gepflegte Rolle. Beim Anlegen eines Projekts werden
- * diese Rollen als Projektrollen übernommen.
+ * diese Rollen als Projektfunktionen übernommen.
  */
 export interface StandardRolle {
   id: ID;
@@ -104,20 +104,19 @@ export interface StandardRolle {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
-  /** Bestimmt, ob die Rolle je Gewerk oder gewerkübergreifend besetzt wird. */
-  gewerkBezug: GewerkBezug;
+  /**
+   * Gewerke, in denen die Funktion vorkommt. Eine leere Liste bedeutet
+   * „übergreifend“: die Funktion gilt für alle Gewerke und wird einmal besetzt.
+   */
+  gewerke: string[];
 }
 
-/**
- * „individuell“: je Gewerk eine eigene Besetzung (z.B. ein Fachplaner je Gewerk).
- * „uebergreifend“: eine Besetzung für alle Gewerke (z.B. Projektleitung).
- */
-export type GewerkBezug = 'individuell' | 'uebergreifend';
+/** Übergreifende Funktionen gelten für alle Gewerke. */
+export const UEBERGREIFEND = 'Übergreifend';
 
-export const GEWERKBEZUG_LABEL: Record<GewerkBezug, string> = {
-  individuell: 'je Gewerk',
-  uebergreifend: 'übergreifend',
-};
+export function istUebergreifend(funktion: { gewerke: string[] }): boolean {
+  return funktion.gewerke.length === 0;
+}
 
 /** Frei definierbare Projektrolle, z.B. "PLM" oder "Prüfstatiker". */
 export interface Role {
@@ -127,7 +126,8 @@ export interface Role {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
-  gewerkBezug: GewerkBezug;
+  /** Gewerke, in denen die Funktion vorkommt; leer = übergreifend. */
+  gewerke: string[];
 }
 
 /**
@@ -167,6 +167,20 @@ export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
   verzeichnis: 'Planverzeichnis',
 };
 
+/** Bezeichnung des Nummernfelds je Art. */
+export const NUMMER_LABEL: Record<DocumentKind, string> = {
+  plan: 'Plancodierung',
+  paket: 'Name Planpaket',
+  verzeichnis: 'Name PlanVZ',
+};
+
+/** Bezeichnung des Indexfelds je Art. */
+export const INDEX_LABEL: Record<DocumentKind, string> = {
+  plan: 'Index',
+  paket: 'Index',
+  verzeichnis: 'Ausgabe',
+};
+
 /** Gewerke zur Auswahl; freie Eingabe bleibt zusätzlich möglich. */
 export const GEWERKE = ['EEA', 'KIB', 'LST', 'OLA', 'OSE', 'TK', 'VA'] as const;
 
@@ -177,7 +191,13 @@ export interface PlanDocument {
   id: ID;
   projectId: ID;
   kind: DocumentKind;
-  /** Plancodierung. */
+  /**
+   * Übergeordnetes Planpaket bzw. Planverzeichnis. Untergeordnete Pläne
+   * durchlaufen keinen eigenen Planlauf – maßgeblich ist der Lauf des
+   * übergeordneten Eintrags.
+   */
+  parentId: ID | null;
+  /** Plancodierung bzw. Name des Pakets / Verzeichnisses. */
   nummer: string;
   titel: string;
   /** Index/Revision – standardmäßig leer. */
@@ -190,7 +210,7 @@ export interface PlanDocument {
 }
 
 /* ------------------------------------------------------------------ */
-/* Prozessketten                                                       */
+/* Workflows                                                       */
 /* ------------------------------------------------------------------ */
 
 export type StepType = 'aufgabe' | 'entscheidung' | 'sonstiges';
@@ -234,7 +254,7 @@ export function istPrueferRolle(roleName: string): boolean {
 
 export interface ProcessTemplate {
   id: ID;
-  /** null = globale Standardkette, sonst projektspezifische Variante. */
+  /** null = globale Standard-Workflow, sonst projektspezifische Variante. */
   projectId: ID | null;
   name: string;
   beschreibung: string;
@@ -264,7 +284,7 @@ export interface ProcessTemplateStep {
 }
 
 /* ------------------------------------------------------------------ */
-/* Planlauf = laufende Instanz einer Prozesskette                      */
+/* Planlauf = laufende Instanz einer Workflow                      */
 /* ------------------------------------------------------------------ */
 
 export type RunStatus = 'laufend' | 'abgeschlossen' | 'abgebrochen';
@@ -273,6 +293,14 @@ export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   laufend: 'Laufend',
   abgeschlossen: 'Abgeschlossen',
   abgebrochen: 'Abgebrochen',
+};
+
+/** Grundform des Abbruchs: ersatzlos oder mit neuem Index bzw. neuer Ausgabe. */
+export type AbbruchArt = 'ersatzlos' | 'neuer_index';
+
+export const ABBRUCH_ART_LABEL: Record<AbbruchArt, string> = {
+  ersatzlos: 'ersatzlos',
+  neuer_index: 'neuer Index / neue Ausgabe',
 };
 
 export interface PlanRun {
@@ -288,6 +316,9 @@ export interface PlanRun {
   /** Begründung, falls der Lauf abgebrochen wurde. */
   abbruchGrund: string | null;
   abbruchDatum: ISODate | null;
+  abbruchArt: AbbruchArt | null;
+  /** Bei „neuer Index“: der Index bzw. die Ausgabe des Nachfolgelaufs. */
+  abbruchNeuerIndex: string | null;
   /** Kopie der Schritte – individuelle Abweichungen ändern nur diese Instanz. */
   steps: RunStep[];
   bemerkung: string;
@@ -345,7 +376,7 @@ export interface AppData {
   /** Fassung der übernommenen Stammdaten (siehe STAMMDATEN_VERSION). */
   stammdatenVersion: number;
   bearbeiter: Bearbeiter;
-  /** Projektübergreifende Standardrollen. */
+  /** Projektübergreifende Funktionen. */
   standardRollen: StandardRolle[];
   projects: Project[];
   roles: Role[];

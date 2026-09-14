@@ -178,7 +178,7 @@ export function ProjektDialog({
         emailTemplates: standardVorlagen(),
       },
     });
-    // Standardrollen als Projektrollen übernehmen
+    // Funktionen als Projektfunktionen übernehmen
     data.standardRollen.forEach((r) =>
       addRole({
         projectId: id,
@@ -186,10 +186,10 @@ export function ProjektDialog({
         kuerzel: r.kuerzel,
         farbe: r.farbe,
         beschreibung: r.beschreibung,
-        gewerkBezug: r.gewerkBezug,
+        gewerke: [...r.gewerke],
       }),
     );
-    toast('Projekt angelegt – Standardrollen wurden übernommen.');
+    toast('Projekt angelegt – die Funktionen wurden übernommen.');
     onClose();
     navigate?.({ view: 'projekt', projectId: id, tab: 'uebersicht' });
   };

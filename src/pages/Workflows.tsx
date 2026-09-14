@@ -1,5 +1,5 @@
 /**
- * Verwaltung der Prozessketten-Vorlagen: Standardketten und projektspezifische
+ * Verwaltung der Workflow-Vorlagen: Standard-Workflows und projektspezifische
  * Varianten. Ein Schritt ist eine Aufgabe, eine Entscheidung oder Sonstiges;
  * Entscheidungen bestimmen über ihre Antworten den weiteren Verlauf.
  */
@@ -32,7 +32,7 @@ import {
 } from '../components/ui';
 import { Icon } from '../components/icons';
 
-export function Prozessketten({ projectId }: { projectId?: string }) {
+export function Workflows({ projectId }: { projectId?: string }) {
   const { data, addTemplate, deleteTemplate } = useStore();
   const toast = useToast();
   const [editor, setEditor] = useState<{ template?: ProcessTemplate } | null>(null);
@@ -60,14 +60,14 @@ export function Prozessketten({ projectId }: { projectId?: string }) {
         })),
       })),
     });
-    toast('Prozesskette dupliziert – jetzt individuell anpassbar.');
+    toast('Workflow dupliziert – jetzt individuell anpassbar.');
   };
 
   const liste = (titel: string, eintraege: ProcessTemplate[], sub: string) => (
     <Card>
       <CardHeader titel={titel} sub={sub} />
       {eintraege.length === 0 ? (
-        <EmptyState icon="kette" titel="Keine Prozesskette" text="Legen Sie eine Kette an oder duplizieren Sie eine Standardkette." />
+        <EmptyState icon="kette" titel="Keine Workflow" text="Legen Sie eine Kette an oder duplizieren Sie einen Standard-Workflow." />
       ) : (
         eintraege.map((t) => {
           const entscheidungen = t.steps.filter((s) => s.typ === 'entscheidung').length;
@@ -109,7 +109,7 @@ export function Prozessketten({ projectId }: { projectId?: string }) {
     <div className="stack">
       <div className="row-between wrap">
         <p className="muted small" style={{ maxWidth: 640 }}>
-          Standardketten gelten projektübergreifend. Für Abweichungen duplizieren Sie eine Kette als Projektvariante –
+          Standard-Workflows gelten projektübergreifend. Für Abweichungen duplizieren Sie eine Kette als Projektvariante –
           einzelne Planläufe lassen sich zusätzlich individuell anpassen.
         </p>
         <button type="button" className="btn btn-primary" onClick={() => setEditor({})}>
@@ -117,7 +117,7 @@ export function Prozessketten({ projectId }: { projectId?: string }) {
         </button>
       </div>
 
-      {liste('Standard-Prozessketten', standard, 'Projektübergreifend verfügbar')}
+      {liste('Standard-Workflows', standard, 'Projektübergreifend verfügbar')}
       {liste(projectId ? 'Projektvarianten' : 'Projektspezifische Ketten', eigene, 'Nur im jeweiligen Projekt wählbar')}
 
       {editor ? (
@@ -125,11 +125,11 @@ export function Prozessketten({ projectId }: { projectId?: string }) {
       ) : null}
       {loeschen ? (
         <ConfirmDialog
-          titel="Prozesskette löschen?"
+          titel="Workflow löschen?"
           text={`„${loeschen.name}“ wird gelöscht. Bereits gestartete Planläufe bleiben unverändert.`}
           onConfirm={() => {
             deleteTemplate(loeschen.id);
-            toast('Prozesskette gelöscht.');
+            toast('Workflow gelöscht.');
           }}
           onClose={() => setLoeschen(null)}
         />
@@ -200,17 +200,17 @@ function KettenEditor({
     }));
     if (template) {
       updateTemplate(template.id, { name, beschreibung, steps: bereinigt });
-      toast('Prozesskette gespeichert.');
+      toast('Workflow gespeichert.');
     } else {
       addTemplate({ projectId, name, beschreibung, herkunft: 'manuell', steps: bereinigt });
-      toast('Prozesskette angelegt.');
+      toast('Workflow angelegt.');
     }
     onClose();
   };
 
   return (
     <Modal
-      titel={template ? 'Prozesskette bearbeiten' : 'Neue Prozesskette'}
+      titel={template ? 'Workflow bearbeiten' : 'Neue Workflow'}
       sub={`${steps.length} Schritte · ${pfad(steps).reduce((s, x) => s + x.fristTage, 0)} Tage im Standardverlauf`}
       wide
       onClose={onClose}
@@ -228,7 +228,7 @@ function KettenEditor({
       <div className="stack" style={{ gap: 16 }}>
         {istStandard ? (
           <Callout icon="i">
-            Dies ist eine projektübergreifende Standardkette. Änderungen wirken sich auf alle künftigen Planläufe aus –
+            Dies ist eine projektübergreifende Standard-Workflow. Änderungen wirken sich auf alle künftigen Planläufe aus –
             für einmalige Abweichungen besser duplizieren.
           </Callout>
         ) : null}

@@ -60,7 +60,7 @@ export function StepTypBadge({ typ }: { typ: StepType }) {
 }
 
 export function RollenChips({ roles }: { roles: Role[] }) {
-  if (roles.length === 0) return <span className="tertiary small">keine Rolle</span>;
+  if (roles.length === 0) return <span className="tertiary small">keine Funktion</span>;
   return (
     <span className="row wrap" style={{ gap: 5 }}>
       {roles.map((r) => (

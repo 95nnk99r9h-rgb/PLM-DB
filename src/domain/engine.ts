@@ -1,5 +1,5 @@
 /**
- * Planlauf-Logik: Weg durch die Prozesskette bestimmen, Soll-Termine aus
+ * Planlauf-Logik: Weg durch die Workflow bestimmen, Soll-Termine aus
  * Fristen rechnen, Ampelstatus vergeben und offene Aufgaben einsammeln.
  */
 import { addDays, diffDays, today } from '../lib/dates';
@@ -219,19 +219,19 @@ export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] 
     if (!istAktiv(run)) continue;
     const project = data.projects.find((p) => p.id === run.projectId);
     if (!project) continue;
-    const vorlauf = project.settings.erinnerungVorlaufTage;
-    for (const step of pfad(run.steps)) {
-      if (!offenerSchritt(step)) continue;
-      const ampel = ampelFuerSchritt(step, vorlauf);
-      if (ampel === 'erledigt') continue;
-      eintraege.push({
-        run,
-        step,
-        project,
-        ampel,
-        tageBisSoll: step.sollDatum ? diffDays(today(), step.sollDatum) : 9999,
-      });
-    }
+    // Nur der jeweils anstehende Schritt ist offen – kommende Schritte
+    // erscheinen erst, wenn sie an der Reihe sind.
+    const step = aktuellerSchritt(run);
+    if (!step) continue;
+    const ampel = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage);
+    if (ampel === 'erledigt') continue;
+    eintraege.push({
+      run,
+      step,
+      project,
+      ampel,
+      tageBisSoll: step.sollDatum ? diffDays(today(), step.sollDatum) : 9999,
+    });
   }
   return eintraege.sort((a, b) => a.tageBisSoll - b.tageBisSoll);
 }
@@ -243,10 +243,7 @@ export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] 
  */
 export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
   const rolle = (data.bearbeiter?.rolle || EIGENE_ROLLE).toLowerCase();
-  return offeneFristen(data, projectIds).filter((f) => {
-    if (f.step.roleName.trim().toLowerCase() !== rolle) return false;
-    return f.step.status === 'laufend' || aktuellerSchritt(f.run)?.id === f.step.id;
-  });
+  return offeneFristen(data, projectIds).filter((f) => f.step.roleName.trim().toLowerCase() === rolle);
 }
 
 /**
@@ -271,7 +268,8 @@ export function kontaktFuerRolleUndGewerk(
       ),
     );
 
-  if (rolle.gewerkBezug === 'individuell') {
+  // Funktionen ohne Gewerkliste sind übergreifend und einmal besetzt.
+  if (rolle.gewerke.length > 0) {
     return (passend(true) ?? passend(false))?.id ?? null;
   }
   return passend(false)?.id ?? null;

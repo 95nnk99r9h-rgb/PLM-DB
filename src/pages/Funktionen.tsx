@@ -1,0 +1,334 @@
+/**
+ * Projektübergreifende Funktionen (vormals Rollen), gegliedert nach Gewerken.
+ *
+ * Je Gewerk gibt es eine eigene Seite; „Übergreifend“ führt die Funktionen,
+ * die für alle Gewerke gelten und nur einmal besetzt werden. Neue Projekte
+ * übernehmen diese Funktionen; Personen werden im Adressbuch zugewiesen.
+ */
+import { useState } from 'react';
+import { GEWERKE, UEBERGREIFEND, type StandardRolle } from '../domain/types';
+import { useStore } from '../store/store';
+import { useToast } from '../components/toast';
+import {
+  Badge,
+  Card,
+  CardHeader,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  Modal,
+  TextArea,
+  TextInput,
+} from '../components/ui';
+import { Icon } from '../components/icons';
+
+const FARBEN = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
+
+export function Funktionen() {
+  const { data, addStandardRolle, updateStandardRolle, deleteStandardRolle } = useStore();
+  const toast = useToast();
+  const [seite, setSeite] = useState<string>(UEBERGREIFEND);
+  const [dialog, setDialog] = useState<{ funktion?: StandardRolle } | null>(null);
+  const [ergaenzen, setErgaenzen] = useState(false);
+  const [loeschen, setLoeschen] = useState<StandardRolle | null>(null);
+
+  // Alle vorkommenden Gewerke – vorgegebene und selbst ergänzte
+  const gewerke = [
+    ...new Set([...GEWERKE, ...data.standardRollen.flatMap((r) => r.gewerke)]),
+  ].sort((a, b) => a.localeCompare(b, 'de'));
+
+  const uebergreifend = seite === UEBERGREIFEND;
+  const funktionen = data.standardRollen.filter((r) =>
+    uebergreifend ? r.gewerke.length === 0 : r.gewerke.includes(seite),
+  );
+  const ergaenzbar = data.standardRollen.filter(
+    (r) => !uebergreifend && r.gewerke.length > 0 && !r.gewerke.includes(seite),
+  );
+
+  /** Entfernt die Funktion aus dem aktuellen Gewerk. */
+  const ausGewerkEntfernen = (f: StandardRolle) => {
+    updateStandardRolle(f.id, { gewerke: f.gewerke.filter((g) => g !== seite) });
+    toast(`„${f.name}“ ist in ${seite} nicht mehr hinterlegt.`);
+  };
+
+  return (
+    <div className="stack">
+      <div className="tabs">
+        <button type="button" className={uebergreifend ? 'active' : ''} onClick={() => setSeite(UEBERGREIFEND)}>
+          {UEBERGREIFEND}
+        </button>
+        {gewerke.map((g) => (
+          <button key={g} type="button" className={seite === g ? 'active' : ''} onClick={() => setSeite(g)}>
+            {g}
+          </button>
+        ))}
+      </div>
+
+      <div className="row-between wrap">
+        <p className="muted small" style={{ maxWidth: 640 }}>
+          {uebergreifend
+            ? 'Übergreifende Funktionen gelten für alle Gewerke und werden im Projekt einmal besetzt.'
+            : `Funktionen des Gewerks ${seite}. Im Projekt wird für jedes Gewerk eine eigene Person zugewiesen.`}
+        </p>
+        <div className="row">
+          {!uebergreifend && ergaenzbar.length > 0 ? (
+            <button type="button" className="btn btn-outline" onClick={() => setErgaenzen(true)}>
+              <Icon name="plus" size={14} /> Vorhandene Funktion
+            </button>
+          ) : null}
+          <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
+            <Icon name="plus" size={14} /> Neue Funktion
+          </button>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader
+          titel={uebergreifend ? 'Übergreifende Funktionen' : `Funktionen ${seite}`}
+          sub={`${funktionen.length} Funktionen`}
+        />
+        {funktionen.length === 0 ? (
+          <EmptyState
+            icon="person"
+            titel="Keine Funktionen"
+            text={
+              uebergreifend
+                ? 'Legen Sie Funktionen an, die für alle Gewerke gelten.'
+                : `Legen Sie die Funktionen an, die in ${seite} vorkommen.`
+            }
+            action={
+              <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
+                <Icon name="plus" size={14} /> Neue Funktion
+              </button>
+            }
+          />
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Funktion</th>
+                  <th>Kürzel</th>
+                  <th className="col-optional">Gewerke</th>
+                  <th className="col-optional">Beschreibung</th>
+                  <th className="actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {funktionen.map((f) => (
+                  <tr key={f.id} className="clickable" onClick={() => setDialog({ funktion: f })}>
+                    <td>
+                      <span className="row" style={{ gap: 8 }}>
+                        <span className="dot" style={{ background: f.farbe }} />
+                        <strong>{f.name}</strong>
+                      </span>
+                    </td>
+                    <td className="num">{f.kuerzel || '–'}</td>
+                    <td className="col-optional">
+                      {f.gewerke.length === 0 ? (
+                        <Badge ton="blue">{UEBERGREIFEND}</Badge>
+                      ) : (
+                        <span className="small muted">{f.gewerke.join(', ')}</span>
+                      )}
+                    </td>
+                    <td className="small muted col-optional">{f.beschreibung || '–'}</td>
+                    <td className="actions">
+                      {!uebergreifend ? (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          title={`Aus ${seite} entfernen`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            ausGewerkEntfernen(f);
+                          }}
+                        >
+                          Aus {seite} entfernen
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        aria-label="Funktion löschen"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLoeschen(f);
+                        }}
+                      >
+                        <Icon name="loeschen" size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {ergaenzen ? (
+        <Modal
+          titel={`Funktion in ${seite} ergänzen`}
+          sub="Bereits vorhandene Funktion diesem Gewerk zuordnen"
+          onClose={() => setErgaenzen(false)}
+          footer={
+            <button type="button" className="btn btn-primary" onClick={() => setErgaenzen(false)}>
+              Fertig
+            </button>
+          }
+        >
+          <div className="row wrap" style={{ gap: 6 }}>
+            {ergaenzbar.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className="role-chip"
+                style={{ color: f.farbe, cursor: 'pointer', padding: '4px 11px' }}
+                onClick={() => {
+                  updateStandardRolle(f.id, { gewerke: [...f.gewerke, seite] });
+                  toast(`„${f.name}“ ist jetzt in ${seite} hinterlegt.`);
+                }}
+              >
+                <Icon name="plus" size={12} /> {f.name}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      ) : null}
+
+      {dialog ? (
+        <FunktionsDialog
+          funktion={dialog.funktion}
+          anzahl={data.standardRollen.length}
+          gewerke={gewerke}
+          vorauswahl={uebergreifend ? [] : [seite]}
+          onClose={() => setDialog(null)}
+          onAnlegen={(werte) => {
+            addStandardRolle(werte);
+            toast('Funktion angelegt.');
+          }}
+        />
+      ) : null}
+
+      {loeschen ? (
+        <ConfirmDialog
+          titel="Funktion löschen?"
+          text={`„${loeschen.name}“ steht neuen Projekten nicht mehr zur Verfügung. Bereits angelegte Projektfunktionen bleiben erhalten.`}
+          onConfirm={() => {
+            deleteStandardRolle(loeschen.id);
+            toast('Funktion gelöscht.');
+          }}
+          onClose={() => setLoeschen(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function FunktionsDialog({
+  funktion,
+  anzahl,
+  gewerke,
+  vorauswahl,
+  onClose,
+  onAnlegen,
+}: {
+  funktion?: StandardRolle;
+  anzahl: number;
+  gewerke: string[];
+  vorauswahl: string[];
+  onClose: () => void;
+  onAnlegen: (werte: Omit<StandardRolle, 'id'>) => void;
+}) {
+  const { updateStandardRolle } = useStore();
+  const toast = useToast();
+  const [form, setForm] = useState({
+    name: funktion?.name ?? '',
+    kuerzel: funktion?.kuerzel ?? '',
+    farbe: funktion?.farbe ?? FARBEN[anzahl % FARBEN.length],
+    beschreibung: funktion?.beschreibung ?? '',
+    gewerke: funktion?.gewerke ?? vorauswahl,
+  });
+
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const toggleGewerk = (g: string) =>
+    set('gewerke', form.gewerke.includes(g) ? form.gewerke.filter((x) => x !== g) : [...form.gewerke, g]);
+
+  const speichern = () => {
+    if (!form.name.trim()) {
+      toast('Bitte eine Bezeichnung angeben.');
+      return;
+    }
+    const werte = {
+      ...form,
+      kuerzel: form.kuerzel.trim() || form.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase(),
+    };
+    if (funktion) {
+      updateStandardRolle(funktion.id, werte);
+      toast('Funktion gespeichert.');
+    } else {
+      onAnlegen(werte);
+    }
+    onClose();
+  };
+
+  return (
+    <Modal
+      titel={funktion ? 'Funktion bearbeiten' : 'Neue Funktion'}
+      sub="Gilt projektübergreifend"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={speichern}>
+            Speichern
+          </button>
+        </>
+      }
+    >
+      <div className="form-grid">
+        <Field label="Bezeichnung" full>
+          <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="z.B. Erdungsprüfer" />
+        </Field>
+        <Field label="Kürzel" hint="leer = aus der Bezeichnung gebildet">
+          <TextInput value={form.kuerzel} onChange={(v) => set('kuerzel', v)} />
+        </Field>
+        <Field label="Farbe">
+          <input
+            type="color"
+            value={form.farbe}
+            onChange={(e) => set('farbe', e.target.value)}
+            style={{ width: 52, height: 32, border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+          />
+        </Field>
+        <Field
+          label="Gewerke"
+          full
+          hint="Keine Auswahl bedeutet übergreifend: eine Besetzung für alle Gewerke."
+        >
+          <div className="row wrap" style={{ gap: 6 }}>
+            {gewerke.map((g) => {
+              const aktiv = form.gewerke.includes(g);
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  className={`antwort-chip ${aktiv ? 'gewaehlt' : ''}`}
+                  onClick={() => toggleGewerk(g)}
+                >
+                  {g}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+        <Field label="Beschreibung" full>
+          <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={2} />
+        </Field>
+      </div>
+    </Modal>
+  );
+}

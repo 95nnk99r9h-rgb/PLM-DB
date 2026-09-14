@@ -66,8 +66,8 @@ export function Fristen({
 
       <Card>
         <CardHeader
-          titel="Offene Prozessschritte"
-          sub="Erinnerungen werden aus den E-Mail-Vorlagen des jeweiligen Projekts erzeugt"
+          titel="Anstehende Prozessschritte"
+          sub="Je Planlauf der aktuell anstehende Schritt; Erinnerungen aus den Vorlagen des Projekts"
         />
         {eintraege.length === 0 ? (
           <EmptyState icon="check" titel="Nichts offen" text="Für diese Auswahl gibt es keine offenen Fristen." />
@@ -98,7 +98,11 @@ export function Fristen({
                         <strong>{f.step.name}</strong>
                       </button>
                       <div className="small tertiary">
-                        {f.run.name} · {f.project.nummer} {f.project.name}
+                        {(() => {
+                          const doc = data.documents.find((d) => d.id === f.run.documentId);
+                          return doc ? `${doc.nummer} · ${doc.titel}` : f.run.name;
+                        })()}{' '}
+                        · {f.project.nummer} {f.project.name}
                       </div>
                     </td>
                     <td className="small col-optional">

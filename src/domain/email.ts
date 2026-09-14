@@ -15,7 +15,7 @@ export const PLATZHALTER: Platzhalter[] = [
   { schluessel: 'empfaenger', beschreibung: 'Vor- und Nachname des Empfängers' },
   { schluessel: 'empfaenger.firma', beschreibung: 'Firma des Empfängers' },
   { schluessel: 'empfaenger.anschrift', beschreibung: 'Anschrift des Empfängers (einzeilig)' },
-  { schluessel: 'rolle', beschreibung: 'Rolle im Prozessschritt' },
+  { schluessel: 'rolle', beschreibung: 'Funktion im Prozessschritt' },
   { schluessel: 'projekt', beschreibung: 'Projektname' },
   { schluessel: 'projekt.nummer', beschreibung: 'Projektnummer' },
   { schluessel: 'plan', beschreibung: 'Titel von Plan / Paket / Verzeichnis' },

@@ -1,5 +1,5 @@
 /**
- * Detailansicht eines Planlaufs: Prozesskette als Verlauf, Soll-/Ist-Termine,
+ * Detailansicht eines Planlaufs: Workflow als Verlauf, Soll-/Ist-Termine,
  * Entscheidungen mit Antwortmöglichkeiten und die Erinnerungsfunktion.
  */
 import { useState } from 'react';
@@ -14,11 +14,14 @@ import {
 } from '../../domain/engine';
 import { formatDate, tageLabel, today } from '../../lib/dates';
 import {
+  INDEX_LABEL,
   NACHWEIS_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
   istPrueferRolle,
+  type AbbruchArt,
   type Nachweis,
+  type PlanDocument,
   type PlanRun,
   type Project,
   type RunStep,
@@ -47,12 +50,15 @@ export function PlanlaufDetail({
   project,
   run,
   onZurueck,
+  oeffneLauf,
 }: {
   project: Project;
   run: PlanRun;
   onZurueck: () => void;
+  /** Öffnet einen anderen Planlauf – etwa den Nachfolger nach einem Abbruch. */
+  oeffneLauf?: (runId: string) => void;
 }) {
-  const { data, updateRun, updateStep, deleteRun, abbrechenRun } = useStore();
+  const { data, updateRun, updateStep, updateDocument, deleteRun, addRun, abbrechenRun } = useStore();
   const toast = useToast();
   const [mailStep, setMailStep] = useState<RunStep | null>(null);
   const [bearbeiten, setBearbeiten] = useState<RunStep | null>(null);
@@ -223,7 +229,7 @@ export function PlanlaufDetail({
 
       <Card>
         <CardHeader
-          titel={run.name}
+          titel={doc ? `${doc.nummer} · ${doc.titel}` : run.name}
           sub={
             <>
               {doc ? `${doc.nummer} · ${doc.titel}${doc.index ? ` (Index ${doc.index})` : ''}` : 'ohne Plan'} · Start{' '}
@@ -232,15 +238,17 @@ export function PlanlaufDetail({
           }
           actions={<RunStatusBadge status={run.status} />}
         />
-        <div className="card-pad">
-          {abweichungen > 0 ? (
-            <Callout ton="warn" icon="!">
-              {abweichungen} Schritt(e) weichen von der Standard-Prozesskette ab. Änderungen wirken nur in diesem
-              Planlauf.
-            </Callout>
-          ) : null}
-          {run.bemerkung ? <p className="small muted" style={{ marginTop: 10 }}>{run.bemerkung}</p> : null}
-        </div>
+        {abweichungen > 0 || run.bemerkung ? (
+          <div className="card-pad">
+            {abweichungen > 0 ? (
+              <Callout ton="warn" icon="!">
+                {abweichungen} Schritt(e) weichen vom Standard-Workflow ab. Änderungen wirken nur in diesem
+                Planlauf.
+              </Callout>
+            ) : null}
+            {run.bemerkung ? <p className="small muted" style={{ marginTop: 10 }}>{run.bemerkung}</p> : null}
+          </div>
+        ) : null}
       </Card>
 
       <Card>
@@ -261,7 +269,7 @@ export function PlanlaufDetail({
           const istAktiv = step.id === aktiv?.id;
           const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
           return (
-            <div className={`step-row ${istAktiv && !beendet ? 'aktiv' : ''}`} key={step.id}>
+            <div className={`step-row mit-aktion ${istAktiv && !beendet ? 'aktiv' : ''}`} key={step.id}>
               <div className="step-marker">
                 <div
                   className={`step-num ${
@@ -320,7 +328,7 @@ export function PlanlaufDetail({
                           type="button"
                           className={`antwort-chip ${gewaehlt ? 'gewaehlt' : ''}`}
                           onClick={() => waehleAntwort(step, a.id)}
-                          disabled={beendet}
+                          disabled={beendet || !istAktiv}
                           title={
                             a.ziel === 'ende'
                               ? 'beendet den Planlauf'
@@ -342,33 +350,21 @@ export function PlanlaufDetail({
 
                 {step.bemerkung ? <p className="small tertiary">{step.bemerkung}</p> : null}
 
-                {!beendet ? (
+                {!beendet && istAktiv ? (
                   <div className="step-actions">
-                    {!erledigt ? (
-                      <>
-                        <button type="button" className="btn btn-sm btn-primary" onClick={() => setzeStatus(step, 'erledigt')}>
-                          <Icon name="check" size={13} /> Erledigt
-                        </button>
-                        <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'uebersprungen')}>
-                          Überspringen
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
-                        Wieder öffnen
-                      </button>
-                    )}
+                    <button type="button" className="btn btn-sm btn-primary" onClick={() => setzeStatus(step, 'erledigt')}>
+                      <Icon name="check" size={13} /> Erledigt
+                    </button>
+                    <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'uebersprungen')}>
+                      Überspringen
+                    </button>
                     <button
                       type="button"
                       className="btn btn-sm btn-outline"
                       onClick={() => setMailStep(step)}
-                      disabled={erledigt}
                       title="Vorbereitete E-Mail an die zuständige Person"
                     >
                       <Icon name="mail" size={13} /> Erinnern
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => setBearbeiten(step)}>
-                      <Icon name="bearbeiten" size={13} /> Anpassen
                     </button>
                     {step.letzteErinnerung ? (
                       <span className="small tertiary">
@@ -376,8 +372,26 @@ export function PlanlaufDetail({
                       </span>
                     ) : null}
                   </div>
+                ) : !beendet && erledigt ? (
+                  <div className="step-actions">
+                    <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
+                      Wieder öffnen
+                    </button>
+                  </div>
                 ) : null}
               </div>
+
+              {!beendet ? (
+                <button
+                  type="button"
+                  className="btn-icon step-anpassen"
+                  title="Schritt anpassen"
+                  aria-label="Schritt anpassen"
+                  onClick={() => setBearbeiten(step)}
+                >
+                  <Icon name="bearbeiten" size={15} />
+                </button>
+              ) : null}
             </div>
           );
         })}
@@ -449,9 +463,56 @@ export function PlanlaufDetail({
       {abbrechen ? (
         <AbbruchDialog
           run={run}
+          doc={doc}
           onClose={() => setAbbrechen(false)}
-          onAbbrechen={(grund) => {
-            abbrechenRun(run.id, grund);
+          onAbbrechen={(grund, art, neuerIndex) => {
+            abbrechenRun(run.id, grund, art, neuerIndex || null);
+            if (art === 'neuer_index' && doc) {
+              // Eintrag auf den neuen Index heben und den Lauf von vorn beginnen
+              updateDocument(doc.id, { index: neuerIndex });
+              const neueSchritte: RunStep[] = run.steps.map((s) => ({
+                ...s,
+                id: newId('rs'),
+                status: 'offen',
+                istDatum: null,
+                nachweisNummer: null,
+                gewaehlteAntwortId: null,
+                durchlauf: 1,
+                sollDatum: null,
+              }));
+              // Verweise (Antwortziele, Nachfolger) auf die neuen IDs umbiegen
+              const idMap = new Map(run.steps.map((s, i) => [s.id, neueSchritte[i].id]));
+              const verdrahtet = neueSchritte.map((s) => ({
+                ...s,
+                naechster:
+                  s.naechster === 'ende' || s.naechster === null ? s.naechster : (idMap.get(s.naechster) ?? null),
+                antworten: s.antworten.map((a) => ({
+                  ...a,
+                  id: newId('ant'),
+                  ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+                })),
+              }));
+              verdrahtet[0] = { ...verdrahtet[0], status: 'laufend' };
+
+              const neuerLauf = addRun({
+                projectId: run.projectId,
+                documentId: run.documentId,
+                templateId: run.templateId,
+                templateName: run.templateName,
+                name: `Planlauf ${doc.nummer} ${INDEX_LABEL[doc.kind]} ${neuerIndex}`,
+                start: today(),
+                status: 'laufend',
+                abbruchGrund: null,
+                abbruchDatum: null,
+                abbruchArt: null,
+                abbruchNeuerIndex: null,
+                steps: verdrahtet,
+                bemerkung: `Nachfolger von „${run.name}“ (${grund})`,
+              });
+              toast(`Neuer Planlauf mit ${INDEX_LABEL[doc.kind]} ${neuerIndex} gestartet.`);
+              oeffneLauf?.(neuerLauf);
+              return;
+            }
             toast('Planlauf abgebrochen – er bleibt in der Projektansicht sichtbar.');
           }}
         />
@@ -477,15 +538,21 @@ export function PlanlaufDetail({
 
 function AbbruchDialog({
   run,
+  doc,
   onClose,
   onAbbrechen,
 }: {
   run: PlanRun;
+  doc: PlanDocument | undefined;
   onClose: () => void;
-  onAbbrechen: (grund: string) => void;
+  onAbbrechen: (grund: string, art: AbbruchArt, neuerIndex: string) => void;
 }) {
   const toast = useToast();
   const [grund, setGrund] = useState('');
+  const [art, setArt] = useState<AbbruchArt>('ersatzlos');
+  const [neuerIndex, setNeuerIndex] = useState('');
+
+  const indexBezeichnung = doc ? INDEX_LABEL[doc.kind] : 'Index';
 
   return (
     <Modal
@@ -506,26 +573,72 @@ function AbbruchDialog({
                 toast('Bitte einen Grund angeben.');
                 return;
               }
-              onAbbrechen(grund.trim());
+              if (art === 'neuer_index' && !neuerIndex.trim()) {
+                toast(`Bitte ${indexBezeichnung} angeben.`);
+                return;
+              }
+              onAbbrechen(grund.trim(), art, neuerIndex.trim());
               onClose();
             }}
           >
-            Planlauf abbrechen
+            {art === 'neuer_index' ? 'Abbrechen und neu starten' : 'Planlauf abbrechen'}
           </button>
         </>
       }
     >
-      <div className="stack" style={{ gap: 12 }}>
-        <Callout icon="i">
-          Der Lauf bleibt ausgegraut in der Projektansicht mit dem Grund sichtbar. In den übergeordneten Ansichten
-          (Übersicht, Fristen) erscheint er nicht mehr.
-        </Callout>
+      <div className="stack" style={{ gap: 14 }}>
+        <Field label="Art des Abbruchs">
+          <div className="stack" style={{ gap: 8 }}>
+            <label className="checkbox">
+              <input
+                type="radio"
+                name="abbruchart"
+                checked={art === 'ersatzlos'}
+                onChange={() => setArt('ersatzlos')}
+              />
+              Ersatzlos – der Eintrag wird nicht weiterverfolgt
+            </label>
+            <label className="checkbox">
+              <input
+                type="radio"
+                name="abbruchart"
+                checked={art === 'neuer_index'}
+                onChange={() => setArt('neuer_index')}
+              />
+              {doc?.kind === 'verzeichnis' ? 'Neue Ausgabe' : 'Neuer Index'} – der Planlauf beginnt damit von vorn
+            </label>
+          </div>
+        </Field>
+
+        {art === 'neuer_index' ? (
+          <Field
+            label={`${indexBezeichnung} des neuen Planlaufs`}
+            hint={`Der Eintrag erhält ${indexBezeichnung} „${neuerIndex || '…'}“; der Planlauf wird mit denselben Schritten neu begonnen.`}
+          >
+            <TextInput
+              value={neuerIndex}
+              onChange={setNeuerIndex}
+              autoFocus
+              placeholder={doc?.kind === 'verzeichnis' ? 'z.B. 03' : 'z.B. D'}
+            />
+          </Field>
+        ) : (
+          <Callout icon="i">
+            Der Lauf bleibt ausgegraut in der Projektansicht mit dem Grund sichtbar. In den übergeordneten
+            Ansichten (Übersicht, Fristen) erscheint er nicht mehr.
+          </Callout>
+        )}
+
         <Field label="Grund des Abbruchs" hint="wird in der Projektübersicht und im Export angezeigt">
           <TextArea
             value={grund}
             onChange={setGrund}
             rows={3}
-            placeholder="z.B. Planinhalt entfällt, Leistung neu beauftragt …"
+            placeholder={
+              art === 'neuer_index'
+                ? 'z.B. Planinhalt geändert, Neuvorlage erforderlich'
+                : 'z.B. Planinhalt entfällt, Leistung neu beauftragt'
+            }
           />
         </Field>
       </div>
@@ -718,7 +831,7 @@ function SchrittDialog({
           <Select
             value={form.roleName}
             onChange={rolleWechseln}
-            placeholder="– keine Rolle –"
+            placeholder="– keine Funktion –"
             options={rollen.map((r) => ({ value: r.name, label: r.name }))}
           />
         </Field>

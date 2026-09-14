@@ -1,7 +1,7 @@
 /**
  * Stammdaten und Demodatenbestand.
  *
- * Standardrollen, Gewerke und die drei Prozessketten (VVBau) entsprechen der
+ * Funktionen, Gewerke und die drei Workflows (VVBau) entsprechen der
  * vorgegebenen Aufstellung. Die Fristen sind dort nicht hinterlegt und daher
  * als Erfahrungswerte vorbelegt – sie lassen sich je Kette und je Planlauf
  * anpassen.
@@ -19,6 +19,7 @@ import {
   type Nachweis,
   type ProcessTemplate,
   type ProcessTemplateStep,
+  GEWERKE,
   type StandardRolle,
   type StepType,
 } from './types';
@@ -26,35 +27,38 @@ import {
 const heute = today();
 
 /* ------------------------------------------------------------------ */
-/* Standardrollen                                                      */
+/* Funktionen                                                      */
 /* ------------------------------------------------------------------ */
 
-/** Rolle „Planer“ in den Prozessketten – je Gewerk besetzt. */
+/** Rolle „Planer“ in den Workflows – je Gewerk besetzt. */
 export const ROLLE_PLANER = 'Fachplaner';
 export const ROLLE_BVB = 'Bauvorlageberechtiger';
 export const ROLLE_PL = 'Projektleitung';
 export const ROLLE_PSV = 'Fachtechnischer Prüfer';
 
+/** Alle Gewerke – für Funktionen, die in jedem Gewerk besetzt werden. */
+const ALLE: string[] = [...GEWERKE];
+
 export const STANDARD_ROLLEN: StandardRolle[] = [
-  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#0071e3', beschreibung: 'Eigene Bearbeitung', gewerkBezug: 'uebergreifend' },
-  { id: 'srol-pl', name: ROLLE_PL, kuerzel: 'PL', farbe: '#5856d6', beschreibung: '', gewerkBezug: 'uebergreifend' },
-  { id: 'srol-fp', name: ROLLE_PLANER, kuerzel: 'FP', farbe: '#ff9500', beschreibung: 'Je Gewerk ein Planer', gewerkBezug: 'individuell' },
-  { id: 'srol-fs', name: 'Fachspezialist', kuerzel: 'FS', farbe: '#c77700', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-bvb', name: ROLLE_BVB, kuerzel: 'BVB', farbe: '#ff3b30', beschreibung: 'Freigabeberechtigt', gewerkBezug: 'individuell' },
-  { id: 'srol-an', name: 'Bau AN', kuerzel: 'AN', farbe: '#af52de', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-buew', name: 'Bauüberwachung', kuerzel: 'BÜW', farbe: '#00a0a0', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-psv', name: ROLLE_PSV, kuerzel: 'PSV', farbe: '#34c759', beschreibung: 'Planprüfer', gewerkBezug: 'individuell' },
-  { id: 'srol-prst', name: 'Prüfstatiker', kuerzel: 'PrSt', farbe: '#248a3d', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-vep', name: 'Vermessungsprüfer', kuerzel: 'VeP', farbe: '#2a9d8f', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-erp', name: 'Erdungsprüfer', kuerzel: 'ErP', farbe: '#457b9d', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-stp', name: 'Schweißtechnischer Prüfer', kuerzel: 'StP', farbe: '#6d597a', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-kop', name: 'Korrosionsschutzprüfer', kuerzel: 'KoP', farbe: '#b56576', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-ggp', name: 'Gleisgeometrie Prüfer', kuerzel: 'GgP', farbe: '#e07a5f', beschreibung: '', gewerkBezug: 'individuell' },
-  { id: 'srol-gtp', name: 'Geotechnischer Prüfer', kuerzel: 'GtP', farbe: '#8a5a44', beschreibung: '', gewerkBezug: 'individuell' },
+  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#0071e3', beschreibung: 'Eigene Bearbeitung', gewerke: [] },
+  { id: 'srol-pl', name: ROLLE_PL, kuerzel: 'PL', farbe: '#5856d6', beschreibung: '', gewerke: [] },
+  { id: 'srol-fp', name: ROLLE_PLANER, kuerzel: 'FP', farbe: '#ff9500', beschreibung: 'Je Gewerk ein Planer', gewerke: ALLE },
+  { id: 'srol-fs', name: 'Fachspezialist', kuerzel: 'FS', farbe: '#c77700', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-bvb', name: ROLLE_BVB, kuerzel: 'BVB', farbe: '#ff3b30', beschreibung: 'Freigabeberechtigt', gewerke: ALLE },
+  { id: 'srol-an', name: 'Bau AN', kuerzel: 'AN', farbe: '#af52de', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-buew', name: 'Bauüberwachung', kuerzel: 'BÜW', farbe: '#00a0a0', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-psv', name: ROLLE_PSV, kuerzel: 'PSV', farbe: '#34c759', beschreibung: 'Planprüfer', gewerke: ALLE },
+  { id: 'srol-prst', name: 'Prüfstatiker', kuerzel: 'PrSt', farbe: '#248a3d', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-vep', name: 'Vermessungsprüfer', kuerzel: 'VeP', farbe: '#2a9d8f', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-erp', name: 'Erdungsprüfer', kuerzel: 'ErP', farbe: '#457b9d', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-stp', name: 'Schweißtechnischer Prüfer', kuerzel: 'StP', farbe: '#6d597a', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-kop', name: 'Korrosionsschutzprüfer', kuerzel: 'KoP', farbe: '#b56576', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-ggp', name: 'Gleisgeometrie Prüfer', kuerzel: 'GgP', farbe: '#e07a5f', beschreibung: '', gewerke: ALLE },
+  { id: 'srol-gtp', name: 'Geotechnischer Prüfer', kuerzel: 'GtP', farbe: '#8a5a44', beschreibung: '', gewerke: ALLE },
 ];
 
 /* ------------------------------------------------------------------ */
-/* Prozessketten (VVBau)                                               */
+/* Workflows (VVBau)                                               */
 /* ------------------------------------------------------------------ */
 
 interface RohSchritt {
@@ -72,7 +76,7 @@ interface RohSchritt {
   nein?: string | 'ende';
 }
 
-/** Baut aus der Aufstellung eine Prozesskette mit eindeutigen IDs. */
+/** Baut aus der Aufstellung eine Workflow mit eindeutigen IDs. */
 function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]): ProcessTemplate {
   const sid = (code: string | undefined): ID | 'ende' | null => {
     if (code === undefined) return null;
@@ -257,7 +261,7 @@ Mit freundlichen Grüßen
 /* Demodaten                                                           */
 /* ------------------------------------------------------------------ */
 
-/** Legt die Standardrollen als Projektrollen an. */
+/** Legt die Funktionen als Projektfunktionen an. */
 function projektRollen(projectId: string) {
   return STANDARD_ROLLEN.map((r) => ({
     id: `rol-${projectId}-${r.id.replace('srol-', '')}`,
@@ -266,7 +270,7 @@ function projektRollen(projectId: string) {
     kuerzel: r.kuerzel,
     farbe: r.farbe,
     beschreibung: r.beschreibung,
-    gewerkBezug: r.gewerkBezug,
+    gewerke: [...r.gewerke],
   }));
 }
 
@@ -313,10 +317,12 @@ export function seedData(): AppData {
       { id: 'con-buew', projectId: 'prj-1', anrede: 'Frau', vorname: 'Heike', nachname: 'Petersen', firma: 'Bauüberwachung Nord', email: 'h.petersen@example.de', telefon: '+49 40 334455-2', anschrift: 'Nordpark 1\n22415 Hamburg', zuordnungen: [{ roleId: rolle('BÜW'), gewerk: null }], notiz: '' },
     ],
     documents: [
-      { id: 'doc-1', projectId: 'prj-1', kind: 'paket', nummer: 'NK-KIB-EÜ-001', titel: 'Eisenbahnüberführung Nordkanal', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
-      { id: 'doc-2', projectId: 'prj-1', kind: 'plan', nummer: 'NK-LST-SP-102', titel: 'Signallageplan Bereich Nord', index: 'B', gewerk: 'LST', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -12), bemerkung: '' },
-      { id: 'doc-3', projectId: 'prj-1', kind: 'plan', nummer: 'NK-OLA-FL-210', titel: 'Fahrleitungsplan km 12,4 – 13,8', index: '', gewerk: 'OLA', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, 14), bemerkung: '' },
-      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), bemerkung: 'noch kein Planlauf gestartet' },
+      { id: 'doc-1', projectId: 'prj-1', kind: 'paket', parentId: null, nummer: 'NK-KIB-EÜ-001', titel: 'Eisenbahnüberführung Nordkanal', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
+      { id: 'doc-1a', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', nummer: 'NK-KIB-EÜ-001-GR', titel: 'Grundriss Überbau', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
+      { id: 'doc-1b', projectId: 'prj-1', kind: 'plan', parentId: 'doc-1', nummer: 'NK-KIB-EÜ-001-SC', titel: 'Längsschnitt', index: 'C', gewerk: 'KIB', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -40), bemerkung: '' },
+      { id: 'doc-2', projectId: 'prj-1', kind: 'plan', parentId: null, nummer: 'NK-LST-SP-102', titel: 'Signallageplan Bereich Nord', index: 'B', gewerk: 'LST', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, -12), bemerkung: '' },
+      { id: 'doc-3', projectId: 'prj-1', kind: 'plan', parentId: null, nummer: 'NK-OLA-FL-210', titel: 'Fahrleitungsplan km 12,4 – 13,8', index: '', gewerk: 'OLA', planungsphase: 'Ausführungsplanung', eingangSoll: addDays(heute, 14), bemerkung: '' },
+      { id: 'doc-4', projectId: 'prj-1', kind: 'verzeichnis', parentId: null, nummer: 'NK-VA-PV-001', titel: 'Planverzeichnis Verkehrsanlagen', index: '02', gewerk: 'VA', planungsphase: 'Entwurfsplanung', eingangSoll: addDays(heute, 30), bemerkung: 'noch kein Planlauf gestartet' },
     ],
     templates: STANDARD_TEMPLATES,
     runs: [],
@@ -392,6 +398,8 @@ export function seedData(): AppData {
       status: 'laufend' as const,
       abbruchGrund: null,
       abbruchDatum: null,
+      abbruchArt: null,
+      abbruchNeuerIndex: null,
       steps,
       bemerkung: '',
     };

@@ -1,19 +1,13 @@
 /**
- * Projektbezogenes Adressbuch: Rollen des Projekts mit den ihnen zugewiesenen
- * Personen sowie die Kontakte selbst.
+ * Projektbezogenes Adressbuch. Je Kontakt werden Gewerk und Funktion
+ * zugewiesen; zur Auswahl stehen dabei nur die Funktionen, die im Reiter
+ * „Funktionen“ für das gewählte Gewerk hinterlegt sind.
  */
 import { useState } from 'react';
-import {
-  GEWERKBEZUG_LABEL,
-  GEWERKE,
-  type Contact,
-  type ID,
-  type Project,
-  type Role,
-} from '../../domain/types';
+import { GEWERKE, UEBERGREIFEND, type Contact, type ID, type Project, type Role } from '../../domain/types';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
-import { Badge } from '../../components/ui';
+import { KontakteImport } from './KontakteImport';
 import {
   Avatar,
   Card,
@@ -29,15 +23,11 @@ import {
 } from '../../components/ui';
 import { Icon } from '../../components/icons';
 
-const FARBEN = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
-
 export function Adressbuch({ project }: { project: Project }) {
-  const { data, updateContact, updateRole, deleteRole } = useStore();
-  const toast = useToast();
+  const { data } = useStore();
   const [suche, setSuche] = useState('');
   const [kontaktDialog, setKontaktDialog] = useState<{ contact?: Contact } | null>(null);
-  const [rolleErgaenzen, setRolleErgaenzen] = useState(false);
-  const [rolleLoeschen, setRolleLoeschen] = useState<Role | null>(null);
+  const [importOffen, setImportOffen] = useState(false);
 
   const rollen = data.roles.filter((r) => r.projectId === project.id);
   const alleKontakte = data.contacts.filter((c) => c.projectId === project.id);
@@ -45,167 +35,28 @@ export function Adressbuch({ project }: { project: Project }) {
     .filter((c) => [c.vorname, c.nachname, c.firma, c.email].join(' ').toLowerCase().includes(suche.toLowerCase()))
     .sort((a, b) => a.nachname.localeCompare(b.nachname, 'de'));
 
-  /** Gewerke, die im Projekt vorkommen – Grundlage der Besetzung je Gewerk. */
-  const projektGewerke = [
-    ...new Set([
-      ...data.documents.filter((d) => d.projectId === project.id).map((d) => d.gewerk),
-      ...alleKontakte.flatMap((c) => c.zuordnungen.map((z) => z.gewerk ?? '')),
-    ]),
-  ]
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b, 'de'));
-
-  const gewerkAuswahl = projektGewerke.length > 0 ? projektGewerke : [...GEWERKE];
-
-  /** Besetzt eine Rolle (ggf. für ein Gewerk) mit einer Person. */
-  const zuweisen = (rolle: Role, contactId: ID, gewerk: string | null) => {
-    const kontakt = alleKontakte.find((c) => c.id === contactId);
-    if (!kontakt) return;
-    if (kontakt.zuordnungen.some((z) => z.roleId === rolle.id && z.gewerk === gewerk)) return;
-    updateContact(kontakt.id, { zuordnungen: [...kontakt.zuordnungen, { roleId: rolle.id, gewerk }] });
-    toast(
-      gewerk
-        ? `${kontakt.vorname} ${kontakt.nachname} ist „${rolle.name}“ für ${gewerk}.`
-        : `${kontakt.vorname} ${kontakt.nachname} ist „${rolle.name}“.`,
-    );
-  };
-
-  const entfernen = (rolle: Role, kontakt: Contact, gewerk: string | null) => {
-    updateContact(kontakt.id, {
-      zuordnungen: kontakt.zuordnungen.filter((z) => !(z.roleId === rolle.id && z.gewerk === gewerk)),
-    });
-    toast(`${kontakt.vorname} ${kontakt.nachname} aus „${rolle.name}“ entfernt.`);
-  };
+  /** Funktion und Gewerk eines Kontakts als lesbare Angabe. */
+  const zuordnungText = (c: Contact) =>
+    c.zuordnungen
+      .map((z) => {
+        const rolle = rollen.find((r) => r.id === z.roleId);
+        if (!rolle) return null;
+        return { rolle, gewerk: z.gewerk };
+      })
+      .filter((x): x is { rolle: Role; gewerk: string | null } => Boolean(x));
 
   return (
     <div className="stack">
-      <Card>
-        <CardHeader
-          titel="Rollen im Projekt"
-          sub="Bestimmen, wer welche Prozessschritte verantwortet"
-          actions={
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setRolleErgaenzen(true)}>
-              <Icon name="plus" size={13} /> Rolle ergänzen
-            </button>
-          }
-        />
-        {rollen.length === 0 ? (
-          <EmptyState
-            icon="person"
-            titel="Keine Rollen im Projekt"
-            text="Ergänzen Sie Rollen aus den Standardrollen oder legen Sie eigene an."
-            action={
-              <button type="button" className="btn btn-primary" onClick={() => setRolleErgaenzen(true)}>
-                <Icon name="plus" size={14} /> Rolle ergänzen
-              </button>
-            }
-          />
-        ) : (
-          rollen.map((rolle) => {
-            const besetzungen = alleKontakte.flatMap((c) =>
-              c.zuordnungen.filter((z) => z.roleId === rolle.id).map((z) => ({ kontakt: c, gewerk: z.gewerk })),
-            );
-            const jeGewerk = rolle.gewerkBezug === 'individuell';
-            return (
-              <div className="list-row" key={rolle.id} style={{ alignItems: 'flex-start' }}>
-                <input
-                  type="color"
-                  value={rolle.farbe}
-                  onChange={(e) => updateRole(rolle.id, { farbe: e.target.value })}
-                  style={{ width: 24, height: 24, border: 'none', background: 'none', padding: 0, cursor: 'pointer', marginTop: 3 }}
-                  title="Farbe"
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="row wrap" style={{ gap: 8 }}>
-                    <input
-                      className="input"
-                      style={{ width: 200 }}
-                      value={rolle.name}
-                      onChange={(e) => updateRole(rolle.id, { name: e.target.value })}
-                    />
-                    <input
-                      className="input"
-                      style={{ width: 76 }}
-                      value={rolle.kuerzel}
-                      title="Kürzel"
-                      onChange={(e) => updateRole(rolle.id, { kuerzel: e.target.value })}
-                    />
-                    <Badge ton={jeGewerk ? 'orange' : 'blue'}>{GEWERKBEZUG_LABEL[rolle.gewerkBezug]}</Badge>
-                  </div>
-
-                  <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
-                    {besetzungen.length === 0 ? (
-                      <span className="small tertiary">niemand zugewiesen</span>
-                    ) : (
-                      besetzungen.map(({ kontakt, gewerk }) => (
-                        <span key={`${kontakt.id}-${gewerk ?? 'alle'}`} className="role-chip" style={{ color: rolle.farbe }}>
-                          {gewerk ? <b>{gewerk}</b> : null} {kontakt.vorname} {kontakt.nachname}
-                          <button
-                            type="button"
-                            className="btn-icon"
-                            style={{ padding: 0, marginLeft: 2, color: 'inherit' }}
-                            aria-label="Zuweisung entfernen"
-                            onClick={() => entfernen(rolle, kontakt, gewerk)}
-                          >
-                            ✕
-                          </button>
-                        </span>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="row wrap" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                  {jeGewerk ? (
-                    <select className="select" style={{ width: 110 }} defaultValue={gewerkAuswahl[0]} id={`gw-${rolle.id}`}>
-                      {gewerkAuswahl.map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <select
-                    className="select"
-                    style={{ width: 180 }}
-                    value=""
-                    onChange={(e) => {
-                      if (!e.target.value) return;
-                      const gewerk = jeGewerk
-                        ? (document.getElementById(`gw-${rolle.id}`) as HTMLSelectElement | null)?.value ?? null
-                        : null;
-                      zuweisen(rolle, e.target.value, gewerk);
-                      e.target.value = '';
-                    }}
-                  >
-                    <option value="">Person zuweisen …</option>
-                    {alleKontakte.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.vorname} {c.nachname}
-                        {c.firma ? ` (${c.firma})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    aria-label="Rolle entfernen"
-                    onClick={() => setRolleLoeschen(rolle)}
-                  >
-                    <Icon name="loeschen" size={15} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </Card>
-
       <div className="row-between wrap">
         <Search value={suche} onChange={setSuche} placeholder="Name, Firma, E-Mail …" />
-        <button type="button" className="btn btn-primary" onClick={() => setKontaktDialog({})}>
-          <Icon name="plus" size={14} /> Kontakt
-        </button>
+        <div className="row">
+          <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
+            <Icon name="importieren" size={14} /> Excel-Import
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setKontaktDialog({})}>
+            <Icon name="plus" size={14} /> Kontakt
+          </button>
+        </div>
       </div>
 
       <Card>
@@ -214,11 +65,16 @@ export function Adressbuch({ project }: { project: Project }) {
           <EmptyState
             icon="adressbuch"
             titel="Noch keine Kontakte"
-            text="Kontakte werden über ihre Rollen den Prozessschritten zugeordnet."
+            text="Legen Sie Kontakte an oder lesen Sie eine Liste als Excel-Datei ein."
             action={
-              <button type="button" className="btn btn-primary" onClick={() => setKontaktDialog({})}>
-                <Icon name="plus" size={14} /> Kontakt anlegen
-              </button>
+              <div className="row" style={{ justifyContent: 'center' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
+                  <Icon name="importieren" size={14} /> Excel-Import
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setKontaktDialog({})}>
+                  <Icon name="plus" size={14} /> Kontakt anlegen
+                </button>
+              </div>
             }
           />
         ) : (
@@ -228,16 +84,14 @@ export function Adressbuch({ project }: { project: Project }) {
                 <tr>
                   <th>Person</th>
                   <th className="col-optional">Firma</th>
-                  <th className="col-optional">Rollen</th>
+                  <th>Gewerk & Funktion</th>
                   <th>Kontakt</th>
                   <th className="actions" />
                 </tr>
               </thead>
               <tbody>
                 {kontakte.map((c) => {
-                  const meine = c.zuordnungen
-                    .map((z) => ({ rolle: rollen.find((r) => r.id === z.roleId), gewerk: z.gewerk }))
-                    .filter((x): x is { rolle: Role; gewerk: string | null } => Boolean(x.rolle));
+                  const meine = zuordnungText(c);
                   return (
                     <tr key={c.id} className="clickable" onClick={() => setKontaktDialog({ contact: c })}>
                       <td>
@@ -252,9 +106,9 @@ export function Adressbuch({ project }: { project: Project }) {
                         </span>
                       </td>
                       <td className="small muted col-optional">{c.firma}</td>
-                      <td className="col-optional">
+                      <td>
                         {meine.length === 0 ? (
-                          <span className="tertiary small">keine Rolle</span>
+                          <span className="tertiary small">keine Funktion</span>
                         ) : (
                           <span className="row wrap" style={{ gap: 5 }}>
                             {meine.map((m) => (
@@ -263,8 +117,8 @@ export function Adressbuch({ project }: { project: Project }) {
                                 className="role-chip"
                                 style={{ color: m.rolle.farbe }}
                               >
-                                {m.rolle.kuerzel || m.rolle.name}
-                                {m.gewerk ? ` · ${m.gewerk}` : ''}
+                                {m.gewerk ? `${m.gewerk} · ` : ''}
+                                {m.rolle.name}
                               </span>
                             ))}
                           </span>
@@ -302,132 +156,12 @@ export function Adressbuch({ project }: { project: Project }) {
         />
       ) : null}
 
-      {rolleErgaenzen ? (
-        <RolleErgaenzenDialog project={project} vorhanden={rollen} onClose={() => setRolleErgaenzen(false)} />
-      ) : null}
-
-      {rolleLoeschen ? (
-        <ConfirmDialog
-          titel="Rolle aus dem Projekt entfernen?"
-          text={`„${rolleLoeschen.name}“ wird aus dem Projekt und aus allen Zuweisungen entfernt. Die Standardrolle bleibt erhalten.`}
-          onConfirm={() => {
-            deleteRole(rolleLoeschen.id);
-            toast('Rolle entfernt.');
-          }}
-          onClose={() => setRolleLoeschen(null)}
-        />
-      ) : null}
+      {importOffen ? <KontakteImport project={project} onClose={() => setImportOffen(false)} /> : null}
     </div>
   );
 }
 
-/** Ergänzt das Projekt um eine Standardrolle oder eine eigene Rolle. */
-function RolleErgaenzenDialog({
-  project,
-  vorhanden,
-  onClose,
-}: {
-  project: Project;
-  vorhanden: Role[];
-  onClose: () => void;
-}) {
-  const { data, addRole } = useStore();
-  const toast = useToast();
-  const [eigene, setEigene] = useState('');
-
-  const offeneStandards = data.standardRollen.filter(
-    (s) => !vorhanden.some((r) => r.name.toLowerCase() === s.name.toLowerCase()),
-  );
-
-  const uebernehmen = (
-    name: string,
-    kuerzel: string,
-    farbe: string,
-    beschreibung: string,
-    gewerkBezug: Role['gewerkBezug'] = 'individuell',
-  ) => {
-    addRole({ projectId: project.id, name, kuerzel, farbe, beschreibung, gewerkBezug });
-    toast(`Rolle „${name}“ ergänzt.`);
-  };
-
-  return (
-    <Modal
-      titel="Rolle ergänzen"
-      sub="Standardrolle übernehmen oder eigene Rolle anlegen"
-      onClose={onClose}
-      footer={
-        <button type="button" className="btn btn-primary" onClick={onClose}>
-          Fertig
-        </button>
-      }
-    >
-      <div className="stack" style={{ gap: 16 }}>
-        <div>
-          <h3 style={{ marginBottom: 8 }}>Standardrollen</h3>
-          {offeneStandards.length === 0 ? (
-            <p className="small tertiary">Alle Standardrollen sind im Projekt vorhanden.</p>
-          ) : (
-            <div className="row wrap" style={{ gap: 6 }}>
-              {offeneStandards.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="role-chip"
-                  style={{ color: s.farbe, cursor: 'pointer', padding: '4px 11px' }}
-                  onClick={() => uebernehmen(s.name, s.kuerzel, s.farbe, s.beschreibung, s.gewerkBezug)}
-                >
-                  <Icon name="plus" size={12} /> {s.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h3 style={{ marginBottom: 8 }}>Eigene Rolle</h3>
-          <div className="row">
-            <TextInput
-              value={eigene}
-              onChange={setEigene}
-              placeholder="Bezeichnung, z.B. Prüfstatiker"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && eigene.trim()) {
-                  uebernehmen(
-                    eigene.trim(),
-                    eigene.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase(),
-                    FARBEN[vorhanden.length % FARBEN.length],
-                    '',
-                  );
-                  setEigene('');
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                if (!eigene.trim()) return;
-                uebernehmen(
-                  eigene.trim(),
-                  eigene.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase(),
-                  FARBEN[vorhanden.length % FARBEN.length],
-                  '',
-                );
-                setEigene('');
-              }}
-            >
-              <Icon name="plus" size={14} />
-            </button>
-          </div>
-          <p className="small tertiary" style={{ marginTop: 8 }}>
-            Eigene Rollen gelten nur in diesem Projekt. Projektübergreifend gültige Rollen werden im Reiter
-            <strong> Rollen</strong> gepflegt.
-          </p>
-        </div>
-      </div>
-    </Modal>
-  );
-}
+/* ------------------------------------------------------------------ */
 
 function KontaktDialog({
   project,
@@ -454,15 +188,44 @@ function KontaktDialog({
     notiz: contact?.notiz ?? '',
   });
 
+  // Gewerk und Funktion der (ersten) Zuordnung
+  const ersteZuordnung = contact?.zuordnungen[0];
+  const [gewerk, setGewerk] = useState<string>(ersteZuordnung?.gewerk ?? UEBERGREIFEND);
+  const [roleId, setRoleId] = useState<ID>(ersteZuordnung?.roleId ?? '');
+
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Gewerke aus den hinterlegten Funktionen, ergänzt um die vorgegebenen
+  const gewerkeListe = [
+    UEBERGREIFEND,
+    ...[...new Set([...GEWERKE, ...rollen.flatMap((r) => r.gewerke)])].sort((a, b) => a.localeCompare(b, 'de')),
+  ];
+
+  /** Nur Funktionen, die für das gewählte Gewerk hinterlegt sind. */
+  const moeglicheFunktionen = rollen.filter((r) =>
+    gewerk === UEBERGREIFEND ? r.gewerke.length === 0 : r.gewerke.includes(gewerk),
+  );
+
+  const gewerkWechseln = (g: string) => {
+    setGewerk(g);
+    // Funktion zurücksetzen, wenn sie im neuen Gewerk nicht vorkommt
+    const weiterhin = rollen.find(
+      (r) => r.id === roleId && (g === UEBERGREIFEND ? r.gewerke.length === 0 : r.gewerke.includes(g)),
+    );
+    if (!weiterhin) setRoleId('');
+  };
 
   const speichern = () => {
     if (!form.nachname.trim()) {
       toast('Bitte einen Nachnamen angeben.');
       return;
     }
-    if (contact) updateContact(contact.id, form);
-    else addContact({ ...form, projectId: project.id, zuordnungen: [] });
+    const zuordnungen = roleId
+      ? [{ roleId, gewerk: gewerk === UEBERGREIFEND ? null : gewerk }]
+      : (contact?.zuordnungen ?? []);
+
+    if (contact) updateContact(contact.id, { ...form, zuordnungen });
+    else addContact({ ...form, projectId: project.id, zuordnungen });
     toast(contact ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.');
     onClose();
   };
@@ -490,6 +253,28 @@ function KontaktDialog({
         }
       >
         <div className="form-grid">
+          <Field label="Gewerk" hint="bestimmt die wählbaren Funktionen">
+            <Select
+              value={gewerk}
+              onChange={gewerkWechseln}
+              options={gewerkeListe.map((g) => ({ value: g, label: g }))}
+            />
+          </Field>
+          <Field
+            label="Funktion"
+            hint={
+              moeglicheFunktionen.length === 0
+                ? 'Für dieses Gewerk ist noch keine Funktion hinterlegt.'
+                : undefined
+            }
+          >
+            <Select
+              value={roleId}
+              onChange={setRoleId}
+              placeholder="– keine –"
+              options={moeglicheFunktionen.map((r) => ({ value: r.id, label: r.name }))}
+            />
+          </Field>
           <Field label="Anrede">
             <Select
               value={form.anrede}
@@ -518,24 +303,6 @@ function KontaktDialog({
           </Field>
           <Field label="Anschrift" full hint="Straße, PLZ und Ort">
             <TextArea value={form.anschrift} onChange={(v) => set('anschrift', v)} rows={2} />
-          </Field>
-          <Field label="Rollen im Projekt" full hint="Zugewiesen wird oben in der Liste „Rollen im Projekt“.">
-            <div className="row wrap" style={{ gap: 6 }}>
-              {(contact?.zuordnungen ?? []).length === 0 ? (
-                <span className="tertiary small">noch keine Rolle zugewiesen</span>
-              ) : (
-                (contact?.zuordnungen ?? []).map((z) => {
-                  const r = rollen.find((x) => x.id === z.roleId);
-                  if (!r) return null;
-                  return (
-                    <span key={`${z.roleId}-${z.gewerk ?? 'alle'}`} className="role-chip" style={{ color: r.farbe }}>
-                      {r.name}
-                      {z.gewerk ? ` · ${z.gewerk}` : ''}
-                    </span>
-                  );
-                })
-              )}
-            </div>
           </Field>
           <Field label="Notiz" full>
             <TextArea value={form.notiz} onChange={(v) => set('notiz', v)} rows={2} />

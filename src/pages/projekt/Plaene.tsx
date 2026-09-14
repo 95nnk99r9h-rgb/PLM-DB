@@ -16,6 +16,8 @@ import { formatDate, relativeLabel, tageLabel, today } from '../../lib/dates';
 import {
   DOCUMENT_KIND_LABEL,
   GEWERKE,
+  INDEX_LABEL,
+  NUMMER_LABEL,
   PLANUNGSPHASEN,
   type DocumentKind,
   type ID,
@@ -27,7 +29,8 @@ import {
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { AmpelPunkt, DocKindIcon } from '../../components/common';
-import { SchrittListe } from '../Prozessketten';
+import { SchrittListe } from '../Workflows';
+import { PlaeneImport } from './PlaeneImport';
 import {
   Badge,
   Callout,
@@ -58,6 +61,8 @@ interface Stand {
 }
 
 export function standFuer(doc: PlanDocument, runs: PlanRun[]): Stand {
+  // Untergeordnete Pläne laufen im Planlauf des übergeordneten Eintrags mit.
+  if (doc.parentId) return { text: 'im übergeordneten Planlauf', ton: '', rang: 4 };
   const eigene = runs.filter((r) => r.documentId === doc.id);
   const aktiv = eigene.find(istAktiv);
   if (aktiv) {
@@ -78,6 +83,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const [sortFeld, setSortFeld] = useState<SortFeld>('nummer');
   const [absteigend, setAbsteigend] = useState(false);
   const [dialog, setDialog] = useState<{ doc?: PlanDocument } | null>(null);
+  const [importOffen, setImportOffen] = useState(false);
 
   const runs = useMemo(() => data.runs.filter((r) => r.projectId === project.id), [data.runs, project.id]);
   const alle = data.documents.filter((d) => d.projectId === project.id);
@@ -98,7 +104,15 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     });
   };
 
-  const zeilen = sortiere(gefiltert);
+  // Hierarchie: untergeordnete Pläne stehen unter ihrem Paket bzw. Verzeichnis
+  const zeilen: { doc: PlanDocument; tiefe: number }[] = [];
+  const sammle = (doc: PlanDocument, tiefe: number) => {
+    zeilen.push({ doc, tiefe });
+    sortiere(gefiltert.filter((d) => d.parentId === doc.id)).forEach((k) => sammle(k, tiefe + 1));
+  };
+  sortiere(gefiltert.filter((d) => !d.parentId || !gefiltert.some((p) => p.id === d.parentId))).forEach((d) =>
+    sammle(d, 0),
+  );
 
   const sortieren = (feld: SortFeld) => {
     if (feld === sortFeld) setAbsteigend((a) => !a);
@@ -137,9 +151,14 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
           />
           <Search value={suche} onChange={setSuche} placeholder="Nummer, Titel, Gewerk …" />
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
-          <Icon name="plus" size={14} /> Neuer Eintrag
-        </button>
+        <div className="row">
+          <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
+            <Icon name="importieren" size={14} /> Excel-Import
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
+            <Icon name="plus" size={14} /> Neuer Eintrag
+          </button>
+        </div>
       </div>
 
       <Card>
@@ -148,7 +167,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
           sub={
             ohneLauf > 0
               ? `${ohneLauf} Eintrag/Einträge ohne Planlauf · Spaltenüberschrift klicken zum Sortieren`
-              : 'Zu jedem Eintrag läuft eine Prozesskette · Spaltenüberschrift klicken zum Sortieren'
+              : 'Zu jedem Eintrag läuft eine Workflow · Spaltenüberschrift klicken zum Sortieren'
           }
         />
         {zeilen.length === 0 ? (
@@ -167,7 +186,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             <table className="table">
               <thead>
                 <tr>
-                  <Kopf feld="nummer">Plancodierung / Titel</Kopf>
+                  <Kopf feld="nummer">Bezeichnung / Titel</Kopf>
                   <Kopf feld="gewerk" klasse="col-optional">Gewerk</Kopf>
                   <Kopf feld="planungsphase" klasse="col-optional">Phase</Kopf>
                   <Kopf feld="eingangSoll" klasse="col-optional">Eingang Soll</Kopf>
@@ -177,7 +196,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 </tr>
               </thead>
               <tbody>
-                {zeilen.map((doc) => {
+                {zeilen.map(({ doc, tiefe }) => {
                   const stand = standFuer(doc, runs);
                   const run = stand.run;
                   const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
@@ -189,7 +208,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       style={run?.status === 'abgebrochen' ? { opacity: 0.55 } : undefined}
                       onClick={() => (run ? oeffneLauf(run.id) : setDialog({ doc }))}
                     >
-                      <td>
+                      <td style={{ paddingLeft: 14 + tiefe * 22 }}>
                         <span className="row" style={{ gap: 9 }}>
                           <DocKindIcon kind={doc.kind} />
                           <span style={{ minWidth: 0 }}>
@@ -263,6 +282,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
         )}
       </Card>
 
+      {importOffen ? <PlaeneImport project={project} onClose={() => setImportOffen(false)} /> : null}
+
       {dialog ? (
         <PlanDialog
           project={project}
@@ -277,7 +298,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
 /**
  * Anlage und Pflege eines Eintrags. Beim Anlegen – und bei Einträgen ohne
- * Planlauf – gehört die Prozesskette dazu, sodass Eintrag und Planlauf
+ * Planlauf – gehört die Workflow dazu, sodass Eintrag und Planlauf
  * gemeinsam entstehen.
  */
 function PlanDialog({
@@ -299,10 +320,10 @@ function PlanDialog({
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
   const rollen = data.roles.filter((r) => r.projectId === project.id);
   const vorhandenerLauf = doc ? data.runs.find((r) => r.documentId === doc.id) : undefined;
-  const braucheLauf = !vorhandenerLauf;
 
   const [form, setForm] = useState({
     kind: doc?.kind ?? ('plan' as DocumentKind),
+    parentId: doc?.parentId ?? (null as ID | null),
     nummer: doc?.nummer ?? '',
     titel: doc?.titel ?? '',
     index: doc?.index ?? '',
@@ -313,6 +334,14 @@ function PlanDialog({
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Untergeordnete Pläne laufen im Planlauf des übergeordneten Eintrags mit
+  const untergeordnet = form.parentId !== null;
+  const braucheLauf = !vorhandenerLauf && !untergeordnet;
+
+  const moeglicheEltern = data.documents.filter(
+    (d) => d.projectId === project.id && d.id !== doc?.id && d.kind !== 'plan',
+  );
 
   /** Bearbeitbare Kopie der Vorlagenschritte. */
   const kopie = (id: string): ProcessTemplateStep[] => {
@@ -362,7 +391,7 @@ function PlanDialog({
     }
 
     if (steps.length === 0 || steps.some((s) => !s.name.trim())) {
-      toast('Bitte jeden Schritt der Prozesskette benennen.');
+      toast('Bitte jeden Schritt der Workflow benennen.');
       return;
     }
 
@@ -398,6 +427,8 @@ function PlanDialog({
       status: 'laufend',
       abbruchGrund: null,
       abbruchDatum: null,
+      abbruchArt: null,
+      abbruchNeuerIndex: null,
       steps: markiert,
       bemerkung: '',
     });
@@ -417,8 +448,8 @@ function PlanDialog({
   return (
     <>
       <Modal
-        titel={doc ? `${DOCUMENT_KIND_LABEL[doc.kind]} bearbeiten` : 'Neuer Eintrag mit Planlauf'}
-        sub={doc ? doc.nummer : 'Stammdaten und Prozesskette – der Planlauf startet mit dem Eintrag'}
+        titel={doc ? `${DOCUMENT_KIND_LABEL[doc.kind]} bearbeiten` : 'Neuer Eintrag'}
+        sub={doc ? doc.nummer : 'Stammdaten und Workflow – der Planlauf startet mit dem Eintrag'}
         wide={braucheLauf}
         onClose={onClose}
         footer={
@@ -443,14 +474,34 @@ function PlanDialog({
             <Field label="Art">
               <Select
                 value={form.kind}
-                onChange={(v) => set('kind', v as DocumentKind)}
+                onChange={(v) => {
+                  set('kind', v as DocumentKind);
+                  if (v !== 'plan') set('parentId', null);
+                }}
                 options={Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => ({ value, label }))}
               />
             </Field>
-            <Field label="Plancodierung">
-              <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="NK-KIB-EÜ-001" />
+            {form.kind === 'plan' ? (
+              <Field
+                label="Übergeordnet"
+                hint="Untergeordnete Pläne laufen im Planlauf des Pakets bzw. Verzeichnisses mit."
+              >
+                <Select
+                  value={form.parentId ?? ''}
+                  onChange={(v) => set('parentId', v || null)}
+                  placeholder="– eigenständig –"
+                  options={moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
+                />
+              </Field>
+            ) : null}
+            <Field label={NUMMER_LABEL[form.kind]}>
+              <TextInput
+                value={form.nummer}
+                onChange={(v) => set('nummer', v)}
+                placeholder={form.kind === 'plan' ? 'NK-KIB-EÜ-001' : 'Bezeichnung'}
+              />
             </Field>
-            <Field label="Index / Revision" hint="bleibt leer, solange kein Index vergeben ist">
+            <Field label={INDEX_LABEL[form.kind]} hint="bleibt leer, solange nichts vergeben ist">
               <TextInput value={form.index} onChange={(v) => set('index', v)} placeholder="ohne" />
             </Field>
             <Field label="Titel" full>
@@ -496,7 +547,7 @@ function PlanDialog({
             <>
               <div className="divider" />
               <div className="form-grid">
-                <Field label="Prozesskette" full hint={vorlagen.find((t) => t.id === templateId)?.beschreibung}>
+                <Field label="Workflow" full hint={vorlagen.find((t) => t.id === templateId)?.beschreibung}>
                   <Select
                     value={templateId}
                     onChange={vorlageWechseln}
@@ -517,12 +568,17 @@ function PlanDialog({
                   </span>
                 </div>
                 <p className="small muted" style={{ marginBottom: 10 }}>
-                  Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Prozesskette selbst bleibt davon
+                  Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Workflow selbst bleibt davon
                   unberührt.
                 </p>
                 <SchrittListe steps={steps} setSteps={setSteps} rollen={rollen.map((r) => r.name)} />
               </div>
             </>
+          ) : untergeordnet ? (
+            <Callout icon="i">
+              Untergeordnete Pläne erhalten keinen eigenen Planlauf – maßgeblich ist der Lauf des übergeordneten
+              Planpakets bzw. Planverzeichnisses.
+            </Callout>
           ) : (
             <Callout icon="i">
               Für diesen Eintrag läuft bereits der Planlauf „{vorhandenerLauf?.name}“. Die Schritte werden dort

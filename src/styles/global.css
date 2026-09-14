@@ -524,6 +524,9 @@ a:hover { text-decoration: underline; }
 .chain-node.gateway { border-radius: var(--radius); border-style: dashed; }
 
 .step-row { display: grid; grid-template-columns: 26px 1fr; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--separator); }
+/* Zeile mit Aktionsspalte rechts (Schritt anpassen) */
+.step-row.mit-aktion { grid-template-columns: 26px 1fr auto; }
+.step-anpassen { align-self: start; margin-top: 2px; }
 .step-row:last-child { border-bottom: none; }
 .step-row.aktiv { background: rgba(0, 113, 227, 0.035); }
 .step-marker { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 2px; }

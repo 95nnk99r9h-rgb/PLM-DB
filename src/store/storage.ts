@@ -6,6 +6,7 @@
 import {
   DATEN_VERSION,
   EIGENE_ROLLE,
+  GEWERKE,
   STAMMDATEN_VERSION,
   type AppData,
   type ProcessTemplate,
@@ -20,6 +21,17 @@ const ALTE_EIGENE_ROLLE = 'PLM';
 
 /** Hebt einen Rollennamen auf die aktuelle Bezeichnung. */
 const rollenName = (name: string) => (name === ALTE_EIGENE_ROLLE ? EIGENE_ROLLE : name);
+
+/**
+ * Frühere Fassungen kannten nur „individuell“ bzw. „übergreifend“. Daraus wird
+ * die Liste der Gewerke: individuell gilt zunächst für alle Gewerke.
+ */
+function gewerkeVon(rolle: { gewerke?: string[]; gewerkBezug?: string; name: string }): string[] {
+  if (Array.isArray(rolle.gewerke)) return rolle.gewerke;
+  if (rolle.gewerkBezug === 'uebergreifend') return [];
+  if (rolle.gewerkBezug === 'individuell') return [...GEWERKE];
+  return STANDARD_ROLLEN.find((s) => s.name === rollenName(rolle.name))?.gewerke ?? [...GEWERKE];
+}
 
 const KEY = 'planlauf-management.data.v1';
 
@@ -39,7 +51,7 @@ const neueId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice
 
 /**
  * Übernimmt neue mitgelieferte Stammdaten in einen bestehenden Bestand:
- * Standardrollen und Standard-Prozessketten werden auf den aktuellen Stand
+ * Funktionen und Standard-Workflows werden auf den aktuellen Stand
  * gebracht und fehlende Rollen in jedes Projekt ergänzt. Eigene Rollen,
  * eigene Ketten, Projektvarianten und laufende Planläufe bleiben erhalten.
  */
@@ -48,7 +60,7 @@ function stammdatenAktualisieren(daten: AppData): AppData {
 
   const gleich = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-  // Standardrollen: mitgelieferte übernehmen, eigene behalten
+  // Funktionen: mitgelieferte übernehmen, eigene behalten
   const eigeneStandards = (daten.standardRollen ?? []).filter(
     (r) => !STANDARD_ROLLEN.some((s) => gleich(s.name, r.name)),
   );
@@ -57,7 +69,7 @@ function stammdatenAktualisieren(daten: AppData): AppData {
     ...eigeneStandards,
   ];
 
-  // Standardketten ersetzen, eigene Ketten und Projektvarianten behalten
+  // Standard-Workflows ersetzen, eigene Ketten und Projektvarianten behalten
   const eigeneKetten = (daten.templates ?? []).filter(
     (t) => t.projectId !== null || t.herkunft !== 'standard',
   );
@@ -76,7 +88,7 @@ function stammdatenAktualisieren(daten: AppData): AppData {
         kuerzel: standard.kuerzel,
         farbe: standard.farbe,
         beschreibung: standard.beschreibung,
-        gewerkBezug: standard.gewerkBezug,
+        gewerke: [...standard.gewerke],
       });
     }
   }
@@ -116,16 +128,13 @@ function migriere(daten: AppData): AppData {
       : { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
-        ? daten.standardRollen.map((r) => ({ ...r, name: rollenName(r.name) }))
+        ? daten.standardRollen.map((r) => ({ ...r, name: rollenName(r.name), gewerke: gewerkeVon(r) }))
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: (daten.projects ?? []).map((p) => ({ ...p, markiert: p.markiert ?? true })),
     roles: (daten.roles ?? []).map((r) => ({
       ...r,
       name: rollenName(r.name),
-      // Übergreifend besetzt sind nur die projektweiten Rollen
-      gewerkBezug:
-        r.gewerkBezug ??
-        (STANDARD_ROLLEN.find((s) => s.name === rollenName(r.name))?.gewerkBezug ?? 'individuell'),
+      gewerke: gewerkeVon(r),
     })),
     contacts: (daten.contacts ?? []).map((c) => {
       const alt = c as unknown as { roleIds?: string[] };
@@ -143,6 +152,7 @@ function migriere(daten: AppData): AppData {
         id: d.id,
         projectId: d.projectId,
         kind: d.kind,
+        parentId: d.parentId ?? null,
         nummer: d.nummer,
         titel: d.titel,
         index: d.index ?? '',
@@ -172,6 +182,8 @@ function migriere(daten: AppData): AppData {
       status: r.status === 'abgeschlossen' || r.status === 'abgebrochen' ? r.status : 'laufend',
       abbruchGrund: r.abbruchGrund ?? null,
       abbruchDatum: r.abbruchDatum ?? null,
+      abbruchArt: r.abbruchArt ?? (r.status === 'abgebrochen' ? 'ersatzlos' : null),
+      abbruchNeuerIndex: r.abbruchNeuerIndex ?? null,
       steps: (r.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
         return {

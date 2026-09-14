@@ -94,7 +94,12 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                     </td>
                     <td>
                       <strong>{f.step.name}</strong>
-                      <div className="small tertiary">{f.run.name}</div>
+                      <div className="small tertiary">
+                        {(() => {
+                          const doc = data.documents.find((d) => d.id === f.run.documentId);
+                          return doc ? `${doc.nummer} · ${doc.titel}` : f.run.name;
+                        })()}
+                      </div>
                     </td>
                     <td className="small muted col-optional">
                       {f.project.nummer} {f.project.name}
@@ -148,7 +153,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Planlauf</th>
+                        <th>Plan / Paket / Verzeichnis</th>
                         <th>Aktueller Schritt</th>
                         <th className="col-optional">Verantwortlich</th>
                         <th style={{ width: 150 }}>Fortschritt</th>
@@ -163,6 +168,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                           : 'erledigt';
                         const pct = fortschritt(run);
                         const kontakt = data.contacts.find((c) => c.id === step?.contactId);
+                        const doc = data.documents.find((d) => d.id === run.documentId);
                         return (
                           <tr
                             key={run.id}
@@ -170,8 +176,14 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                             onClick={() => navigate({ view: 'planlauf', projectId: run.projectId, runId: run.id })}
                           >
                             <td>
-                              <strong>{run.name}</strong>
-                              <div className="small tertiary">{run.templateName}</div>
+                              <span className="num">{doc?.nummer}</span>
+                              <div>
+                                <strong>{doc?.titel ?? run.name}</strong>
+                              </div>
+                              <div className="small tertiary">
+                                {doc?.gewerk ? `${doc.gewerk} · ` : ''}
+                                {run.templateName}
+                              </div>
                             </td>
                             <td className="small">
                               <span className="row" style={{ gap: 7 }}>

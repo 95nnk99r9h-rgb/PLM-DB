@@ -78,19 +78,19 @@ Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar blei
 Anlage und Pflege von Projekten (Projektnummer, Name, Status, Beschreibung). Beim Anlegen werden
 die Standardrollen und die E-Mail-Vorlagen übernommen.
 
-### Rollen und Gewerke
-Im übergeordneten Reiter **Rollen** werden die projektübergreifenden **Standardrollen** gepflegt
-(Bezeichnung, Kürzel, Farbe, Besetzung). Neue Projekte übernehmen sie automatisch. Mitgeliefert sind
-die vorgegebenen Rollen: Planlaufmanagement (PLM), Projektleitung (PL), Fachplaner (FP),
+### Funktionen und Gewerke
+Im übergeordneten Reiter **Funktionen** werden die projektübergreifenden Funktionen gepflegt –
+gegliedert in eine Seite je Gewerk sowie eine Seite **Übergreifend**. Neue Projekte übernehmen sie
+automatisch. Mitgeliefert sind die vorgegebenen Funktionen: Planlaufmanagement (PLM), Projektleitung (PL), Fachplaner (FP),
 Fachspezialist (FS), Bauvorlageberechtiger (BVB), Bau AN, Bauüberwachung (BÜW), Fachtechnischer
 Prüfer (PSV), Prüfstatiker, Vermessungs-, Erdungs-, Schweißtechnischer, Korrosionsschutz-,
 Gleisgeometrie- und Geotechnischer Prüfer.
 
-Jede Rolle wird entweder **je Gewerk** oder **übergreifend** besetzt: Planlaufmanagement und
-Projektleitung gelten für alle Gewerke, alle übrigen Rollen werden je Gewerk mit einer eigenen
-Person belegt – es gibt also z.B. einen Fachplaner je Gewerk. Beim Start eines Planlaufs setzt die
-Anwendung deshalb die Verantwortlichen **nach dem Gewerk des Plans** ein: Zwei Pläne nach derselben
-Prozesskette, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche Verantwortliche.
+Funktionen auf der Seite **Übergreifend** (Planlaufmanagement, Projektleitung) werden im Projekt
+einmal besetzt; alle übrigen gehören zu einem oder mehreren Gewerken und werden je Gewerk mit einer
+eigenen Person belegt – es gibt also z.B. einen Fachplaner je Gewerk. Beim Start eines Planlaufs
+setzt die Anwendung die Verantwortlichen **nach dem Gewerk des Plans** ein: Zwei Pläne nach
+demselben Workflow, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche Verantwortliche.
 
 Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – ergänzt um freie Eingaben.
 
@@ -107,11 +107,24 @@ werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST
 freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
 der Soll-Termin für den Eingang und eine Bemerkung geführt.
 
-**Zu jedem Eintrag gehört genau ein Planlauf.** Er entsteht zusammen mit dem Eintrag: Im selben
-Dialog werden die Prozesskette gewählt und ihre Schritte für diesen Lauf angepasst. Die Liste zeigt
-deshalb Stammdaten und Ablauf nebeneinander – aktueller Schritt, Verantwortlicher, Frist und
+Pläne lassen sich einem **Planpaket oder Planverzeichnis unterordnen**. Untergeordnete Pläne
+durchlaufen keinen eigenen Planlauf – maßgeblich ist der Lauf des übergeordneten Eintrags; die
+Liste weist sie entsprechend aus.
+
+**Zu jedem eigenständigen Eintrag gehört genau ein Planlauf.** Er entsteht zusammen mit dem Eintrag:
+Im selben Dialog werden der Workflow gewählt und seine Schritte für diesen Lauf angepasst. Die Liste
+zeigt Stammdaten und Ablauf nebeneinander – aktueller Schritt, Verantwortlicher, Frist und
 Fortschritt – und lässt sich über die Spaltenüberschriften sortieren. Ein Klick auf die Zeile öffnet
 den Planlauf.
+
+Die Feldbezeichnungen richten sich nach der Art: **Plancodierung** beim Plan, **Name Planpaket**
+bzw. **Name PlanVZ** beim Paket und Verzeichnis, wo statt *Index* die **Ausgabe** geführt wird.
+
+**Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
+*Art · Plancodierung/Name Planpaket / Name Plan VZ · Index/Ausgabe · Titel · Gewerk ·
+Planungsphase · Eingang Soll · Bemerkung · Workflow*. Ist in *Workflow* ein hinterlegter Workflow
+benannt, startet der Planlauf gleich beim Import. Eine zusätzliche Spalte *Übergeordnet* ordnet
+Pläne einem Paket oder Verzeichnis unter.
 
 ### Prozessketten
 Ein Schritt ist eine **Aufgabe**, eine **Entscheidung** oder **Sonstiges**, hat eine Frist in Tagen und
@@ -170,13 +183,19 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
 * Bei **Entscheidungen** wird die Antwort im Lauf gewählt. Der angezeigte Verlauf folgt dieser
   Antwort; ohne Auswahl der ersten Möglichkeit. Schritte, die nur bei anderer Antwort durchlaufen
   werden, sind unterhalb der Liste aufgeführt.
-* Ein Lauf kann mit Begründung **abgebrochen** werden. Er bleibt ausgegraut samt Grund in der
-  Projektansicht sichtbar und erscheint nicht mehr in Übersicht und Fristenliste.
+* Im Planlauf sind die Schaltflächen (Erledigt, Überspringen, Erinnern) nur am **aktuell anstehenden
+  Schritt** sichtbar; abgeschlossene Schritte bieten *Wieder öffnen*, und *Anpassen* steht als
+  Stiftsymbol rechts an jeder Zeile.
+* Ein Lauf kann mit Begründung **abgebrochen** werden – wahlweise **ersatzlos** oder mit **neuem
+  Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
+  Planlauf beginnt mit denselben Schritten von vorn. Der abgebrochene Lauf bleibt ausgegraut samt
+  Grund in der Projektansicht sichtbar und erscheint nicht mehr in Übersicht und Fristenliste.
 
 ### Fristen & Erinnerungen
-Zentrale Fristenübersicht über alle Projekte, sortiert nach Dringlichkeit und gefiltert nach
-überfällig / fällig / im Plan. Ein Schritt gilt als *fällig*, sobald der Soll-Termin näher liegt als
-die in den Projekteinstellungen gepflegte Vorlaufzeit.
+Fristenübersicht über alle Projekte, sortiert nach Dringlichkeit und gefiltert nach
+überfällig / fällig / im Plan. Angezeigt wird je Planlauf **nur der aktuell anstehende Schritt**.
+Ein Schritt gilt als *fällig*, sobald der Soll-Termin näher liegt als die in den Projekteinstellungen
+gepflegte Vorlaufzeit.
 
 Je Schritt öffnet der Button **Erinnern** ein Fenster mit der vorbereiteten E-Mail: Die zur Lage
 passende Vorlage (Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan,
@@ -219,9 +238,10 @@ src/
     store.tsx    Zentraler Zustand, alle Schreibzugriffe
   lib/
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit
+    xlsxLesen.ts Liest Excel- und CSV-Listen für die Importe
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     dates.ts     Fristen- und Datumsrechnung, router.ts, pwa.ts
-  pages/         Ansichten (Übersicht, Fristen, Projekte, Prozessketten, Rollen, Projektreiter)
+  pages/         Ansichten (Übersicht, Fristen, Projekte, Workflows, Funktionen, Projektreiter)
   components/    Wiederverwendbare Bausteine (ui.tsx, icons.tsx, EmailDialog …)
   styles/        Design-Tokens im hellen Apple-Erscheinungsbild
 ```

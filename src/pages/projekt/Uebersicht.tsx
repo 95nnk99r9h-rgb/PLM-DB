@@ -91,7 +91,7 @@ export function Uebersicht({
           <div className="table-scroll"><table className="table">
             <thead>
               <tr>
-                <th>Planlauf</th>
+                <th>Plan / Paket / Verzeichnis</th>
                 <th>Aktueller Schritt</th>
                 <th>Soll</th>
                 <th style={{ width: 140 }}>Fortschritt</th>
@@ -106,8 +106,18 @@ export function Uebersicht({
                 return (
                   <tr key={run.id} className="clickable" onClick={() => oeffneLauf(run.id)}>
                     <td>
-                      <strong>{run.name}</strong>
-                      <div className="small tertiary">{run.templateName}</div>
+                      {(() => {
+                        const doc = data.documents.find((d) => d.id === run.documentId);
+                        return (
+                          <>
+                            <span className="num">{doc?.nummer}</span>
+                            <div>
+                              <strong>{doc?.titel ?? run.name}</strong>
+                            </div>
+                            <div className="small tertiary">{run.templateName}</div>
+                          </>
+                        );
+                      })()}
                     </td>
                     <td className="small">
                       <span className="row" style={{ gap: 7 }}>

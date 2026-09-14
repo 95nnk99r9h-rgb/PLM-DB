@@ -7,7 +7,7 @@ import { Einstellungen } from './projekt/Einstellungen';
 import { ExportDialog } from './projekt/ExportDialog';
 import { Plaene } from './projekt/Plaene';
 import { Uebersicht } from './projekt/Uebersicht';
-import { Prozessketten } from './Prozessketten';
+import { Workflows } from './Workflows';
 import { Fristen } from './Fristen';
 import { Icon } from '../components/icons';
 
@@ -15,7 +15,7 @@ const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
   { id: 'plaene', label: 'Pläne & Planläufe' },
   { id: 'adressbuch', label: 'Adressbuch' },
-  { id: 'ketten', label: 'Prozessketten' },
+  { id: 'ketten', label: 'Workflows' },
   { id: 'einstellungen', label: 'Einstellungen' },
 ];
 
@@ -58,7 +58,7 @@ export function ProjektDetail({
         </>
       ) : null}
       {tab === 'adressbuch' ? <Adressbuch project={project} /> : null}
-      {tab === 'ketten' ? <Prozessketten projectId={project.id} /> : null}
+      {tab === 'ketten' ? <Workflows projectId={project.id} /> : null}
       {tab === 'einstellungen' ? <Einstellungen project={project} /> : null}
 
       {exportOffen ? <ExportDialog project={project} onClose={() => setExportOffen(false)} /> : null}

@@ -10,6 +10,7 @@ import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
 import { today } from '../lib/dates';
 import type {
+  AbbruchArt,
   AppData,
   Bearbeiter,
   Contact,
@@ -36,11 +37,11 @@ interface StoreValue {
   toggleMarkiert: (id: ID) => void;
   updateProject: (id: ID, patch: Partial<Project>) => void;
   deleteProject: (id: ID) => void;
-  /* Standardrollen (projektübergreifend) */
+  /* Funktionen (projektübergreifend) */
   addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
   updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => void;
   deleteStandardRolle: (id: ID) => void;
-  /* Projektrollen */
+  /* Projektfunktionen */
   addRole: (r: Omit<Role, 'id'>) => ID;
   updateRole: (id: ID, patch: Partial<Role>) => void;
   deleteRole: (id: ID) => void;
@@ -63,7 +64,7 @@ interface StoreValue {
   updateStep: (runId: ID, stepId: ID, patch: Partial<RunStep>) => void;
   addStep: (runId: ID, step: Omit<RunStep, 'id'>, position?: number) => void;
   /** Bricht einen Lauf mit Begründung ab; er bleibt im Projekt sichtbar. */
-  abbrechenRun: (runId: ID, grund: string) => void;
+  abbrechenRun: (runId: ID, grund: string, art: AbbruchArt, neuerIndex: string | null) => void;
   /* Verwaltung */
   ersetzeDaten: (d: AppData) => void;
   zuruecksetzen: () => void;
@@ -217,12 +218,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }),
         })),
 
-      abbrechenRun: (runId, grund) =>
+      abbrechenRun: (runId, grund, art, neuerIndex) =>
         mutate((d) => ({
           ...d,
           runs: d.runs.map((r) =>
             r.id === runId
-              ? { ...r, status: 'abgebrochen' as const, abbruchGrund: grund, abbruchDatum: today() }
+              ? {
+                  ...r,
+                  status: 'abgebrochen' as const,
+                  abbruchGrund: grund,
+                  abbruchDatum: today(),
+                  abbruchArt: art,
+                  abbruchNeuerIndex: neuerIndex,
+                }
               : r,
           ),
         })),
