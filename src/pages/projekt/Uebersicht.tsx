@@ -34,7 +34,7 @@ export function Uebersicht({
     <div className="stack">
       <div className="grid grid-4">
         <Stat wert={dokumente.length} label="Pläne, Pakete & Verzeichnisse" onClick={() => gotoTab('plaene')} />
-        <Stat wert={aktiv.length} label="Laufende Planläufe" ton="blue" onClick={() => gotoTab('planlaeufe')} />
+        <Stat wert={aktiv.length} label="Laufende Planläufe" ton="blue" onClick={() => gotoTab('plaene')} />
         <Stat wert={ueberfaellig.length} label="Überfällige Schritte" ton={ueberfaellig.length ? 'red' : 'green'} />
         <Stat wert={kontakte.length} label="Kontakte im Adressbuch" onClick={() => gotoTab('adressbuch')} />
       </div>
@@ -84,7 +84,7 @@ export function Uebersicht({
           titel="Laufende Planläufe"
           sub={`${aktiv.length} von ${laeufe.length}`}
           actions={
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => gotoTab('planlaeufe')}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => gotoTab('plaene')}>
               Alle <Icon name="chevron" size={13} />
             </button>
           }

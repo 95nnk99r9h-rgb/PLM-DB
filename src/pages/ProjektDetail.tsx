@@ -1,12 +1,11 @@
 /** Projektarbeitsbereich mit Reitern für alle projektbezogenen Funktionen. */
 import { useState } from 'react';
-import type { PlanDocument, Project } from '../domain/types';
+import type { Project } from '../domain/types';
 import type { ProjektTab, Route } from '../lib/router';
 import { Adressbuch } from './projekt/Adressbuch';
 import { Einstellungen } from './projekt/Einstellungen';
 import { ExportDialog } from './projekt/ExportDialog';
 import { Plaene } from './projekt/Plaene';
-import { Planlaeufe } from './projekt/Planlaeufe';
 import { Uebersicht } from './projekt/Uebersicht';
 import { Prozessketten } from './Prozessketten';
 import { Fristen } from './Fristen';
@@ -14,8 +13,7 @@ import { Icon } from '../components/icons';
 
 const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
-  { id: 'plaene', label: 'Pläne & Pakete' },
-  { id: 'planlaeufe', label: 'Planläufe' },
+  { id: 'plaene', label: 'Pläne & Planläufe' },
   { id: 'adressbuch', label: 'Adressbuch' },
   { id: 'ketten', label: 'Prozessketten' },
   { id: 'einstellungen', label: 'Einstellungen' },
@@ -30,7 +28,6 @@ export function ProjektDetail({
   tab: ProjektTab;
   navigate: (r: Route) => void;
 }) {
-  const [startFuer, setStartFuer] = useState<PlanDocument | null>(null);
   const [exportOffen, setExportOffen] = useState(false);
   const gotoTab = (t: ProjektTab) => navigate({ view: 'projekt', projectId: project.id, tab: t });
   const oeffneLauf = (runId: string) => navigate({ view: 'planlauf', projectId: project.id, runId });
@@ -52,22 +49,8 @@ export function ProjektDetail({
 
       {tab === 'uebersicht' ? <Uebersicht project={project} gotoTab={gotoTab} oeffneLauf={oeffneLauf} /> : null}
       {tab === 'plaene' ? (
-        <Plaene
-          project={project}
-          onPlanlaufStarten={(doc) => {
-            setStartFuer(doc);
-            gotoTab('planlaeufe');
-          }}
-        />
-      ) : null}
-      {tab === 'planlaeufe' ? (
         <>
-          <Planlaeufe
-            project={project}
-            onOeffnen={oeffneLauf}
-            startFuerDokument={startFuer}
-            onStartDialogSchliessen={() => setStartFuer(null)}
-          />
+          <Plaene project={project} oeffneLauf={oeffneLauf} />
           <div style={{ marginTop: 18 }}>
             <h2 style={{ marginBottom: 10 }}>Fristen in diesem Projekt</h2>
             <Fristen navigate={navigate} projectId={project.id} />

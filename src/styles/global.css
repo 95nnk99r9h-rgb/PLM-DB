@@ -275,7 +275,15 @@ a:hover { text-decoration: underline; }
 }
 .link-btn:hover { color: var(--accent); }
 
-.btn-icon { padding: 5px 8px; border-radius: 7px; background: transparent; color: var(--text-secondary); }
+.btn-icon {
+  border: none;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.btn-icon:disabled { opacity: 0.35; cursor: not-allowed; }
 .btn-icon:hover { background: var(--bg-hover); color: var(--text); }
 
 /* ------------------------------------------------------------------ */

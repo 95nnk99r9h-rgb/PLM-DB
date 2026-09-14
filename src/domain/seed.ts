@@ -160,10 +160,22 @@ Mit freundlichen Grüßen
 /* Demodaten                                                           */
 /* ------------------------------------------------------------------ */
 
+/** Projektübergreifende Standardrollen, die neue Projekte übernehmen. */
+export const STANDARD_ROLLEN = [
+  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#0071e3', beschreibung: 'Eigene Bearbeitung (Planlaufmanagement)' },
+  { id: 'srol-op', name: 'Objektplanung', kuerzel: 'OP', farbe: '#5856d6', beschreibung: '' },
+  { id: 'srol-tga', name: 'Fachplanung TGA', kuerzel: 'TGA', farbe: '#ff9500', beschreibung: '' },
+  { id: 'srol-twp', name: 'Tragwerksplanung', kuerzel: 'TWP', farbe: '#34c759', beschreibung: '' },
+  { id: 'srol-bh', name: 'Bauherr', kuerzel: 'BH', farbe: '#ff3b30', beschreibung: 'Freigabeberechtigt' },
+  { id: 'srol-af', name: 'Ausführende Firma', kuerzel: 'AF', farbe: '#af52de', beschreibung: '' },
+  { id: 'srol-beh', name: 'Behörde', kuerzel: 'BEH', farbe: '#00a0a0', beschreibung: '' },
+];
+
 export function seedData(): AppData {
   const data: AppData = {
     version: DATEN_VERSION,
     bearbeiter: { name: 'PLM', rolle: EIGENE_ROLLE, email: 'planlauf@sander-partner.de' },
+    standardRollen: STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: [
       {
         id: 'prj-1',
@@ -254,19 +266,19 @@ export function seedData(): AppData {
         abbruchDatum: null,
         bemerkung: '',
         steps: [
-          { id: 'rs-1', name: 'Planerstellung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-1', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -30), status: 'erledigt', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-2', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 5, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -22), status: 'erledigt', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
+          { id: 'rs-1', name: 'Planerstellung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-1', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -30), status: 'erledigt', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-2', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 5, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -22), status: 'erledigt', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
           {
             id: 'rs-3', name: 'Prüfung ohne Mängel?', typ: 'entscheidung', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 0, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -22), status: 'erledigt', abweichung: false, bemerkung: 'Kollisionen im Bereich Achse D.', letzteErinnerung: null,
             antworten: [
               { id: 'rs-3-a1', text: 'Ja', ziel: 'rs-5' },
               { id: 'rs-3-a2', text: 'Nein', ziel: null },
             ],
-            gewaehlteAntwortId: 'rs-3-a2',
+            gewaehlteAntwortId: 'rs-3-a2', durchlauf: 1,
           },
-          { id: 'rs-4', name: 'Überarbeitung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-1', fristTage: 5, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-5', name: 'Freigabe Bauherr', typ: 'aufgabe', roleName: 'Bauherr', contactId: 'con-5', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-6', name: 'Verteilung an Ausführende', typ: 'sonstiges', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 2, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
+          { id: 'rs-4', name: 'Überarbeitung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-1', fristTage: 5, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-5', name: 'Freigabe Bauherr', typ: 'aufgabe', roleName: 'Bauherr', contactId: 'con-5', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-6', name: 'Verteilung an Ausführende', typ: 'sonstiges', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 2, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
         ],
       },
       {
@@ -282,8 +294,8 @@ export function seedData(): AppData {
         abbruchDatum: null,
         bemerkung: 'Fristen gegenüber Standard verkürzt (Terminverzug Rohbau).',
         steps: [
-          { id: 'rs-8', name: 'Einreichung Werkplanung', typ: 'aufgabe', roleName: 'Ausführende Firma', contactId: 'con-8', fristTage: 7, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -1), status: 'erledigt', abweichung: true, bemerkung: 'Frist von 14 auf 7 Tage verkürzt.', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-9', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 4, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: true, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
+          { id: 'rs-8', name: 'Einreichung Werkplanung', typ: 'aufgabe', roleName: 'Ausführende Firma', contactId: 'con-8', fristTage: 7, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -1), status: 'erledigt', abweichung: true, bemerkung: 'Frist von 14 auf 7 Tage verkürzt.', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-9', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 4, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: true, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
           {
             id: 'rs-10', name: 'Prüfergebnis', typ: 'entscheidung', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 0, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null,
             antworten: [
@@ -291,10 +303,10 @@ export function seedData(): AppData {
               { id: 'rs-10-a2', text: 'Mit Auflagen', ziel: null },
               { id: 'rs-10-a3', text: 'Abgelehnt', ziel: 'ende' },
             ],
-            gewaehlteAntwortId: null,
+            gewaehlteAntwortId: null, durchlauf: 1,
           },
-          { id: 'rs-11', name: 'Überarbeitung durch Firma', typ: 'aufgabe', roleName: 'Ausführende Firma', contactId: 'con-8', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-12', name: 'Rückgabe an Firma', typ: 'sonstiges', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 1, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
+          { id: 'rs-11', name: 'Überarbeitung durch Firma', typ: 'aufgabe', roleName: 'Ausführende Firma', contactId: 'con-8', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-12', name: 'Rückgabe an Firma', typ: 'sonstiges', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 1, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
         ],
       },
       {
@@ -310,8 +322,8 @@ export function seedData(): AppData {
         abbruchDatum: addDays(heute, -12),
         bemerkung: '',
         steps: [
-          { id: 'rs-20', name: 'Planerstellung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-1', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -26), status: 'erledigt', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-21', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 5, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
+          { id: 'rs-20', name: 'Planerstellung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-1', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: addDays(heute, -26), status: 'erledigt', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-21', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-0', fristTage: 5, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
         ],
       },
       {
@@ -327,9 +339,9 @@ export function seedData(): AppData {
         abbruchDatum: null,
         bemerkung: '',
         steps: [
-          { id: 'rs-13', name: 'Planerstellung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-6', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-14', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-6', fristTage: 3, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
-          { id: 'rs-15', name: 'Freigabe Bauherr', typ: 'aufgabe', roleName: 'Bauherr', contactId: 'con-7', fristTage: 14, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: true, bemerkung: 'Verlängerte Freigabefrist laut Vertrag.', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null },
+          { id: 'rs-13', name: 'Planerstellung', typ: 'aufgabe', roleName: 'Objektplanung', contactId: 'con-6', fristTage: 10, sollDatum: null, sollManuell: false, istDatum: null, status: 'laufend', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-14', name: 'Prüfung', typ: 'aufgabe', roleName: EIGENE_ROLLE, contactId: 'con-6', fristTage: 3, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: false, bemerkung: '', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
+          { id: 'rs-15', name: 'Freigabe Bauherr', typ: 'aufgabe', roleName: 'Bauherr', contactId: 'con-7', fristTage: 14, sollDatum: null, sollManuell: false, istDatum: null, status: 'offen', abweichung: true, bemerkung: 'Verlängerte Freigabefrist laut Vertrag.', letzteErinnerung: null, antworten: [], gewaehlteAntwortId: null, durchlauf: 1 },
         ],
       },
     ],

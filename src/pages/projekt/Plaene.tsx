@@ -1,7 +1,11 @@
-/** Pläne, Planpakete und Planverzeichnisse eines Projekts (hierarchisch). */
+/**
+ * Pläne, Planpakete und Planverzeichnisse eines Projekts – jeweils mit ihrem
+ * Planlauf. Zu jedem Eintrag gehört genau ein Planlauf; er entsteht zusammen
+ * mit dem Eintrag.
+ */
 import { useMemo, useState } from 'react';
-import { aktuellerSchritt, fortschritt, istAktiv } from '../../domain/engine';
-import { formatDate } from '../../lib/dates';
+import { aktuellerSchritt, ampelFuerSchritt, fortschritt, istAktiv, stepsAusTemplate } from '../../domain/engine';
+import { formatDate, relativeLabel, tageLabel, today } from '../../lib/dates';
 import {
   DOCUMENT_KIND_LABEL,
   GEWERKE,
@@ -10,13 +14,16 @@ import {
   type ID,
   type PlanDocument,
   type PlanRun,
+  type ProcessTemplateStep,
   type Project,
 } from '../../domain/types';
-import { useStore } from '../../store/store';
+import { newId, useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
-import { DocKindIcon } from '../../components/common';
+import { AmpelPunkt, DocKindIcon } from '../../components/common';
+import { SchrittListe } from '../Prozessketten';
 import {
   Badge,
+  Callout,
   Card,
   CardHeader,
   ConfirmDialog,
@@ -43,27 +50,21 @@ interface Stand {
   run?: PlanRun;
 }
 
-function standFuer(doc: PlanDocument, runs: PlanRun[]): Stand {
+export function standFuer(doc: PlanDocument, runs: PlanRun[]): Stand {
   const eigene = runs.filter((r) => r.documentId === doc.id);
   const aktiv = eigene.find(istAktiv);
   if (aktiv) {
     const step = aktuellerSchritt(aktiv);
-    return { text: step ? `Im Planlauf: ${step.name}` : 'Im Planlauf', ton: 'blue', rang: 1, run: aktiv };
+    return { text: step ? step.name : 'Im Planlauf', ton: 'blue', rang: 1, run: aktiv };
   }
   const fertig = eigene.find((r) => r.status === 'abgeschlossen');
-  if (fertig) return { text: 'Planlauf abgeschlossen', ton: 'green', rang: 2, run: fertig };
+  if (fertig) return { text: 'Abgeschlossen', ton: 'green', rang: 2, run: fertig };
   const abgebrochen = eigene.find((r) => r.status === 'abgebrochen');
-  if (abgebrochen) return { text: 'Planlauf abgebrochen', ton: 'red', rang: 3, run: abgebrochen };
-  return { text: 'Ausstehend – kein Planlauf', ton: 'orange', rang: 0 };
+  if (abgebrochen) return { text: 'Abgebrochen', ton: 'red', rang: 3, run: abgebrochen };
+  return { text: 'Kein Planlauf', ton: 'orange', rang: 0 };
 }
 
-export function Plaene({
-  project,
-  onPlanlaufStarten,
-}: {
-  project: Project;
-  onPlanlaufStarten: (doc: PlanDocument) => void;
-}) {
+export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: (runId: ID) => void }) {
   const { data } = useStore();
   const [suche, setSuche] = useState('');
   const [filter, setFilter] = useState<Filter>('alle');
@@ -83,12 +84,9 @@ export function Plaene({
   const sortiere = (liste: PlanDocument[]) => {
     const richtung = absteigend ? -1 : 1;
     return [...liste].sort((a, b) => {
-      if (sortFeld === 'stand') {
-        return (standFuer(a, runs).rang - standFuer(b, runs).rang) * richtung;
-      }
-      if (sortFeld === 'eingangSoll') {
-        return ((a.eingangSoll ?? '9999').localeCompare(b.eingangSoll ?? '9999')) * richtung;
-      }
+      if (sortFeld === 'stand') return (standFuer(a, runs).rang - standFuer(b, runs).rang) * richtung;
+      if (sortFeld === 'eingangSoll')
+        return (a.eingangSoll ?? '9999').localeCompare(b.eingangSoll ?? '9999') * richtung;
       return a[sortFeld].localeCompare(b[sortFeld], 'de', { numeric: true }) * richtung;
     });
   };
@@ -122,7 +120,7 @@ export function Plaene({
     </th>
   );
 
-  const ausstehend = alle.filter((d) => standFuer(d, runs).rang === 0).length;
+  const ohneLauf = alle.filter((d) => standFuer(d, runs).rang === 0).length;
 
   return (
     <div className="stack">
@@ -147,18 +145,18 @@ export function Plaene({
 
       <Card>
         <CardHeader
-          titel="Planbestand"
+          titel="Pläne & Planläufe"
           sub={
-            ausstehend > 0
-              ? `${ausstehend} Eintrag/Einträge ohne Planlauf – Spaltenüberschrift klicken zum Sortieren`
-              : 'Alle Einträge sind in einem Planlauf – Spaltenüberschrift klicken zum Sortieren'
+            ohneLauf > 0
+              ? `${ohneLauf} Eintrag/Einträge ohne Planlauf · Spaltenüberschrift klicken zum Sortieren`
+              : 'Zu jedem Eintrag läuft eine Prozesskette · Spaltenüberschrift klicken zum Sortieren'
           }
         />
         {zeilen.length === 0 ? (
           <EmptyState
             icon="plan"
-            titel="Noch keine Pläne erfasst"
-            text="Legen Sie Planpakete, Einzelpläne oder Planverzeichnisse an."
+            titel="Noch keine Einträge"
+            text="Mit einem neuen Eintrag wird zugleich sein Planlauf gestartet."
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
                 <Icon name="plus" size={14} /> Neuer Eintrag
@@ -173,22 +171,33 @@ export function Plaene({
                   <Kopf feld="nummer">Nummer / Titel</Kopf>
                   <Kopf feld="gewerk" klasse="col-optional">Gewerk</Kopf>
                   <Kopf feld="planungsphase" klasse="col-optional">Phase</Kopf>
-                  <th className="col-optional">Index</th>
                   <Kopf feld="eingangSoll" klasse="col-optional">Eingang Soll</Kopf>
-                  <Kopf feld="stand">Stand</Kopf>
+                  <Kopf feld="stand">Aktueller Schritt</Kopf>
+                  <th className="col-optional" style={{ width: 140 }}>Fortschritt</th>
                   <th className="actions" />
                 </tr>
               </thead>
               <tbody>
                 {zeilen.map(({ doc, tiefe }) => {
                   const stand = standFuer(doc, runs);
+                  const run = stand.run;
+                  const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
+                  const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
                   return (
-                    <tr key={doc.id} className="clickable" onClick={() => setDialog({ doc })}>
+                    <tr
+                      key={doc.id}
+                      className="clickable"
+                      style={run?.status === 'abgebrochen' ? { opacity: 0.55 } : undefined}
+                      onClick={() => (run ? oeffneLauf(run.id) : setDialog({ doc }))}
+                    >
                       <td style={{ paddingLeft: 14 + tiefe * 22 }}>
                         <span className="row" style={{ gap: 9 }}>
                           <DocKindIcon kind={doc.kind} />
                           <span style={{ minWidth: 0 }}>
-                            <span className="num">{doc.nummer}</span>
+                            <span className="num">
+                              {doc.nummer}
+                              {doc.index ? ` · Index ${doc.index}` : ''}
+                            </span>
                             <div>
                               <strong>{doc.titel}</strong>
                             </div>
@@ -197,33 +206,54 @@ export function Plaene({
                       </td>
                       <td className="small muted col-optional">{doc.gewerk || '–'}</td>
                       <td className="small muted col-optional">{doc.planungsphase || '–'}</td>
-                      <td className="num col-optional">{doc.index || '–'}</td>
                       <td className="small col-optional">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
                       <td>
-                        <Badge ton={stand.ton}>{stand.text}</Badge>
-                        {stand.run && istAktiv(stand.run) ? (
-                          <div className="row" style={{ gap: 7, marginTop: 5 }}>
-                            <Progress wert={fortschritt(stand.run)} />
-                            <span className="small tertiary">{fortschritt(stand.run)} %</span>
-                          </div>
-                        ) : null}
+                        {run && istAktiv(run) ? (
+                          <>
+                            <span className="row" style={{ gap: 7 }}>
+                              <AmpelPunkt ampel={ampel} />
+                              <strong className="small">{stand.text}</strong>
+                            </span>
+                            <span className="tertiary small">
+                              {step?.roleName ? `${step.roleName} · ` : ''}
+                              {relativeLabel(step?.sollDatum ?? null)}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Badge ton={stand.ton}>{stand.text}</Badge>
+                            {run?.status === 'abgebrochen' && run.abbruchGrund ? (
+                              <div className="small tertiary truncate">{run.abbruchGrund}</div>
+                            ) : null}
+                          </>
+                        )}
                       </td>
-                      <td className="actions">
-                        {stand.rang === 0 ? (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onPlanlaufStarten(doc);
-                            }}
-                            title="Planlauf für diesen Eintrag starten"
-                          >
-                            <Icon name="kette" size={13} /> Planlauf starten
-                          </button>
+                      <td className="col-optional">
+                        {run ? (
+                          <span className="row" style={{ gap: 8 }}>
+                            <Progress
+                              wert={fortschritt(run)}
+                              ton={ampel === 'ueberfaellig' ? 'red' : fortschritt(run) === 100 ? 'green' : ''}
+                            />
+                            <span className="small tertiary">{fortschritt(run)} %</span>
+                          </span>
                         ) : (
                           <span className="small tertiary">–</span>
                         )}
+                      </td>
+                      <td className="actions">
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          aria-label="Eintrag bearbeiten"
+                          title="Stammdaten bearbeiten"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDialog({ doc });
+                          }}
+                        >
+                          <Icon name="bearbeiten" size={15} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -234,23 +264,44 @@ export function Plaene({
         )}
       </Card>
 
-      {dialog ? <PlanDialog project={project} doc={dialog.doc} onClose={() => setDialog(null)} /> : null}
+      {dialog ? (
+        <PlanDialog
+          project={project}
+          doc={dialog.doc}
+          onClose={() => setDialog(null)}
+          onLaufGestartet={oeffneLauf}
+        />
+      ) : null}
     </div>
   );
 }
 
+/**
+ * Anlage und Pflege eines Eintrags. Beim Anlegen – und bei Einträgen ohne
+ * Planlauf – gehört die Prozesskette dazu, sodass Eintrag und Planlauf
+ * gemeinsam entstehen.
+ */
 function PlanDialog({
   project,
   doc,
   onClose,
+  onLaufGestartet,
 }: {
   project: Project;
   doc?: PlanDocument;
   onClose: () => void;
+  onLaufGestartet: (runId: ID) => void;
 }) {
-  const { data, addDocument, updateDocument, deleteDocument } = useStore();
+  const { data, addDocument, updateDocument, deleteDocument, addRun } = useStore();
   const toast = useToast();
   const [loeschen, setLoeschen] = useState(false);
+
+  const vorlagen = data.templates.filter((t) => t.projectId === null || t.projectId === project.id);
+  const kontakte = data.contacts.filter((c) => c.projectId === project.id);
+  const rollen = data.roles.filter((r) => r.projectId === project.id);
+  const vorhandenerLauf = doc ? data.runs.find((r) => r.documentId === doc.id) : undefined;
+  const braucheLauf = !vorhandenerLauf;
+
   const [form, setForm] = useState({
     kind: doc?.kind ?? ('plan' as DocumentKind),
     parentId: doc?.parentId ?? (null as ID | null),
@@ -265,9 +316,40 @@ function PlanDialog({
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
+  /** Bearbeitbare Kopie der Vorlagenschritte. */
+  const kopie = (id: string): ProcessTemplateStep[] => {
+    const t = vorlagen.find((v) => v.id === id);
+    if (!t) return [];
+    const idMap = new Map(t.steps.map((s) => [s.id, newId('ts')]));
+    return t.steps.map((s) => ({
+      ...s,
+      id: idMap.get(s.id)!,
+      antworten: s.antworten.map((a) => ({
+        ...a,
+        id: newId('ant'),
+        ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+      })),
+    }));
+  };
+
+  const [templateId, setTemplateId] = useState(vorlagen[0]?.id ?? '');
+  const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => kopie(vorlagen[0]?.id ?? ''));
+  const [start, setStart] = useState(today());
+
+  const vorlageWechseln = (id: string) => {
+    setTemplateId(id);
+    setSteps(kopie(id));
+  };
+
   const moeglicheEltern = data.documents.filter(
     (d) => d.projectId === project.id && d.id !== doc?.id && d.kind !== 'plan',
   );
+
+  const kontaktFuerRolle = (roleName: string): ID | null => {
+    const rolle = rollen.find((r) => r.name.toLowerCase() === roleName.trim().toLowerCase());
+    if (!rolle) return null;
+    return kontakte.find((c) => c.roleIds.includes(rolle.id))?.id ?? null;
+  };
 
   const speichern = () => {
     if (!form.titel.trim()) {
@@ -275,17 +357,74 @@ function PlanDialog({
       return;
     }
     const werte = { ...form, eingangSoll: form.eingangSoll || null };
+
+    // Bestehenden Eintrag mit Planlauf nur aktualisieren
+    if (doc && !braucheLauf) {
+      updateDocument(doc.id, werte);
+      toast('Eintrag aktualisiert.');
+      onClose();
+      return;
+    }
+
+    if (steps.length === 0 || steps.some((s) => !s.name.trim())) {
+      toast('Bitte jeden Schritt der Prozesskette benennen.');
+      return;
+    }
+
+    const documentId = doc ? doc.id : addDocument({ ...werte, projectId: project.id });
     if (doc) updateDocument(doc.id, werte);
-    else addDocument({ ...werte, projectId: project.id });
-    toast(doc ? 'Eintrag aktualisiert.' : 'Eintrag angelegt.');
+
+    const template = vorlagen.find((t) => t.id === templateId);
+    const runSteps = stepsAusTemplate(
+      { id: templateId, projectId: null, name: '', beschreibung: '', herkunft: 'manuell', steps },
+      kontaktFuerRolle,
+      () => newId('rs'),
+    );
+    const original = template?.steps ?? [];
+    const markiert = runSteps.map((s, i) => {
+      const vorlage = original[i];
+      const abweichend =
+        !vorlage ||
+        original.length !== runSteps.length ||
+        vorlage.name !== s.name ||
+        vorlage.fristTage !== s.fristTage ||
+        vorlage.roleName !== s.roleName ||
+        vorlage.typ !== s.typ;
+      return abweichend ? { ...s, abweichung: true } : s;
+    });
+
+    const runId = addRun({
+      projectId: project.id,
+      documentId,
+      templateId: template?.id ?? null,
+      templateName: template?.name ?? 'Individuelle Kette',
+      name: `Planlauf ${form.nummer || form.titel}${form.index ? ` Index ${form.index}` : ''}`,
+      start,
+      status: 'laufend',
+      abbruchGrund: null,
+      abbruchDatum: null,
+      steps: markiert,
+      bemerkung: '',
+    });
+
+    const ohneKontakt = markiert.filter((s) => !s.contactId).length;
+    toast(
+      ohneKontakt > 0
+        ? `Eintrag angelegt und Planlauf gestartet – ${ohneKontakt} Schritt(e) noch ohne Person.`
+        : 'Eintrag angelegt und Planlauf gestartet.',
+    );
     onClose();
+    onLaufGestartet(runId);
   };
+
+  const dauer = steps.reduce((s, x) => s + x.fristTage, 0);
 
   return (
     <>
       <Modal
-        titel={doc ? `${DOCUMENT_KIND_LABEL[doc.kind]} bearbeiten` : 'Neuer Eintrag'}
-        sub={doc ? doc.nummer : 'Plan, Planpaket oder Planverzeichnis'}
+        titel={doc ? `${DOCUMENT_KIND_LABEL[doc.kind]} bearbeiten` : 'Neuer Eintrag mit Planlauf'}
+        sub={doc ? doc.nummer : 'Stammdaten und Prozesskette – der Planlauf startet mit dem Eintrag'}
+        wide={braucheLauf}
         onClose={onClose}
         footer={
           <>
@@ -299,77 +438,117 @@ function PlanDialog({
               Abbrechen
             </button>
             <button type="button" className="btn btn-primary" onClick={speichern}>
-              Speichern
+              {braucheLauf ? 'Anlegen und Planlauf starten' : 'Speichern'}
             </button>
           </>
         }
       >
-        <div className="form-grid">
-          <Field label="Art">
-            <Select
-              value={form.kind}
-              onChange={(v) => set('kind', v as DocumentKind)}
-              options={Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => ({ value, label }))}
-            />
-          </Field>
-          <Field label="Übergeordnet" hint="Paket oder Verzeichnis">
-            <Select
-              value={form.parentId ?? ''}
-              onChange={(v) => set('parentId', v || null)}
-              placeholder="– keines –"
-              options={moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
-            />
-          </Field>
-          <Field label="Nummer">
-            <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="A-GR-101" />
-          </Field>
-          <Field label="Index / Revision" hint="bleibt leer, solange kein Index vergeben ist">
-            <TextInput value={form.index} onChange={(v) => set('index', v)} placeholder="ohne" />
-          </Field>
-          <Field label="Titel" full>
-            <TextInput value={form.titel} onChange={(v) => set('titel', v)} />
-          </Field>
-          <Field label="Gewerk" hint="Auswahl oder freie Eingabe">
-            <input
-              className="input"
-              list="gewerke-liste"
-              value={form.gewerk}
-              onChange={(e) => set('gewerk', e.target.value)}
-              placeholder="KIB, VA, OLA …"
-            />
-            <datalist id="gewerke-liste">
-              {GEWERKE.map((g) => (
-                <option key={g} value={g} />
-              ))}
-            </datalist>
-          </Field>
-          <Field label="Planungsphase" hint="Auswahl oder freie Eingabe">
-            <input
-              className="input"
-              list="phasen-liste"
-              value={form.planungsphase}
-              onChange={(e) => set('planungsphase', e.target.value)}
-              placeholder="Ausführungsplanung …"
-            />
-            <datalist id="phasen-liste">
-              {PLANUNGSPHASEN.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          </Field>
-          <Field label="Eingang Soll">
-            <TextInput value={form.eingangSoll} onChange={(v) => set('eingangSoll', v)} type="date" />
-          </Field>
-          <Field label="Bemerkung" full>
-            <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
-          </Field>
+        <div className="stack" style={{ gap: 16 }}>
+          <div className="form-grid">
+            <Field label="Art">
+              <Select
+                value={form.kind}
+                onChange={(v) => set('kind', v as DocumentKind)}
+                options={Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => ({ value, label }))}
+              />
+            </Field>
+            <Field label="Übergeordnet" hint="Paket oder Verzeichnis">
+              <Select
+                value={form.parentId ?? ''}
+                onChange={(v) => set('parentId', v || null)}
+                placeholder="– keines –"
+                options={moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
+              />
+            </Field>
+            <Field label="Nummer">
+              <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="A-GR-101" />
+            </Field>
+            <Field label="Index / Revision" hint="bleibt leer, solange kein Index vergeben ist">
+              <TextInput value={form.index} onChange={(v) => set('index', v)} placeholder="ohne" />
+            </Field>
+            <Field label="Titel" full>
+              <TextInput value={form.titel} onChange={(v) => set('titel', v)} />
+            </Field>
+            <Field label="Gewerk" hint="Auswahl oder freie Eingabe">
+              <input
+                className="input"
+                list="gewerke-liste"
+                value={form.gewerk}
+                onChange={(e) => set('gewerk', e.target.value)}
+                placeholder="KIB, VA, OLA …"
+              />
+              <datalist id="gewerke-liste">
+                {GEWERKE.map((g) => (
+                  <option key={g} value={g} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Planungsphase" hint="Auswahl oder freie Eingabe">
+              <input
+                className="input"
+                list="phasen-liste"
+                value={form.planungsphase}
+                onChange={(e) => set('planungsphase', e.target.value)}
+                placeholder="Ausführungsplanung …"
+              />
+              <datalist id="phasen-liste">
+                {PLANUNGSPHASEN.map((p) => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
+            </Field>
+            <Field label="Eingang Soll">
+              <TextInput value={form.eingangSoll} onChange={(v) => set('eingangSoll', v)} type="date" />
+            </Field>
+            <Field label="Bemerkung" full>
+              <TextArea value={form.bemerkung} onChange={(v) => set('bemerkung', v)} rows={2} />
+            </Field>
+          </div>
+
+          {braucheLauf ? (
+            <>
+              <div className="divider" />
+              <div className="form-grid">
+                <Field label="Prozesskette" full hint={vorlagen.find((t) => t.id === templateId)?.beschreibung}>
+                  <Select
+                    value={templateId}
+                    onChange={vorlageWechseln}
+                    options={vorlagen.map((t) => ({ value: t.id, label: `${t.name} (${t.steps.length} Schritte)` }))}
+                  />
+                </Field>
+                <Field label="Start des Planlaufs">
+                  <TextInput value={start} onChange={setStart} type="date" />
+                </Field>
+              </div>
+
+              <div>
+                <div className="row-between wrap" style={{ marginBottom: 8 }}>
+                  <h3>Schritte dieses Planlaufs</h3>
+                  <span className="small tertiary">
+                    {steps.length} Schritte · {tageLabel(dauer)}
+                    {project.settings.fristenInArbeitstagen ? ' (Arbeitstage)' : ''}
+                  </span>
+                </div>
+                <p className="small muted" style={{ marginBottom: 10 }}>
+                  Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die Prozesskette selbst bleibt davon
+                  unberührt.
+                </p>
+                <SchrittListe steps={steps} setSteps={setSteps} rollen={rollen.map((r) => r.name)} />
+              </div>
+            </>
+          ) : (
+            <Callout icon="i">
+              Für diesen Eintrag läuft bereits der Planlauf „{vorhandenerLauf?.name}“. Die Schritte werden dort
+              gepflegt.
+            </Callout>
+          )}
         </div>
       </Modal>
 
       {loeschen && doc ? (
         <ConfirmDialog
           titel="Eintrag löschen?"
-          text={`„${doc.titel}“ und alle zugehörigen Planläufe werden gelöscht. Untergeordnete Einträge bleiben erhalten.`}
+          text={`„${doc.titel}“ wird mit seinem Planlauf gelöscht. Untergeordnete Einträge bleiben erhalten.`}
           onConfirm={() => {
             deleteDocument(doc.id);
             toast('Eintrag gelöscht.');

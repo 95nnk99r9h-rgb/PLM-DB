@@ -78,17 +78,28 @@ Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar blei
 Anlage und Pflege von Projekten (Nummer, Bauherr, Ort, Laufzeit, Status). Beim Anlegen werden
 Standardrollen und E-Mail-Vorlagen vorbelegt.
 
-### Rollen & Adressbuch
-Je Projekt frei definierbare Rollen (z.B. Objektplanung, Prüfstatiker, Bauherr) mit Farbe und
-Kürzel. Kontakte werden einer oder mehreren Rollen zugeordnet. Über die Rolle findet die
-Anwendung beim Start eines Planlaufs automatisch die zuständige Person.
+### Rollen
+Im übergeordneten Reiter **Rollen** werden die projektübergreifenden **Standardrollen** gepflegt
+(Bezeichnung, Kürzel, Farbe). Neue Projekte übernehmen diese Rollen automatisch.
 
-### Pläne, Planpakete, Planverzeichnisse
+### Adressbuch
+Im Projekt zeigt das Adressbuch die Rollen des Projekts und **wer sie ausfüllt**: Personen werden
+den Rollen direkt zugewiesen, Rollen lassen sich umbenennen, aus den Standardrollen ergänzen oder
+als projekteigene Rolle neu anlegen. Zu jedem Kontakt werden Anrede, Firma, E-Mail, Telefon und
+Anschrift geführt. Über die Rolle findet die Anwendung beim Start eines Planlaufs automatisch die
+zuständige Person.
+
+### Pläne & Planläufe
 Hierarchischer Planbestand: Planpakete und Planverzeichnisse können Pläne enthalten. Je Eintrag
 werden Nummer, Titel, Index (standardmäßig leer), Gewerk (KIB, VA, OLA, LST, TK, OSE, EEA oder freie
 Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
-der Soll-Termin für den Eingang und eine Bemerkung geführt. Die Liste zeigt je Eintrag, ob er
-**im Planlauf** ist oder noch **aussteht**, und lässt sich über die Spaltenüberschriften sortieren.
+der Soll-Termin für den Eingang und eine Bemerkung geführt.
+
+**Zu jedem Eintrag gehört genau ein Planlauf.** Er entsteht zusammen mit dem Eintrag: Im selben
+Dialog werden die Prozesskette gewählt und ihre Schritte für diesen Lauf angepasst. Die Liste zeigt
+deshalb Stammdaten und Ablauf nebeneinander – aktueller Schritt, Verantwortlicher, Frist und
+Fortschritt – und lässt sich über die Spaltenüberschriften sortieren. Ein Klick auf die Zeile öffnet
+den Planlauf.
 
 ### Prozessketten
 Ein Schritt ist eine **Aufgabe**, eine **Entscheidung** oder **Sonstiges**, hat eine Frist in Tagen und
@@ -96,6 +107,10 @@ einen Verantwortlichen (Rolle). Entscheidungen erhalten zwei Antwortmöglichkeit
 Vorbelegung, frei überschreibbar); weitere lassen sich ergänzen. Je Antwort wird festgelegt, mit
 welchem Schritt es weitergeht – mit dem nächsten Schritt, einem beliebigen anderen oder dem Ende des
 Laufs.
+
+Zeigt eine Antwort auf einen bereits durchlaufenen Schritt zurück, entsteht eine **Schleife**
+(z.B. Überarbeitung nach einer Prüfung): Der Ablauf endet dort nicht, sondern nimmt den genannten
+Schritt in einem weiteren Durchlauf erneut auf.
 
 Mitgeliefert sind drei Standardketten (Ausführungs-, Genehmigungs- sowie Werk- und Montageplanung).
 Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen. Die eigene Rolle im
@@ -111,6 +126,9 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   in Arbeitstagen (Mo–Fr, ohne hinterlegte Feiertage) oder Kalendertagen.
 * Ein Soll-Termin kann **manuell festgesetzt** werden und bildet dann die Basis für alle folgenden
   Schritte.
+* Führt eine Antwort zurück auf einen früheren Schritt, beginnt mit dem Erledigen der Entscheidung
+  ein **weiterer Durchlauf** ab diesem Schritt; die betroffenen Schritte werden erneut geöffnet und
+  als „2. Durchlauf“ gekennzeichnet.
 * **Ist-Termine** dokumentieren die Erledigung; Schritte lassen sich auch **überspringen**. Der
   jeweils nächste Schritt wird automatisch aktiv, der Lauf schließt sich, wenn alle Schritte des
   Verlaufs erledigt sind.
@@ -168,7 +186,7 @@ src/
     xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit
     print.ts     Druckausgabe als Grundlage der PDF-Fassung
     dates.ts     Fristen- und Datumsrechnung, router.ts, pwa.ts
-  pages/         Ansichten (Übersicht, Fristen, Projekte, Prozessketten, Projektreiter)
+  pages/         Ansichten (Übersicht, Fristen, Projekte, Prozessketten, Rollen, Projektreiter)
   components/    Wiederverwendbare Bausteine (ui.tsx, icons.tsx, EmailDialog …)
   styles/        Design-Tokens im hellen Apple-Erscheinungsbild
 ```

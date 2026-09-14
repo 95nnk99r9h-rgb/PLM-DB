@@ -20,6 +20,7 @@ import type {
   Project,
   Role,
   RunStep,
+  StandardRolle,
 } from '../domain/types';
 
 export function newId(prefix = 'id'): ID {
@@ -35,7 +36,11 @@ interface StoreValue {
   toggleMarkiert: (id: ID) => void;
   updateProject: (id: ID, patch: Partial<Project>) => void;
   deleteProject: (id: ID) => void;
-  /* Rollen */
+  /* Standardrollen (projektübergreifend) */
+  addStandardRolle: (r: Omit<StandardRolle, 'id'>) => ID;
+  updateStandardRolle: (id: ID, patch: Partial<StandardRolle>) => void;
+  deleteStandardRolle: (id: ID) => void;
+  /* Projektrollen */
   addRole: (r: Omit<Role, 'id'>) => ID;
   updateRole: (id: ID, patch: Partial<Role>) => void;
   deleteRole: (id: ID) => void;
@@ -120,6 +125,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           runs: d.runs.filter((r) => r.projectId !== id),
           templates: d.templates.filter((t) => t.projectId !== id),
         })),
+
+      addStandardRolle: (r) => {
+        const id = newId('srol');
+        mutate((d) => ({ ...d, standardRollen: [...d.standardRollen, { ...r, id }] }));
+        return id;
+      },
+      updateStandardRolle: (id, patch) =>
+        mutate((d) => ({ ...d, standardRollen: upd(d.standardRollen, id, patch) })),
+      deleteStandardRolle: (id) =>
+        mutate((d) => ({ ...d, standardRollen: d.standardRollen.filter((r) => r.id !== id) })),
 
       addRole: (r) => {
         const id = newId('rol');

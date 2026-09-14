@@ -10,6 +10,7 @@ import { Fristen } from './pages/Fristen';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Prozessketten } from './pages/Prozessketten';
+import { Rollen } from './pages/Rollen';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from './components/ui';
 import { Icon } from './components/icons';
@@ -68,6 +69,7 @@ export function App() {
         />
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
         <NavItem icon="kette" label="Prozessketten" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
+        <NavItem icon="person" label="Rollen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
 
         <div className="nav-group-label">
           Projekte
@@ -132,6 +134,7 @@ export function App() {
             {route.view === 'fristen' ? <Fristen navigate={gehe} /> : null}
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
             {route.view === 'ketten' ? <Prozessketten /> : null}
+            {route.view === 'rollen' ? <Rollen /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
                 <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
@@ -144,7 +147,7 @@ export function App() {
                 <PlanlaufDetail
                   project={projekt}
                   run={lauf}
-                  onZurueck={() => gehe({ view: 'projekt', projectId: projekt.id, tab: 'planlaeufe' })}
+                  onZurueck={() => gehe({ view: 'projekt', projectId: projekt.id, tab: 'uebersicht' })}
                 />
               ) : (
                 <NichtGefunden onZurueck={() => gehe({ view: 'projekte' })} />
@@ -282,6 +285,8 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'ketten':
       return { titel: 'Prozessketten', sub: 'Standardketten und Projektvarianten' };
+    case 'rollen':
+      return { titel: 'Rollen', sub: 'Projektübergreifende Standardrollen' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':

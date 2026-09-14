@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 2;
+export const DATEN_VERSION = 3;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -89,6 +89,18 @@ export const EMAIL_ANLASS_LABEL: Record<EmailAnlass, string> = {
 /* ------------------------------------------------------------------ */
 /* Adressbuch & Rollen                                                 */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Projektübergreifend gepflegte Rolle. Beim Anlegen eines Projekts werden
+ * diese Rollen als Projektrollen übernommen.
+ */
+export interface StandardRolle {
+  id: ID;
+  name: string;
+  kuerzel: string;
+  farbe: string;
+  beschreibung: string;
+}
 
 /** Frei definierbare Projektrolle, z.B. "PLM" oder "Prüfstatiker". */
 export interface Role {
@@ -263,6 +275,8 @@ export interface RunStep {
   antworten: Antwort[];
   /** Gewählte Antwort; ohne Auswahl gilt die erste Möglichkeit. */
   gewaehlteAntwortId: ID | null;
+  /** Zählt, zum wievielten Mal der Schritt durchlaufen wird (Rücksprünge). */
+  durchlauf: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -272,6 +286,8 @@ export interface RunStep {
 export interface AppData {
   version: number;
   bearbeiter: Bearbeiter;
+  /** Projektübergreifende Standardrollen. */
+  standardRollen: StandardRolle[];
   projects: Project[];
   roles: Role[];
   contacts: Contact[];

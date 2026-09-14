@@ -8,10 +8,11 @@ import {
   ampelFuerSchritt,
   massgeblicheAntwort,
   nichtImPfad,
-  pfad,
+  rueckSprungAnwenden,
+  verlaufDerKette,
   type Ampel,
 } from '../../domain/engine';
-import { formatDate, formatDateShort, tageLabel, today } from '../../lib/dates';
+import { formatDate, tageLabel, today } from '../../lib/dates';
 import {
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
@@ -57,7 +58,7 @@ export function PlanlaufDetail({
   const [abbrechen, setAbbrechen] = useState(false);
 
   const doc = data.documents.find((d) => d.id === run.documentId);
-  const verlauf = pfad(run.steps);
+  const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
   const abseits = nichtImPfad(run.steps);
   const aktiv = aktuellerSchritt(run);
   const vorlauf = project.settings.erinnerungVorlaufTage;
@@ -66,6 +67,26 @@ export function PlanlaufDetail({
 
   /** Setzt den Status eines Schritts und rückt den Lauf ggf. weiter. */
   const setzeStatus = (step: RunStep, status: StepStatus) => {
+    // Führt die Antwort einer Entscheidung zu einem bereits durchlaufenen
+    // Schritt zurück, beginnt dort ein weiterer Durchlauf.
+    if (step.typ === 'entscheidung' && status === 'erledigt') {
+      const antwort = massgeblicheAntwort(step);
+      const ziel = antwort?.ziel && antwort.ziel !== 'ende' ? antwort.ziel : null;
+      const zielIstFrueher =
+        ziel !== null &&
+        verlauf.findIndex((s) => s.id === ziel) >= 0 &&
+        verlauf.findIndex((s) => s.id === ziel) < verlauf.findIndex((s) => s.id === step.id);
+      if (zielIstFrueher && ziel) {
+        const erledigt = run.steps.map((s) =>
+          s.id === step.id ? { ...s, status: 'erledigt' as const, istDatum: s.istDatum ?? today() } : s,
+        );
+        updateRun(run.id, { steps: rueckSprungAnwenden(erledigt, step.id, ziel) });
+        const zielName = run.steps.find((s) => s.id === ziel)?.name ?? '';
+        toast(`Rücksprung zu „${zielName}“ – weiterer Durchlauf gestartet.`);
+        return;
+      }
+    }
+
     const patch: Partial<RunStep> = { status };
     if ((status === 'erledigt' || status === 'uebersprungen') && !step.istDatum) patch.istDatum = today();
     if (status === 'offen' || status === 'laufend') patch.istDatum = null;
@@ -73,7 +94,9 @@ export function PlanlaufDetail({
 
     if (status === 'erledigt' || status === 'uebersprungen') {
       const aktualisiert = run.steps.map((s) => (s.id === step.id ? { ...s, ...patch } : s));
-      const rest = pfad(aktualisiert).filter((s) => s.status !== 'erledigt' && s.status !== 'uebersprungen');
+      const rest = verlaufDerKette(aktualisiert).schritte.filter(
+        (s) => s.status !== 'erledigt' && s.status !== 'uebersprungen',
+      );
       if (rest.length === 0) {
         updateRun(run.id, { status: 'abgeschlossen' });
         toast('Alle Schritte erledigt – Planlauf abgeschlossen.');
@@ -125,48 +148,6 @@ export function PlanlaufDetail({
           actions={<RunStatusBadge status={run.status} />}
         />
         <div className="card-pad">
-          <div className="chain">
-            {verlauf.map((s, i) => {
-              const ampel = ampelFuerSchritt(s, vorlauf);
-              const klasse =
-                ampel === 'erledigt'
-                  ? 'done'
-                  : ampel === 'ueberfaellig'
-                    ? 'late'
-                    : s.id === aktiv?.id
-                      ? 'current'
-                      : '';
-              const antwort = massgeblicheAntwort(s);
-              return (
-                <div key={s.id} className="row" style={{ gap: 0 }}>
-                  <div className={`chain-node ${klasse} ${s.typ === 'entscheidung' ? 'gateway' : ''}`}>
-                    <div className="cn-name">{s.name}</div>
-                    <div className="cn-meta">
-                      {s.roleName || STEP_TYPE_LABEL[s.typ]}
-                      <br />
-                      {s.istDatum ? `Ist ${formatDateShort(s.istDatum)}` : `Soll ${formatDateShort(s.sollDatum)}`}
-                      {antwort ? (
-                        <>
-                          <br />
-                          <span style={{ color: 'var(--purple)' }}>→ {antwort.text}</span>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                  {i < verlauf.length - 1 ? (
-                    <div className="chain-arrow">
-                      <Icon name="chevron" size={13} />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="small tertiary" style={{ marginTop: 2 }}>
-            Der Verlauf folgt bei Entscheidungen der gewählten Antwort – ohne Auswahl der ersten Möglichkeit.
-          </p>
-
           {abweichungen > 0 ? (
             <Callout ton="warn" icon="!">
               {abweichungen} Schritt(e) weichen von der Standard-Prozesskette ab. Änderungen wirken nur in diesem
@@ -213,6 +194,7 @@ export function PlanlaufDetail({
                   <StepTypBadge typ={step.typ} />
                   {step.status === 'uebersprungen' ? <Badge>Übersprungen</Badge> : <AmpelBadge ampel={ampel} />}
                   {step.abweichung ? <Badge ton="orange">Abweichung</Badge> : null}
+                  {(step.durchlauf ?? 1) > 1 ? <Badge ton="purple">{step.durchlauf}. Durchlauf</Badge> : null}
                 </div>
 
                 <div className="step-meta">
@@ -308,6 +290,24 @@ export function PlanlaufDetail({
           );
         })}
 
+        {rueckSprungZu ? (
+          <div className="step-row">
+            <div className="step-marker">
+              <div className="step-num" title="Rücksprung">↺</div>
+            </div>
+            <div className="step-body">
+              <div className="step-title">
+                <strong>Rücksprung zu „{rueckSprungZu.name}“</strong>
+                <Badge ton="purple">Schleife</Badge>
+              </div>
+              <p className="small muted">
+                Die gewählte Antwort führt zurück. Sobald die Entscheidung erledigt wird, beginnt ab diesem
+                Schritt ein weiterer Durchlauf.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {abseits.length > 0 ? (
           <div className="card-pad" style={{ borderTop: '1px solid var(--separator)' }}>
             <div className="small muted" style={{ marginBottom: 6 }}>
@@ -348,6 +348,7 @@ export function PlanlaufDetail({
               letzteErinnerung: null,
               antworten: [],
               gewaehlteAntwortId: null,
+              durchlauf: 1,
             });
             toast('Schritt eingefügt – als Abweichung markiert.');
           }}

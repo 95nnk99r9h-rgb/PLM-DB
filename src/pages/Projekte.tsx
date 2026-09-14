@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { offeneFristen } from '../domain/engine';
 import { addDays, formatDate, today } from '../lib/dates';
-import { EIGENE_ROLLE, type Project, type ProjectStatus } from '../domain/types';
+import type { Project, ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useToast } from '../components/toast';
-import { STANDARD_TEMPLATES, standardVorlagen } from '../domain/seed';
+import { standardVorlagen } from '../domain/seed';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../components/ui';
 import { Icon } from '../components/icons';
 
@@ -145,7 +145,7 @@ export function ProjektDialog({
   onClose: () => void;
   navigate?: (r: Route) => void;
 }) {
-  const { addProject, updateProject, addRole } = useStore();
+  const { data, addProject, updateProject, addRole } = useStore();
   const toast = useToast();
   const [form, setForm] = useState({
     nummer: project?.nummer ?? '',
@@ -185,18 +185,10 @@ export function ProjektDialog({
         emailTemplates: standardVorlagen(),
       },
     });
-    // Grundrollen anlegen, damit Prozessketten sofort zugeordnet werden können
-    const grundrollen = [EIGENE_ROLLE, ...STANDARD_TEMPLATES.flatMap((t) => t.steps.map((s) => s.roleName))];
-    const farben = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
-    [...new Set(grundrollen)].filter(Boolean).forEach((name, i) => {
-      addRole({
-        projectId: id,
-        name,
-        kuerzel: name.split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase(),
-        farbe: farben[i % farben.length],
-        beschreibung: '',
-      });
-    });
+    // Standardrollen als Projektrollen übernehmen
+    data.standardRollen.forEach((r) =>
+      addRole({ projectId: id, name: r.name, kuerzel: r.kuerzel, farbe: r.farbe, beschreibung: r.beschreibung }),
+    );
     toast('Projekt angelegt – Standardrollen wurden übernommen.');
     onClose();
     navigate?.({ view: 'projekt', projectId: id, tab: 'uebersicht' });

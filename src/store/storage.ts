@@ -4,7 +4,7 @@
  * werden kann, ohne die Oberfläche anzufassen.
  */
 import { DATEN_VERSION, EIGENE_ROLLE, type AppData, type StepType } from '../domain/types';
-import { seedData } from '../domain/seed';
+import { STANDARD_ROLLEN, seedData } from '../domain/seed';
 
 const KEY = 'planlauf-management.data.v1';
 
@@ -47,6 +47,10 @@ function migriere(daten: AppData): AppData {
   return {
     version: DATEN_VERSION,
     bearbeiter: daten.bearbeiter ?? { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
+    standardRollen:
+      daten.standardRollen && daten.standardRollen.length > 0
+        ? daten.standardRollen
+        : STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: (daten.projects ?? []).map((p) => ({ ...p, markiert: p.markiert ?? true })),
     roles: daten.roles ?? [],
     contacts: (daten.contacts ?? []).map((c) => ({ ...c, anschrift: c.anschrift ?? '' })),
@@ -86,6 +90,7 @@ function migriere(daten: AppData): AppData {
           typ,
           antworten: alsAntworten(typ, s.antworten),
           gewaehlteAntwortId: s.gewaehlteAntwortId ?? null,
+          durchlauf: s.durchlauf ?? 1,
         };
       }),
     })),

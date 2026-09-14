@@ -37,37 +37,60 @@ export function massgeblicheAntwort(step: { antworten: Antwort[]; gewaehlteAntwo
   return gewaehlt ?? step.antworten[0];
 }
 
+/** Ergebnis der Ablaufverfolgung durch eine Kette. */
+export interface Verlauf<T> {
+  /** Die durchlaufenen Schritte in ihrer Reihenfolge. */
+  schritte: T[];
+  /**
+   * Schritt, zu dem am Ende zurückgesprungen wird (Schleife, z.B. Überarbeitung).
+   * Der Ablauf wird an dieser Stelle erneut aufgenommen.
+   */
+  rueckSprungZu: T | null;
+  /** true, wenn der Ablauf durch eine Antwort ausdrücklich beendet wird. */
+  beendet: boolean;
+}
+
 /**
- * Reihenfolge der tatsächlich durchlaufenen Schritte.
+ * Verfolgt den Ablauf durch die Kette.
  *
  * Schritte werden der Reihe nach abgearbeitet; eine Entscheidung springt
  * gemäß der maßgeblichen Antwort zu einem anderen Schritt, zum Ende oder
- * (ohne Ziel) zum unmittelbar folgenden Schritt.
+ * (ohne Ziel) zum unmittelbar folgenden Schritt. Führt eine Antwort zu einem
+ * bereits durchlaufenen Schritt zurück, endet der Ablauf nicht – der Schritt
+ * wird als Rücksprungziel gemeldet, damit die Schleife sichtbar bleibt und die
+ * Verfolgung nicht endlos läuft.
  */
-export function pfad<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
-  const ergebnis: T[] = [];
+export function verlaufDerKette<T extends ProcessTemplateStep | RunStep>(steps: T[]): Verlauf<T> {
+  const schritte: T[] = [];
   const besucht = new Set<ID>();
   let index = 0;
 
   while (index >= 0 && index < steps.length) {
     const step = steps[index];
-    if (besucht.has(step.id)) break; // Schleife im Ablauf – Abbruch
     besucht.add(step.id);
-    ergebnis.push(step);
+    schritte.push(step);
 
     if (step.typ === 'entscheidung' && step.antworten.length > 0) {
       const antwort = massgeblicheAntwort(step);
-      if (!antwort || antwort.ziel === 'ende') break;
+      if (!antwort || antwort.ziel === 'ende') return { schritte, rueckSprungZu: null, beendet: true };
       if (antwort.ziel) {
         const ziel = steps.findIndex((s) => s.id === antwort.ziel);
         if (ziel < 0) break;
+        if (besucht.has(steps[ziel].id)) {
+          return { schritte, rueckSprungZu: steps[ziel], beendet: false };
+        }
         index = ziel;
         continue;
       }
     }
     index += 1;
   }
-  return ergebnis;
+  return { schritte, rueckSprungZu: null, beendet: false };
+}
+
+/** Reihenfolge der tatsächlich durchlaufenen Schritte. */
+export function pfad<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
+  return verlaufDerKette(steps).schritte;
 }
 
 /** Schritte, die im aktuellen Verlauf nicht durchlaufen werden. */
@@ -245,7 +268,34 @@ export function stepsAusTemplate(
       ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
     })),
     gewaehlteAntwortId: null,
+    durchlauf: 1,
   }));
+}
+
+/**
+ * Bereitet einen Rücksprung vor: Das Ziel und alle Schritte, die im Verlauf
+ * dahinter liegen (einschließlich der auslösenden Entscheidung), werden für
+ * einen weiteren Durchlauf geöffnet. Bereits erfasste Ist-Termine der
+ * betroffenen Schritte entfallen, der Durchlaufzähler wird erhöht.
+ */
+export function rueckSprungAnwenden(steps: RunStep[], entscheidungId: ID, zielId: ID): RunStep[] {
+  const reihenfolge = pfad(steps);
+  const vonIndex = reihenfolge.findIndex((s) => s.id === zielId);
+  const bisIndex = reihenfolge.findIndex((s) => s.id === entscheidungId);
+  if (vonIndex < 0 || bisIndex < 0 || vonIndex > bisIndex) return steps;
+
+  const betroffen = new Set(reihenfolge.slice(vonIndex, bisIndex + 1).map((s) => s.id));
+  return steps.map((s) => {
+    if (!betroffen.has(s.id)) return s;
+    return {
+      ...s,
+      status: s.id === zielId ? ('laufend' as const) : ('offen' as const),
+      istDatum: null,
+      durchlauf: (s.durchlauf ?? 1) + 1,
+      // Die Entscheidung wird im neuen Durchlauf erneut beantwortet.
+      gewaehlteAntwortId: s.typ === 'entscheidung' ? null : s.gewaehlteAntwortId,
+    };
+  });
 }
 
 /** Gesamtdauer einer Vorlage entlang des Standardverlaufs. */
