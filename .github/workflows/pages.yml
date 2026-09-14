@@ -35,6 +35,26 @@ jobs:
         with:
           path: dist
 
+      # Notausgang: die gebaute Fassung zusätzlich im Branch unter app/ ablegen.
+      # Damit funktioniert die Seite auch dann, wenn GitHub Pages weiterhin den
+      # Repository-Stamm ausliefert – index.html wechselt dann automatisch dorthin.
+      - name: Gebaute Fassung unter app/ im Branch ablegen
+        run: |
+          rm -rf app
+          cp -r dist app
+          touch .nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A app .nojekyll
+          if git diff --cached --quiet; then
+            echo "Gebaute Fassung unverändert."
+          else
+            git commit -q -m "Gebaute Fassung aktualisieren [skip ci]"
+            git push -q "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Zusätzlich als Branch gh-pages ablegen. Damit funktioniert die Seite
       # auch dann, wenn unter Settings → Pages die Quelle "Deploy from a branch"
       # eingestellt bleibt – dort ist dann gh-pages / root zu wählen.
