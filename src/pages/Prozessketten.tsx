@@ -6,9 +6,12 @@
 import { useState } from 'react';
 import { pfad, templateDauer } from '../domain/engine';
 import {
+  NACHWEIS_LABEL,
   STANDARD_ANTWORTEN,
   STEP_TYPE_LABEL,
+  istPrueferRolle,
   type Antwort,
+  type Nachweis,
   type ProcessTemplate,
   type ProcessTemplateStep,
   type StepType,
@@ -149,6 +152,8 @@ export function neuerSchritt(typ: StepType = 'aufgabe'): ProcessTemplateStep {
     fristTage: typ === 'entscheidung' ? 0 : 5,
     beschreibung: '',
     antworten: typ === 'entscheidung' ? standardAntworten() : [],
+    naechster: null,
+    nachweis: 'keine',
   };
 }
 
@@ -267,6 +272,14 @@ export function SchrittListe({
     setSteps(neu);
   };
 
+  /** Prüfende Rollen verlangen regelmäßig einen Prüfbericht. */
+  const rolleWechseln = (step: ProcessTemplateStep, roleName: string) =>
+    setStep(step.id, {
+      roleName,
+      nachweis:
+        step.nachweis === 'keine' && istPrueferRolle(roleName) ? 'pruefbericht' : step.nachweis,
+    });
+
   const typWechseln = (step: ProcessTemplateStep, typ: StepType) =>
     setStep(step.id, {
       typ,
@@ -313,7 +326,7 @@ export function SchrittListe({
                       value={step.roleName}
                       list="rollen-liste"
                       placeholder="Rolle, z.B. PLM"
-                      onChange={(e) => setStep(step.id, { roleName: e.target.value })}
+                      onChange={(e) => rolleWechseln(step, e.target.value)}
                     />
                   </Field>
                   <Field label="Frist (Tage)">
@@ -324,6 +337,42 @@ export function SchrittListe({
                       onChange={(e) => setStep(step.id, { fristTage: Number(e.target.value.replace(/\D/g, '')) || 0 })}
                     />
                   </Field>
+                  <Field label="Nachweis bei Abschluss" hint="wird beim Erledigen abgefragt">
+                    <select
+                      className="select"
+                      value={step.nachweis}
+                      onChange={(e) => setStep(step.id, { nachweis: e.target.value as Nachweis })}
+                    >
+                      {Object.entries(NACHWEIS_LABEL).map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {step.typ !== 'entscheidung' ? (
+                    <Field label="Weiter mit">
+                      <select
+                        className="select"
+                        value={step.naechster ?? ''}
+                        onChange={(e) =>
+                          setStep(step.id, {
+                            naechster: e.target.value === '' ? null : (e.target.value as ProcessTemplateStep['naechster']),
+                          })
+                        }
+                      >
+                        <option value="">nächstem Schritt</option>
+                        {steps
+                          .filter((z) => z.id !== step.id)
+                          .map((z, zi) => (
+                            <option key={z.id} value={z.id}>
+                              {zi + 1}. {z.name || 'ohne Namen'}
+                            </option>
+                          ))}
+                        <option value="ende">Planlauf beenden</option>
+                      </select>
+                    </Field>
+                  ) : null}
                 </div>
 
                 {step.typ === 'entscheidung' ? (

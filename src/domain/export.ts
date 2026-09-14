@@ -12,6 +12,7 @@ import type { Zelle } from '../lib/xlsx';
 import { AMPEL_LABEL, aktuellerSchritt, ampelFuerSchritt, fortschritt, istAktiv, pfad } from './engine';
 import {
   DOCUMENT_KIND_LABEL,
+  NACHWEIS_LABEL,
   RUN_STATUS_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
@@ -32,7 +33,7 @@ export const UMFANG_LABEL: Record<ExportUmfang, string> = {
 
 const KURZ_KOPF = [
   'Art',
-  'Nummer',
+  'Plancodierung',
   'Titel',
   'Index',
   'Gewerk',
@@ -45,11 +46,12 @@ const KURZ_KOPF = [
   'Verantwortlich',
   'Person',
   'Soll-Termin',
+  'Nachweise',
   'Status',
 ];
 
 const LANG_KOPF = [
-  'Nummer',
+  'Plancodierung',
   'Titel',
   'Planlauf',
   'Nr.',
@@ -61,6 +63,7 @@ const LANG_KOPF = [
   'Frist (Tage)',
   'Soll',
   'Ist',
+  'Nachweis',
   'Bemerkung',
 ];
 
@@ -119,6 +122,12 @@ export function kurzZeilen(data: AppData, project: Project, docIds: ID[]): Zelle
         person(data, naechster),
         naechster?.sollDatum ? formatDate(naechster.sollDatum) : '',
         run
+          ? pfad(run.steps)
+              .filter((s) => s.nachweisNummer)
+              .map((s) => `${NACHWEIS_LABEL[s.nachweis]} ${s.nachweisNummer}`)
+              .join('; ')
+          : '',
+        run
           ? run.status === 'abgebrochen'
             ? `Abgebrochen – ${run.abbruchGrund ?? ''}`
             : naechster
@@ -136,7 +145,7 @@ export function langZeilen(data: AppData, project: Project, docIds: ID[]): Zelle
 
   for (const { doc, run } of zeilen(data, docIds)) {
     if (!run) {
-      ausgabe.push([doc.nummer, doc.titel, 'kein Planlauf gestartet', '', '', '', 'Ausstehend', '', '', '', '', '', '']);
+      ausgabe.push([doc.nummer, doc.titel, 'kein Planlauf gestartet', '', '', '', 'Ausstehend', '', '', '', '', '', '', '']);
       continue;
     }
     pfad(run.steps).forEach((step, i) => {
@@ -157,11 +166,12 @@ export function langZeilen(data: AppData, project: Project, docIds: ID[]): Zelle
         step.fristTage,
         step.sollDatum ? formatDate(step.sollDatum) : '',
         step.istDatum ? formatDate(step.istDatum) : '',
+        step.nachweisNummer ? `${NACHWEIS_LABEL[step.nachweis]} ${step.nachweisNummer}` : '',
         [antwort ? `Antwort: ${antwort.text}` : '', step.bemerkung].filter(Boolean).join(' · '),
       ]);
     });
     if (run.status === 'abgebrochen') {
-      ausgabe.push([doc.nummer, doc.titel, run.name, '', 'Planlauf abgebrochen', '', 'Abgebrochen', '', '', '', run.abbruchDatum ? formatDate(run.abbruchDatum) : '', '', run.abbruchGrund ?? '']);
+      ausgabe.push([doc.nummer, doc.titel, run.name, '', 'Planlauf abgebrochen', '', 'Abgebrochen', '', '', '', run.abbruchDatum ? formatDate(run.abbruchDatum) : '', '', '', run.abbruchGrund ?? '']);
     }
   }
   return ausgabe;
@@ -178,7 +188,7 @@ export function exportHtml(
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const kopf = `<div class="kopf">
     <h1>${html(project.nummer)} · ${html(project.name)}</h1>
-    <div class="meta">Planlauf-Übersicht – ${UMFANG_LABEL[umfang]} · Bauherr: ${html(project.bauherr || '–')} ·
+    <div class="meta">Planlauf-Übersicht – ${UMFANG_LABEL[umfang]} ·
       Stand: ${formatDate(today())} · ${docIds.length} Einträge</div>
   </div>`;
 
@@ -232,6 +242,7 @@ export function exportHtml(
             <td class="num">${step.fristTage}</td>
             <td class="num">${step.sollDatum ? formatDate(step.sollDatum) : '–'}</td>
             <td class="num">${step.istDatum ? formatDate(step.istDatum) : '–'}</td>
+            <td>${step.nachweisNummer ? `${html(NACHWEIS_LABEL[step.nachweis])} ${html(step.nachweisNummer)}` : '–'}</td>
             <td class="grau">${html(step.bemerkung)}</td>
           </tr>`;
         })
@@ -244,7 +255,7 @@ export function exportHtml(
 
       return `${titel}${meta}<table><thead><tr>
         <th>Nr.</th><th>Prozessschritt</th><th>Status</th><th>Verantwortlich</th><th>Person</th>
-        <th>Frist</th><th>Soll</th><th>Ist</th><th>Bemerkung</th>
+        <th>Frist</th><th>Soll</th><th>Ist</th><th>Nachweis</th><th>Bemerkung</th>
       </tr></thead><tbody>${zeilenHtml}</tbody></table>${abbruch}`;
     })
     .join('');

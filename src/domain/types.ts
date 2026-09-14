@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 3;
+export const DATEN_VERSION = 4;
 
 /* ------------------------------------------------------------------ */
 /* Bearbeiter                                                          */
@@ -29,8 +29,8 @@ export interface Bearbeiter {
   email: string;
 }
 
-/** Die eigene Rolle in allen Projekten. */
-export const EIGENE_ROLLE = 'PLM';
+/** Die eigene Rolle in allen Projekten (Kürzel: PLM). */
+export const EIGENE_ROLLE = 'Planlaufmanagement';
 
 /* ------------------------------------------------------------------ */
 /* Projekt                                                             */
@@ -42,13 +42,9 @@ export interface Project {
   id: ID;
   nummer: string;
   name: string;
-  bauherr: string;
-  ort: string;
   status: ProjectStatus;
   /** Markierte Projekte erscheinen in der Übersicht und in der Seitenleiste. */
   markiert: boolean;
-  start: ISODate;
-  ende: ISODate | null;
   beschreibung: string;
   settings: ProjectSettings;
 }
@@ -100,7 +96,20 @@ export interface StandardRolle {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
+  /** Bestimmt, ob die Rolle je Gewerk oder gewerkübergreifend besetzt wird. */
+  gewerkBezug: GewerkBezug;
 }
+
+/**
+ * „individuell“: je Gewerk eine eigene Besetzung (z.B. ein Fachplaner je Gewerk).
+ * „uebergreifend“: eine Besetzung für alle Gewerke (z.B. Projektleitung).
+ */
+export type GewerkBezug = 'individuell' | 'uebergreifend';
+
+export const GEWERKBEZUG_LABEL: Record<GewerkBezug, string> = {
+  individuell: 'je Gewerk',
+  uebergreifend: 'übergreifend',
+};
 
 /** Frei definierbare Projektrolle, z.B. "PLM" oder "Prüfstatiker". */
 export interface Role {
@@ -110,6 +119,16 @@ export interface Role {
   kuerzel: string;
   farbe: string;
   beschreibung: string;
+  gewerkBezug: GewerkBezug;
+}
+
+/**
+ * Besetzung einer Rolle durch eine Person. Bei Rollen mit Gewerkbezug gilt die
+ * Zuordnung für ein bestimmtes Gewerk, sonst (gewerk = null) für alle.
+ */
+export interface Zuordnung {
+  roleId: ID;
+  gewerk: string | null;
 }
 
 export interface Contact {
@@ -123,8 +142,8 @@ export interface Contact {
   telefon: string;
   /** Straße, PLZ und Ort – mehrzeilig. */
   anschrift: string;
-  /** Zugeordnete Rollen (n:m über Rollen-IDs). */
-  roleIds: ID[];
+  /** Besetzte Rollen, ggf. je Gewerk. */
+  zuordnungen: Zuordnung[];
   notiz: string;
 }
 
@@ -141,7 +160,7 @@ export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
 };
 
 /** Gewerke zur Auswahl; freie Eingabe bleibt zusätzlich möglich. */
-export const GEWERKE = ['KIB', 'VA', 'OLA', 'LST', 'TK', 'OSE', 'EEA'] as const;
+export const GEWERKE = ['EEA', 'KIB', 'LST', 'OLA', 'OSE', 'TK', 'VA'] as const;
 
 /** Planungsphasen zur Auswahl; freie Eingabe bleibt zusätzlich möglich. */
 export const PLANUNGSPHASEN = ['Entwurfsplanung', 'Genehmigungsplanung', 'Ausführungsplanung'] as const;
@@ -150,8 +169,7 @@ export interface PlanDocument {
   id: ID;
   projectId: ID;
   kind: DocumentKind;
-  /** Übergeordnetes Paket / Verzeichnis (Hierarchie innerhalb eines Projekts). */
-  parentId: ID | null;
+  /** Plancodierung. */
   nummer: string;
   titel: string;
   /** Index/Revision – standardmäßig leer. */
@@ -189,6 +207,23 @@ export interface Antwort {
 
 export const STANDARD_ANTWORTEN = ['Ja', 'Nein'];
 
+/**
+ * Nachweis, der bei erfolgreichem Abschluss eines Schritts zu erfassen ist.
+ * Die Nummer wird am Schritt dokumentiert und in den Export übernommen.
+ */
+export type Nachweis = 'keine' | 'freigabe' | 'pruefbericht';
+
+export const NACHWEIS_LABEL: Record<Nachweis, string> = {
+  keine: 'kein Nachweis',
+  freigabe: 'Freigabe-Nr.',
+  pruefbericht: 'Prüfbericht-Nr.',
+};
+
+/** Prüfende Rollen verlangen regelmäßig einen Prüfbericht. */
+export function istPrueferRolle(roleName: string): boolean {
+  return /prüf|pruef/i.test(roleName);
+}
+
 export interface ProcessTemplate {
   id: ID;
   /** null = globale Standardkette, sonst projektspezifische Variante. */
@@ -210,6 +245,14 @@ export interface ProcessTemplateStep {
   beschreibung: string;
   /** Nur bei Entscheidungen gefüllt. */
   antworten: Antwort[];
+  /**
+   * Nachfolger bei Aufgaben und sonstigen Schritten: eine Schritt-ID,
+   * `'ende'` oder `null` für den unmittelbar folgenden Schritt.
+   * Bei Entscheidungen bestimmen die Antworten den Verlauf.
+   */
+  naechster: ID | 'ende' | null;
+  /** Bei erfolgreichem Abschluss zu erfassender Nachweis. */
+  nachweis: Nachweis;
 }
 
 /* ------------------------------------------------------------------ */
@@ -275,8 +318,14 @@ export interface RunStep {
   antworten: Antwort[];
   /** Gewählte Antwort; ohne Auswahl gilt die erste Möglichkeit. */
   gewaehlteAntwortId: ID | null;
+  /** Nachfolger bei Aufgaben (siehe ProcessTemplateStep). */
+  naechster: ID | 'ende' | null;
   /** Zählt, zum wievielten Mal der Schritt durchlaufen wird (Rücksprünge). */
   durchlauf: number;
+  /** Bei erfolgreichem Abschluss zu erfassender Nachweis. */
+  nachweis: Nachweis;
+  /** Erfasste Freigabe- bzw. Prüfbericht-Nummer. */
+  nachweisNummer: string | null;
 }
 
 /* ------------------------------------------------------------------ */

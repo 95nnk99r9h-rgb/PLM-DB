@@ -54,10 +54,6 @@ export function Einstellungen({ project }: { project: Project }) {
           <dl className="kv">
             <dt>Projektnummer</dt>
             <dd className="mono">{project.nummer || '–'}</dd>
-            <dt>Bauherr</dt>
-            <dd>{project.bauherr || '–'}</dd>
-            <dt>Ort</dt>
-            <dd>{project.ort || '–'}</dd>
             <dt>Beschreibung</dt>
             <dd>{project.beschreibung || '–'}</dd>
           </dl>

@@ -46,13 +46,9 @@ export function Uebersicht({
             <dl className="kv">
               <dt>Nummer</dt>
               <dd className="mono">{project.nummer || '–'}</dd>
-              <dt>Bauherr</dt>
-              <dd>{project.bauherr || '–'}</dd>
-              <dt>Ort</dt>
-              <dd>{project.ort || '–'}</dd>
-              <dt>Laufzeit</dt>
+              <dt>Gewerke</dt>
               <dd>
-                {formatDate(project.start)} – {project.ende ? formatDate(project.ende) : 'offen'}
+                {[...new Set(dokumente.map((d) => d.gewerk).filter(Boolean))].join(', ') || '–'}
               </dd>
               <dt>Fristen</dt>
               <dd>

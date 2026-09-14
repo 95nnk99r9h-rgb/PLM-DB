@@ -1,7 +1,6 @@
 /** Projektliste mit Anlage- und Bearbeitungsdialog. */
 import { useState } from 'react';
 import { offeneFristen } from '../domain/engine';
-import { addDays, formatDate, today } from '../lib/dates';
 import type { Project, ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
@@ -28,7 +27,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   const [dialog, setDialog] = useState<{ project?: Project } | null>(null);
 
   const projekte = data.projects.filter((p) =>
-    [p.name, p.nummer, p.bauherr, p.ort].join(' ').toLowerCase().includes(suche.toLowerCase()),
+    [p.name, p.nummer, p.beschreibung].join(' ').toLowerCase().includes(suche.toLowerCase()),
   );
 
   return (
@@ -78,9 +77,11 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                     <div style={{ minWidth: 0 }}>
                       <div className="mono tertiary">{p.nummer}</div>
                       <h2 style={{ marginTop: 2 }}>{p.name}</h2>
-                      <div className="small muted" style={{ marginTop: 3 }}>
-                        {p.bauherr} · {p.ort}
-                      </div>
+                      {p.beschreibung ? (
+                        <div className="small muted truncate" style={{ marginTop: 3 }}>
+                          {p.beschreibung}
+                        </div>
+                      ) : null}
                     </div>
                     <span className="row" style={{ gap: 6 }}>
                       <Badge ton={STATUS_TON[p.status]}>{STATUS_OPTIONEN.find((s) => s.value === p.status)?.label}</Badge>
@@ -120,10 +121,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                     )}
                   </div>
 
-                  <div className="divider" style={{ margin: '14px 0 10px' }} />
-                  <div className="small tertiary">
-                    {formatDate(p.start)} – {p.ende ? formatDate(p.ende) : 'offen'}
-                  </div>
+
                 </div>
               </button>
             );
@@ -150,12 +148,8 @@ export function ProjektDialog({
   const [form, setForm] = useState({
     nummer: project?.nummer ?? '',
     name: project?.name ?? '',
-    bauherr: project?.bauherr ?? '',
-    ort: project?.ort ?? '',
     status: project?.status ?? ('aktiv' as ProjectStatus),
     markiert: project?.markiert ?? true,
-    start: project?.start ?? today(),
-    ende: project?.ende ?? addDays(today(), 365),
     beschreibung: project?.beschreibung ?? '',
   });
 
@@ -168,14 +162,13 @@ export function ProjektDialog({
       return;
     }
     if (project) {
-      updateProject(project.id, { ...form, ende: form.ende || null });
+      updateProject(project.id, form);
       toast('Projekt aktualisiert.');
       onClose();
       return;
     }
     const id = addProject({
       ...form,
-      ende: form.ende || null,
       settings: {
         erinnerungVorlaufTage: 5,
         fristenInArbeitstagen: true,
@@ -187,7 +180,14 @@ export function ProjektDialog({
     });
     // Standardrollen als Projektrollen übernehmen
     data.standardRollen.forEach((r) =>
-      addRole({ projectId: id, name: r.name, kuerzel: r.kuerzel, farbe: r.farbe, beschreibung: r.beschreibung }),
+      addRole({
+        projectId: id,
+        name: r.name,
+        kuerzel: r.kuerzel,
+        farbe: r.farbe,
+        beschreibung: r.beschreibung,
+        gewerkBezug: r.gewerkBezug,
+      }),
     );
     toast('Projekt angelegt – Standardrollen wurden übernommen.');
     onClose();
@@ -219,18 +219,6 @@ export function ProjektDialog({
         </Field>
         <Field label="Projektname" full>
           <TextInput value={form.name} onChange={(v) => set('name', v)} placeholder="Neubau …" />
-        </Field>
-        <Field label="Bauherr">
-          <TextInput value={form.bauherr} onChange={(v) => set('bauherr', v)} />
-        </Field>
-        <Field label="Ort">
-          <TextInput value={form.ort} onChange={(v) => set('ort', v)} />
-        </Field>
-        <Field label="Projektstart">
-          <TextInput value={form.start} onChange={(v) => set('start', v)} type="date" />
-        </Field>
-        <Field label="Projektende" hint="leer lassen, wenn offen">
-          <TextInput value={form.ende ?? ''} onChange={(v) => set('ende', v)} type="date" />
         </Field>
         <Field label="Beschreibung" full>
           <TextArea value={form.beschreibung} onChange={(v) => set('beschreibung', v)} rows={3} />

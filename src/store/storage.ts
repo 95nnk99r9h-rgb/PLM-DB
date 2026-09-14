@@ -6,6 +6,12 @@
 import { DATEN_VERSION, EIGENE_ROLLE, type AppData, type StepType } from '../domain/types';
 import { STANDARD_ROLLEN, seedData } from '../domain/seed';
 
+/** Frühere Bezeichnung der eigenen Rolle. */
+const ALTE_EIGENE_ROLLE = 'PLM';
+
+/** Hebt einen Rollennamen auf die aktuelle Bezeichnung. */
+const rollenName = (name: string) => (name === ALTE_EIGENE_ROLLE ? EIGENE_ROLLE : name);
+
 const KEY = 'planlauf-management.data.v1';
 
 export function ladeDaten(): AppData {
@@ -46,21 +52,38 @@ function migriere(daten: AppData): AppData {
 
   return {
     version: DATEN_VERSION,
-    bearbeiter: daten.bearbeiter ?? { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
+    bearbeiter: daten.bearbeiter
+      ? { ...daten.bearbeiter, rolle: rollenName(daten.bearbeiter.rolle) }
+      : { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
         ? daten.standardRollen
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
     projects: (daten.projects ?? []).map((p) => ({ ...p, markiert: p.markiert ?? true })),
-    roles: daten.roles ?? [],
-    contacts: (daten.contacts ?? []).map((c) => ({ ...c, anschrift: c.anschrift ?? '' })),
+    roles: (daten.roles ?? []).map((r) => ({
+      ...r,
+      name: rollenName(r.name),
+      // Übergreifend besetzt sind nur die projektweiten Rollen
+      gewerkBezug:
+        r.gewerkBezug ??
+        (STANDARD_ROLLEN.find((s) => s.name === rollenName(r.name))?.gewerkBezug ?? 'individuell'),
+    })),
+    contacts: (daten.contacts ?? []).map((c) => {
+      const alt = c as unknown as { roleIds?: string[] };
+      return {
+        ...c,
+        anschrift: c.anschrift ?? '',
+        // Frühere Rollenzuordnungen galten für alle Gewerke
+        zuordnungen:
+          c.zuordnungen ?? (alt.roleIds ?? []).map((roleId) => ({ roleId, gewerk: null })),
+      };
+    }),
     documents: (daten.documents ?? []).map((d) => {
       const alt = d as unknown as Record<string, unknown>;
       return {
         id: d.id,
         projectId: d.projectId,
         kind: d.kind,
-        parentId: d.parentId ?? null,
         nummer: d.nummer,
         titel: d.titel,
         index: d.index ?? '',
@@ -75,7 +98,14 @@ function migriere(daten: AppData): AppData {
       herkunft: t.herkunft === 'standard' ? 'standard' : 'manuell',
       steps: (t.steps ?? []).map((s) => {
         const typ = migriereTyp(s.typ as unknown as string);
-        return { ...s, typ, antworten: alsAntworten(typ, s.antworten) };
+        return {
+          ...s,
+          typ,
+          roleName: rollenName(s.roleName),
+          antworten: alsAntworten(typ, s.antworten),
+          naechster: s.naechster ?? null,
+          nachweis: s.nachweis ?? 'keine',
+        };
       }),
     })),
     runs: (daten.runs ?? []).map((r) => ({
@@ -88,9 +118,13 @@ function migriere(daten: AppData): AppData {
         return {
           ...s,
           typ,
+          roleName: rollenName(s.roleName),
           antworten: alsAntworten(typ, s.antworten),
+          naechster: s.naechster ?? null,
           gewaehlteAntwortId: s.gewaehlteAntwortId ?? null,
           durchlauf: s.durchlauf ?? 1,
+          nachweis: s.nachweis ?? 'keine',
+          nachweisNummer: s.nachweisNummer ?? null,
         };
       }),
     })),

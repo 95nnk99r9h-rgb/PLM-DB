@@ -14,15 +14,18 @@ import {
 } from '../../domain/engine';
 import { formatDate, tageLabel, today } from '../../lib/dates';
 import {
+  NACHWEIS_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
+  istPrueferRolle,
+  type Nachweis,
   type PlanRun,
   type Project,
   type RunStep,
   type StepStatus,
   type StepType,
 } from '../../domain/types';
-import { useStore } from '../../store/store';
+import { newId, useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { AmpelBadge, RunStatusBadge, StepTypBadge } from '../../components/common';
 import {
@@ -49,13 +52,14 @@ export function PlanlaufDetail({
   run: PlanRun;
   onZurueck: () => void;
 }) {
-  const { data, updateRun, updateStep, addStep, deleteRun, abbrechenRun } = useStore();
+  const { data, updateRun, updateStep, deleteRun, abbrechenRun } = useStore();
   const toast = useToast();
   const [mailStep, setMailStep] = useState<RunStep | null>(null);
   const [bearbeiten, setBearbeiten] = useState<RunStep | null>(null);
   const [neuerSchritt, setNeuerSchritt] = useState(false);
   const [laufLoeschen, setLaufLoeschen] = useState(false);
   const [abbrechen, setAbbrechen] = useState(false);
+  const [nachweisFuer, setNachweisFuer] = useState<RunStep | null>(null);
 
   const doc = data.documents.find((d) => d.id === run.documentId);
   const { schritte: verlauf, rueckSprungZu } = verlaufDerKette(run.steps);
@@ -65,10 +69,29 @@ export function PlanlaufDetail({
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
   const beendet = run.status !== 'laufend';
 
+  /**
+   * Ein Nachweis wird verlangt, wenn der Schritt erfolgreich abgeschlossen
+   * wird: bei Entscheidungen nur bei der ersten (zustimmenden) Antwort.
+   */
+  const braucheNachweis = (step: RunStep, status: StepStatus) => {
+    if (status !== 'erledigt' || step.nachweis === 'keine' || step.nachweisNummer) return false;
+    if (step.typ !== 'entscheidung') return true;
+    return massgeblicheAntwort(step)?.id === step.antworten[0]?.id;
+  };
+
   /** Setzt den Status eines Schritts und rückt den Lauf ggf. weiter. */
-  const setzeStatus = (step: RunStep, status: StepStatus) => {
+  const setzeStatus = (step: RunStep, status: StepStatus, nachweisNummer?: string) => {
     // Führt die Antwort einer Entscheidung zu einem bereits durchlaufenen
     // Schritt zurück, beginnt dort ein weiterer Durchlauf.
+    if (braucheNachweis(step, status) && nachweisNummer === undefined) {
+      setNachweisFuer(step);
+      return;
+    }
+    if (nachweisNummer !== undefined) {
+      updateStep(run.id, step.id, { nachweisNummer });
+      step = { ...step, nachweisNummer };
+    }
+
     if (step.typ === 'entscheidung' && status === 'erledigt') {
       const antwort = massgeblicheAntwort(step);
       const ziel = antwort?.ziel && antwort.ziel !== 'ende' ? antwort.ziel : null;
@@ -78,7 +101,14 @@ export function PlanlaufDetail({
         verlauf.findIndex((s) => s.id === ziel) < verlauf.findIndex((s) => s.id === step.id);
       if (zielIstFrueher && ziel) {
         const erledigt = run.steps.map((s) =>
-          s.id === step.id ? { ...s, status: 'erledigt' as const, istDatum: s.istDatum ?? today() } : s,
+          s.id === step.id
+            ? {
+                ...s,
+                status: 'erledigt' as const,
+                istDatum: s.istDatum ?? today(),
+                nachweisNummer: step.nachweisNummer,
+              }
+            : s,
         );
         updateRun(run.id, { steps: rueckSprungAnwenden(erledigt, step.id, ziel) });
         const zielName = run.steps.find((s) => s.id === ziel)?.name ?? '';
@@ -105,6 +135,61 @@ export function PlanlaufDetail({
       if (rest[0].status === 'offen') updateStep(run.id, rest[0].id, { status: 'laufend' });
     }
     toast(`„${step.name}“: ${STEP_STATUS_LABEL[status]}`);
+  };
+
+  /**
+   * Fügt einen Schritt hinter einem Schritt des Verlaufs ein und verkettet ihn:
+   * Der neue Schritt übernimmt den bisherigen Nachfolger, der Vorgänger zeigt
+   * auf den neuen Schritt. So bleibt der Verlauf lückenlos.
+   */
+  const schrittEinfuegen = (werte: SchrittWerte, nachStepId: string | null) => {
+    const neu: RunStep = {
+      id: newId('rs'),
+      name: werte.name,
+      typ: werte.typ,
+      roleName: werte.roleName,
+      contactId: werte.contactId,
+      fristTage: werte.fristTage,
+      bemerkung: werte.bemerkung,
+      sollManuell: false,
+      sollDatum: null,
+      istDatum: null,
+      status: 'offen',
+      abweichung: true,
+      letzteErinnerung: null,
+      antworten: [],
+      naechster: null,
+      gewaehlteAntwortId: null,
+      durchlauf: 1,
+      nachweis: werte.nachweis,
+      nachweisNummer: null,
+    };
+
+    if (!nachStepId) {
+      updateRun(run.id, { steps: [neu, ...run.steps] });
+      return;
+    }
+
+    const index = run.steps.findIndex((s) => s.id === nachStepId);
+    const vorgaenger = run.steps[index];
+    const steps = [...run.steps];
+
+    if (vorgaenger.typ === 'entscheidung' && vorgaenger.antworten.length > 0) {
+      // Hinter einer Entscheidung bestimmt die maßgebliche Antwort den Verlauf.
+      const antwort = massgeblicheAntwort(vorgaenger)!;
+      neu.naechster = antwort.ziel ?? run.steps[index + 1]?.id ?? 'ende';
+      steps[index] = {
+        ...vorgaenger,
+        antworten: vorgaenger.antworten.map((a) => (a.id === antwort.id ? { ...a, ziel: neu.id } : a)),
+        abweichung: true,
+      };
+    } else {
+      neu.naechster = vorgaenger.naechster ?? run.steps[index + 1]?.id ?? 'ende';
+      steps[index] = { ...vorgaenger, naechster: neu.id, abweichung: true };
+    }
+
+    steps.splice(index + 1, 0, neu);
+    updateRun(run.id, { steps });
   };
 
   const waehleAntwort = (step: RunStep, antwortId: string) => {
@@ -214,6 +299,13 @@ export function PlanlaufDetail({
                   <span>
                     Ist: <b>{formatDate(step.istDatum)}</b>
                   </span>
+                  {step.nachweisNummer ? (
+                    <span>
+                      {NACHWEIS_LABEL[step.nachweis]} <b>{step.nachweisNummer}</b>
+                    </span>
+                  ) : step.nachweis !== 'keine' ? (
+                    <span className="tertiary">{NACHWEIS_LABEL[step.nachweis]} wird beim Erledigen erfasst</span>
+                  ) : null}
                 </div>
 
                 {step.typ === 'entscheidung' && step.antworten.length > 0 ? (
@@ -337,21 +429,20 @@ export function PlanlaufDetail({
         <SchrittDialog
           project={project}
           run={run}
+          verlauf={verlauf}
           onClose={() => setNeuerSchritt(false)}
-          onAnlegen={(werte) => {
-            addStep(run.id, {
-              ...werte,
-              sollDatum: null,
-              istDatum: null,
-              status: 'offen',
-              abweichung: true,
-              letzteErinnerung: null,
-              antworten: [],
-              gewaehlteAntwortId: null,
-              durchlauf: 1,
-            });
+          onAnlegen={(werte, nachStepId) => {
+            schrittEinfuegen(werte, nachStepId);
             toast('Schritt eingefügt – als Abweichung markiert.');
           }}
+        />
+      ) : null}
+
+      {nachweisFuer ? (
+        <NachweisDialog
+          step={nachweisFuer}
+          onClose={() => setNachweisFuer(null)}
+          onErfassen={(nummer) => setzeStatus(nachweisFuer, 'erledigt', nummer)}
         />
       ) : null}
 
@@ -442,20 +533,73 @@ function AbbruchDialog({
   );
 }
 
+/** Erfasst die Freigabe- bzw. Prüfbericht-Nummer beim Abschluss eines Schritts. */
+function NachweisDialog({
+  step,
+  onClose,
+  onErfassen,
+}: {
+  step: RunStep;
+  onClose: () => void;
+  onErfassen: (nummer: string) => void;
+}) {
+  const toast = useToast();
+  const [nummer, setNummer] = useState('');
+  const bezeichnung = NACHWEIS_LABEL[step.nachweis];
+
+  const uebernehmen = () => {
+    if (!nummer.trim()) {
+      toast(`Bitte die ${bezeichnung} angeben.`);
+      return;
+    }
+    onErfassen(nummer.trim());
+    onClose();
+  };
+
+  return (
+    <Modal
+      titel={`${bezeichnung} erfassen`}
+      sub={`${step.name} – wird am Schritt und im Export dokumentiert`}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={uebernehmen}>
+            Übernehmen und erledigen
+          </button>
+        </>
+      }
+    >
+      <Field label={bezeichnung}>
+        <TextInput
+          value={nummer}
+          onChange={setNummer}
+          autoFocus
+          placeholder={step.nachweis === 'freigabe' ? 'z.B. FG-2026-0147' : 'z.B. PB-2026-0032'}
+          onKeyDown={(e) => e.key === 'Enter' && uebernehmen()}
+        />
+      </Field>
+    </Modal>
+  );
+}
+
 type SchrittWerte = {
   name: string;
   typ: StepType;
   roleName: string;
   contactId: string | null;
   fristTage: number;
-  sollManuell: boolean;
   bemerkung: string;
+  nachweis: Nachweis;
 };
 
 function SchrittDialog({
   project,
   run,
   step,
+  verlauf,
   onClose,
   onAnlegen,
 }: {
@@ -463,7 +607,9 @@ function SchrittDialog({
   run: PlanRun;
   step?: RunStep;
   onClose: () => void;
-  onAnlegen?: (werte: SchrittWerte & { sollDatum: null }) => void;
+  onAnlegen?: (werte: SchrittWerte, nachStepId: string | null) => void;
+  /** Schritte des aktuellen Verlaufs – Grundlage der Einfügeposition. */
+  verlauf?: RunStep[];
 }) {
   const { data, updateStep } = useStore();
   const toast = useToast();
@@ -481,9 +627,21 @@ function SchrittDialog({
     istDatum: step?.istDatum ?? '',
     status: step?.status ?? ('offen' as StepStatus),
     bemerkung: step?.bemerkung ?? '',
+    nachweis: step?.nachweis ?? ('keine' as Nachweis),
   });
 
+  // Einfügeposition: hinter welchem Schritt des Verlaufs der neue Schritt steht
+  const [nachStepId, setNachStepId] = useState<string>(() => verlauf?.[verlauf.length - 1]?.id ?? '');
+
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  /** Prüfende Rollen verlangen regelmäßig einen Prüfbericht. */
+  const rolleWechseln = (roleName: string) =>
+    setForm((f) => ({
+      ...f,
+      roleName,
+      nachweis: f.nachweis === 'keine' && istPrueferRolle(roleName) ? 'pruefbericht' : f.nachweis,
+    }));
 
   const speichern = () => {
     if (!form.name.trim()) {
@@ -508,20 +666,23 @@ function SchrittDialog({
         istDatum: form.istDatum || null,
         status: form.status,
         bemerkung: form.bemerkung,
+        nachweis: form.nachweis,
         abweichung: step.abweichung || veraendert,
       });
       toast('Schritt angepasst.');
     } else {
-      onAnlegen?.({
-        name: form.name,
-        typ: form.typ,
-        roleName: form.roleName,
-        contactId: form.contactId,
-        fristTage: Number(form.fristTage) || 0,
-        sollManuell: false,
-        bemerkung: form.bemerkung,
-        sollDatum: null,
-      });
+      onAnlegen?.(
+        {
+          name: form.name,
+          typ: form.typ,
+          roleName: form.roleName,
+          contactId: form.contactId,
+          fristTage: Number(form.fristTage) || 0,
+          bemerkung: form.bemerkung,
+          nachweis: form.nachweis,
+        },
+        nachStepId || null,
+      );
     }
     onClose();
   };
@@ -553,14 +714,33 @@ function SchrittDialog({
             options={Object.entries(STEP_TYPE_LABEL).map(([value, label]) => ({ value, label }))}
           />
         </Field>
-        <Field label="Verantwortlicher">
+        <Field label="Verantwortlicher" hint="Prüfer werden hier ergänzt (z.B. Erdungsprüfer)">
           <Select
             value={form.roleName}
-            onChange={(v) => set('roleName', v)}
+            onChange={rolleWechseln}
             placeholder="– keine Rolle –"
             options={rollen.map((r) => ({ value: r.name, label: r.name }))}
           />
         </Field>
+        <Field label="Nachweis bei Abschluss" hint="wird beim Erledigen abgefragt">
+          <Select
+            value={form.nachweis}
+            onChange={(v) => set('nachweis', v as Nachweis)}
+            options={Object.entries(NACHWEIS_LABEL).map(([value, label]) => ({ value, label }))}
+          />
+        </Field>
+        {!step ? (
+          <Field label="Einfügen nach" full hint="Der Schritt wird in den laufenden Verlauf eingehängt.">
+            <Select
+              value={nachStepId}
+              onChange={setNachStepId}
+              options={[
+                { value: '', label: '– an den Anfang –' },
+                ...(verlauf ?? []).map((s, i) => ({ value: s.id, label: `${i + 1}. ${s.name}` })),
+              ]}
+            />
+          </Field>
+        ) : null}
         <Field label="Zuständige Person">
           <Select
             value={form.contactId ?? ''}

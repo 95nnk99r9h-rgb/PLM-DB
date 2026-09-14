@@ -75,12 +75,24 @@ Fristenliste – zu gestapelten Karten, damit die Schaltflächen erreichbar blei
 ## Funktionsumfang
 
 ### Projekte
-Anlage und Pflege von Projekten (Nummer, Bauherr, Ort, Laufzeit, Status). Beim Anlegen werden
-Standardrollen und E-Mail-Vorlagen vorbelegt.
+Anlage und Pflege von Projekten (Projektnummer, Name, Status, Beschreibung). Beim Anlegen werden
+die Standardrollen und die E-Mail-Vorlagen übernommen.
 
-### Rollen
+### Rollen und Gewerke
 Im übergeordneten Reiter **Rollen** werden die projektübergreifenden **Standardrollen** gepflegt
-(Bezeichnung, Kürzel, Farbe). Neue Projekte übernehmen diese Rollen automatisch.
+(Bezeichnung, Kürzel, Farbe, Besetzung). Neue Projekte übernehmen sie automatisch. Mitgeliefert sind
+die vorgegebenen Rollen: Planlaufmanagement (PLM), Projektleitung (PL), Fachplaner (FP),
+Fachspezialist (FS), Bauvorlageberechtiger (BVB), Bau AN, Bauüberwachung (BÜW), Fachtechnischer
+Prüfer (PSV), Prüfstatiker, Vermessungs-, Erdungs-, Schweißtechnischer, Korrosionsschutz-,
+Gleisgeometrie- und Geotechnischer Prüfer.
+
+Jede Rolle wird entweder **je Gewerk** oder **übergreifend** besetzt: Planlaufmanagement und
+Projektleitung gelten für alle Gewerke, alle übrigen Rollen werden je Gewerk mit einer eigenen
+Person belegt – es gibt also z.B. einen Fachplaner je Gewerk. Beim Start eines Planlaufs setzt die
+Anwendung deshalb die Verantwortlichen **nach dem Gewerk des Plans** ein: Zwei Pläne nach derselben
+Prozesskette, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche Verantwortliche.
+
+Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – ergänzt um freie Eingaben.
 
 ### Adressbuch
 Im Projekt zeigt das Adressbuch die Rollen des Projekts und **wer sie ausfüllt**: Personen werden
@@ -90,9 +102,9 @@ Anschrift geführt. Über die Rolle findet die Anwendung beim Start eines Planla
 zuständige Person.
 
 ### Pläne & Planläufe
-Hierarchischer Planbestand: Planpakete und Planverzeichnisse können Pläne enthalten. Je Eintrag
-werden Nummer, Titel, Index (standardmäßig leer), Gewerk (KIB, VA, OLA, LST, TK, OSE, EEA oder freie
-Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
+Planbestand aus Plänen, Planpaketen und Planverzeichnissen. Je Eintrag
+werden Plancodierung, Titel, Index (standardmäßig leer), Gewerk (EEA, KIB, LST, OLA, OSE, TK, VA oder
+freie Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
 der Soll-Termin für den Eingang und eine Bemerkung geführt.
 
 **Zu jedem Eintrag gehört genau ein Planlauf.** Er entsteht zusammen mit dem Eintrag: Im selben
@@ -112,9 +124,32 @@ Zeigt eine Antwort auf einen bereits durchlaufenen Schritt zurück, entsteht ein
 (z.B. Überarbeitung nach einer Prüfung): Der Ablauf endet dort nicht, sondern nimmt den genannten
 Schritt in einem weiteren Durchlauf erneut auf.
 
-Mitgeliefert sind drei Standardketten (Ausführungs-, Genehmigungs- sowie Werk- und Montageplanung).
+Mitgeliefert sind die drei vorgegebenen Ketten **VVBau ohne Prüfstatik**, **VVBau mit Prüfstatik**
+und **VVBau STE** mit ihren Verzweigungen und Rücksprüngen. Die Fristen sind dort nicht vorgegeben
+und daher als Erfahrungswerte vorbelegt (z.B. 10 Tage Planerstellung, 3 Tage formale Prüfung,
+10 Tage BVB-Freigabe, 15 Tage Fachprüfung); sie lassen sich je Kette und je Planlauf ändern. Schritte,
+die in der Vorgabe parallel laufen (etwa die vier Versandschritte nach der Genehmigung), sind
+nacheinander abgebildet.
+
 Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen. Die eigene Rolle im
-Projekt ist **PLM**.
+Projekt ist **Planlaufmanagement (PLM)**.
+
+### Nachweise: Freigabe- und Prüfbericht-Nummern
+Je Schritt lässt sich hinterlegen, welcher Nachweis bei erfolgreichem Abschluss zu erfassen ist:
+
+* **Freigabe-Nr.** – hinterlegt an den BVB-Freigaben (nicht an der Freigabe *zur fachtechnischen
+  Prüfung*).
+* **Prüfbericht-Nr.** – hinterlegt an den Fachprüfungen; bei Schritten mit prüfender Rolle
+  (Erdungs-, Vermessungsprüfer …) wird sie automatisch vorgeschlagen.
+
+Beim Erledigen fragt die Anwendung die Nummer ab – bei Entscheidungen nur, wenn die erste
+(zustimmende) Antwort gewählt ist. Die Nummer steht anschließend am Schritt und in beiden
+Exportfassungen.
+
+### Prüfer individuell ergänzen
+Über **Schritt einfügen** wird ein zusätzlicher Prüfschritt in den laufenden Verlauf eingehängt –
+mit Rolle (z.B. Erdungsprüfer), Frist und Nachweis. Die Einfügeposition wird aus dem aktuellen
+Verlauf gewählt; die Verkettung wird dabei richtig gesetzt, auch hinter Entscheidungen.
 
 ### Planläufe (Soll-/Ist-Termine)
 Ein Planlauf ist die laufende Instanz einer Prozesskette für einen Plan, ein Paket oder ein

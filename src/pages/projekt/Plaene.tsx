@@ -4,7 +4,14 @@
  * mit dem Eintrag.
  */
 import { useMemo, useState } from 'react';
-import { aktuellerSchritt, ampelFuerSchritt, fortschritt, istAktiv, stepsAusTemplate } from '../../domain/engine';
+import {
+  aktuellerSchritt,
+  ampelFuerSchritt,
+  fortschritt,
+  istAktiv,
+  kontaktFuerRolleUndGewerk,
+  stepsAusTemplate,
+} from '../../domain/engine';
 import { formatDate, relativeLabel, tageLabel, today } from '../../lib/dates';
 import {
   DOCUMENT_KIND_LABEL,
@@ -91,15 +98,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     });
   };
 
-  // Hierarchie erhalten: je Ebene sortieren
-  const zeilen: { doc: PlanDocument; tiefe: number }[] = [];
-  const sammle = (doc: PlanDocument, tiefe: number) => {
-    zeilen.push({ doc, tiefe });
-    sortiere(gefiltert.filter((d) => d.parentId === doc.id)).forEach((k) => sammle(k, tiefe + 1));
-  };
-  sortiere(gefiltert.filter((d) => !d.parentId || !gefiltert.some((p) => p.id === d.parentId))).forEach((d) =>
-    sammle(d, 0),
-  );
+  const zeilen = sortiere(gefiltert);
 
   const sortieren = (feld: SortFeld) => {
     if (feld === sortFeld) setAbsteigend((a) => !a);
@@ -168,7 +167,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             <table className="table">
               <thead>
                 <tr>
-                  <Kopf feld="nummer">Nummer / Titel</Kopf>
+                  <Kopf feld="nummer">Plancodierung / Titel</Kopf>
                   <Kopf feld="gewerk" klasse="col-optional">Gewerk</Kopf>
                   <Kopf feld="planungsphase" klasse="col-optional">Phase</Kopf>
                   <Kopf feld="eingangSoll" klasse="col-optional">Eingang Soll</Kopf>
@@ -178,7 +177,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 </tr>
               </thead>
               <tbody>
-                {zeilen.map(({ doc, tiefe }) => {
+                {zeilen.map((doc) => {
                   const stand = standFuer(doc, runs);
                   const run = stand.run;
                   const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
@@ -190,7 +189,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       style={run?.status === 'abgebrochen' ? { opacity: 0.55 } : undefined}
                       onClick={() => (run ? oeffneLauf(run.id) : setDialog({ doc }))}
                     >
-                      <td style={{ paddingLeft: 14 + tiefe * 22 }}>
+                      <td>
                         <span className="row" style={{ gap: 9 }}>
                           <DocKindIcon kind={doc.kind} />
                           <span style={{ minWidth: 0 }}>
@@ -304,7 +303,6 @@ function PlanDialog({
 
   const [form, setForm] = useState({
     kind: doc?.kind ?? ('plan' as DocumentKind),
-    parentId: doc?.parentId ?? (null as ID | null),
     nummer: doc?.nummer ?? '',
     titel: doc?.titel ?? '',
     index: doc?.index ?? '',
@@ -341,15 +339,12 @@ function PlanDialog({
     setSteps(kopie(id));
   };
 
-  const moeglicheEltern = data.documents.filter(
-    (d) => d.projectId === project.id && d.id !== doc?.id && d.kind !== 'plan',
-  );
-
-  const kontaktFuerRolle = (roleName: string): ID | null => {
-    const rolle = rollen.find((r) => r.name.toLowerCase() === roleName.trim().toLowerCase());
-    if (!rolle) return null;
-    return kontakte.find((c) => c.roleIds.includes(rolle.id))?.id ?? null;
-  };
+  /**
+   * Besetzung einer Rolle: Bei Rollen mit Gewerkbezug zählt die Zuordnung für
+   * das Gewerk des Eintrags, sonst die gewerkübergreifende Zuordnung.
+   */
+  const kontaktFuerRolle = (roleName: string): ID | null =>
+    kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, form.gewerk);
 
   const speichern = () => {
     if (!form.titel.trim()) {
@@ -452,16 +447,8 @@ function PlanDialog({
                 options={Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => ({ value, label }))}
               />
             </Field>
-            <Field label="Übergeordnet" hint="Paket oder Verzeichnis">
-              <Select
-                value={form.parentId ?? ''}
-                onChange={(v) => set('parentId', v || null)}
-                placeholder="– keines –"
-                options={moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
-              />
-            </Field>
-            <Field label="Nummer">
-              <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="A-GR-101" />
+            <Field label="Plancodierung">
+              <TextInput value={form.nummer} onChange={(v) => set('nummer', v)} placeholder="NK-KIB-EÜ-001" />
             </Field>
             <Field label="Index / Revision" hint="bleibt leer, solange kein Index vergeben ist">
               <TextInput value={form.index} onChange={(v) => set('index', v)} placeholder="ohne" />

@@ -7,6 +7,8 @@ import {
   EIGENE_ROLLE,
   type Antwort,
   type AppData,
+  type Contact,
+  type Role,
   type ID,
   type ISODate,
   type PlanRun,
@@ -35,6 +37,17 @@ export function massgeblicheAntwort(step: { antworten: Antwort[]; gewaehlteAntwo
   if (step.antworten.length === 0) return undefined;
   const gewaehlt = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
   return gewaehlt ?? step.antworten[0];
+}
+
+/**
+ * Der Nachfolger eines Schritts: bei Entscheidungen das Ziel der maßgeblichen
+ * Antwort, sonst der hinterlegte Nachfolger. `null` heißt „nächster Schritt“.
+ */
+export function zielVonSchritt(step: ProcessTemplateStep | RunStep): ID | 'ende' | null {
+  if (step.typ === 'entscheidung' && step.antworten.length > 0) {
+    return massgeblicheAntwort(step)?.ziel ?? null;
+  }
+  return step.naechster ?? null;
 }
 
 /** Ergebnis der Ablaufverfolgung durch eine Kette. */
@@ -70,18 +83,16 @@ export function verlaufDerKette<T extends ProcessTemplateStep | RunStep>(steps: 
     besucht.add(step.id);
     schritte.push(step);
 
-    if (step.typ === 'entscheidung' && step.antworten.length > 0) {
-      const antwort = massgeblicheAntwort(step);
-      if (!antwort || antwort.ziel === 'ende') return { schritte, rueckSprungZu: null, beendet: true };
-      if (antwort.ziel) {
-        const ziel = steps.findIndex((s) => s.id === antwort.ziel);
-        if (ziel < 0) break;
-        if (besucht.has(steps[ziel].id)) {
-          return { schritte, rueckSprungZu: steps[ziel], beendet: false };
-        }
-        index = ziel;
-        continue;
+    const ziel = zielVonSchritt(step);
+    if (ziel === 'ende') return { schritte, rueckSprungZu: null, beendet: true };
+    if (ziel) {
+      const zielIndex = steps.findIndex((s) => s.id === ziel);
+      if (zielIndex < 0) break;
+      if (besucht.has(steps[zielIndex].id)) {
+        return { schritte, rueckSprungZu: steps[zielIndex], beendet: false };
       }
+      index = zielIndex;
+      continue;
     }
     index += 1;
   }
@@ -238,6 +249,34 @@ export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
   });
 }
 
+/**
+ * Ermittelt die Person, die eine Rolle für ein bestimmtes Gewerk ausfüllt.
+ * Rollen ohne Gewerkbezug sind einmal für alle Gewerke besetzt.
+ */
+export function kontaktFuerRolleUndGewerk(
+  kontakte: Contact[],
+  rollen: Role[],
+  roleName: string,
+  gewerk: string,
+): ID | null {
+  const rolle = rollen.find((r) => r.name.trim().toLowerCase() === roleName.trim().toLowerCase());
+  if (!rolle) return null;
+
+  const passend = (nurGewerk: boolean) =>
+    kontakte.find((c) =>
+      c.zuordnungen.some(
+        (z) =>
+          z.roleId === rolle.id &&
+          (nurGewerk ? z.gewerk === gewerk : z.gewerk === null || z.gewerk === gewerk),
+      ),
+    );
+
+  if (rolle.gewerkBezug === 'individuell') {
+    return (passend(true) ?? passend(false))?.id ?? null;
+  }
+  return passend(false)?.id ?? null;
+}
+
 /** Erzeugt aus einer Vorlage die Schritte eines neuen Laufs. */
 export function stepsAusTemplate(
   template: ProcessTemplate,
@@ -267,8 +306,11 @@ export function stepsAusTemplate(
       text: a.text,
       ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
     })),
+    naechster: s.naechster === 'ende' || s.naechster === null ? s.naechster : (idMap.get(s.naechster) ?? null),
     gewaehlteAntwortId: null,
     durchlauf: 1,
+    nachweis: s.nachweis,
+    nachweisNummer: null,
   }));
 }
 

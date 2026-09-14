@@ -4,10 +4,10 @@
  * und um projekteigene Rollen ergänzen.
  */
 import { useState } from 'react';
-import type { StandardRolle } from '../domain/types';
+import { GEWERKBEZUG_LABEL, type GewerkBezug, type StandardRolle } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../components/toast';
-import { Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, TextArea, TextInput } from '../components/ui';
+import { Badge, Card, CardHeader, ConfirmDialog, EmptyState, Field, Modal, Select, TextArea, TextInput } from '../components/ui';
 import { Icon } from '../components/icons';
 
 const FARBEN = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
@@ -30,8 +30,8 @@ export function Rollen() {
     <div className="stack">
       <div className="row-between wrap">
         <p className="muted small" style={{ maxWidth: 640 }}>
-          Standardrollen gelten projektübergreifend und werden beim Anlegen eines Projekts übernommen. Die Zuordnung
-          konkreter Personen erfolgt im Adressbuch des jeweiligen Projekts.
+          Standardrollen gelten projektübergreifend und werden beim Anlegen eines Projekts übernommen. Rollen mit
+          Besetzung „je Gewerk“ werden im Adressbuch für jedes Gewerk einzeln mit Personen belegt.
         </p>
         <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
           <Icon name="plus" size={14} /> Neue Rolle
@@ -58,6 +58,7 @@ export function Rollen() {
                 <tr>
                   <th>Rolle</th>
                   <th>Kürzel</th>
+                  <th>Besetzung</th>
                   <th className="col-optional">Beschreibung</th>
                   <th>Verwendung</th>
                   <th className="actions" />
@@ -73,6 +74,11 @@ export function Rollen() {
                       </span>
                     </td>
                     <td className="num">{r.kuerzel || '–'}</td>
+                    <td>
+                      <Badge ton={r.gewerkBezug === 'individuell' ? 'orange' : 'blue'}>
+                        {GEWERKBEZUG_LABEL[r.gewerkBezug]}
+                      </Badge>
+                    </td>
                     <td className="small muted col-optional">{r.beschreibung || '–'}</td>
                     <td className="small muted">
                       {verwendung(r.name) > 0 ? `${verwendung(r.name)} Projekt(e)` : 'noch nicht verwendet'}
@@ -143,6 +149,7 @@ function RollenDialog({
     kuerzel: rolle?.kuerzel ?? '',
     farbe: rolle?.farbe ?? FARBEN[anzahl % FARBEN.length],
     beschreibung: rolle?.beschreibung ?? '',
+    gewerkBezug: rolle?.gewerkBezug ?? ('individuell' as GewerkBezug),
   });
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -187,6 +194,13 @@ function RollenDialog({
         </Field>
         <Field label="Kürzel" hint="leer = aus dem Namen gebildet">
           <TextInput value={form.kuerzel} onChange={(v) => set('kuerzel', v)} />
+        </Field>
+        <Field label="Besetzung" hint="„je Gewerk“: eigene Person je Gewerk, z.B. ein Fachplaner je Gewerk">
+          <Select
+            value={form.gewerkBezug}
+            onChange={(v) => set('gewerkBezug', v as GewerkBezug)}
+            options={Object.entries(GEWERKBEZUG_LABEL).map(([value, label]) => ({ value, label }))}
+          />
         </Field>
         <Field label="Farbe">
           <input

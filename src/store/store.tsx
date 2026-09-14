@@ -146,7 +146,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => ({
           ...d,
           roles: d.roles.filter((r) => r.id !== id),
-          contacts: d.contacts.map((c) => ({ ...c, roleIds: c.roleIds.filter((r) => r !== id) })),
+          contacts: d.contacts.map((c) => ({
+            ...c,
+            zuordnungen: c.zuordnungen.filter((z) => z.roleId !== id),
+          })),
         })),
 
       addContact: (c) => {
@@ -174,9 +177,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteDocument: (id) =>
         mutate((d) => ({
           ...d,
-          documents: d.documents
-            .filter((x) => x.id !== id)
-            .map((x) => (x.parentId === id ? { ...x, parentId: null } : x)),
+          documents: d.documents.filter((x) => x.id !== id),
           runs: d.runs.filter((r) => r.documentId !== id),
         })),
 
