@@ -14,6 +14,7 @@ export const PLATZHALTER: Platzhalter[] = [
   { schluessel: 'anrede', beschreibung: 'Anrede-Zeile, z.B. „Sehr geehrte Frau Berger,“' },
   { schluessel: 'empfaenger', beschreibung: 'Vor- und Nachname des Empfängers' },
   { schluessel: 'empfaenger.firma', beschreibung: 'Firma des Empfängers' },
+  { schluessel: 'empfaenger.anschrift', beschreibung: 'Anschrift des Empfängers (einzeilig)' },
   { schluessel: 'rolle', beschreibung: 'Rolle im Prozessschritt' },
   { schluessel: 'projekt', beschreibung: 'Projektname' },
   { schluessel: 'projekt.nummer', beschreibung: 'Projektnummer' },
@@ -21,6 +22,8 @@ export const PLATZHALTER: Platzhalter[] = [
   { schluessel: 'plan', beschreibung: 'Titel von Plan / Paket / Verzeichnis' },
   { schluessel: 'plan.nummer', beschreibung: 'Plannummer' },
   { schluessel: 'plan.index', beschreibung: 'Planindex' },
+  { schluessel: 'plan.gewerk', beschreibung: 'Gewerk des Plans' },
+  { schluessel: 'plan.phase', beschreibung: 'Planungsphase' },
   { schluessel: 'planlauf', beschreibung: 'Bezeichnung des Planlaufs' },
   { schluessel: 'schritt', beschreibung: 'Name des Prozessschritts' },
   { schluessel: 'soll', beschreibung: 'Soll-Termin, z.B. 14.03.2026' },
@@ -48,6 +51,7 @@ export function werteFuerKontext(ctx: MailKontext): Record<string, string> {
     anrede: anredeZeile(contact),
     empfaenger: contact ? `${contact.vorname} ${contact.nachname}`.trim() : '',
     'empfaenger.firma': contact?.firma ?? '',
+    'empfaenger.anschrift': (contact?.anschrift ?? '').replace(/\s*\n\s*/g, ', '),
     rolle: step.roleName,
     projekt: project.name,
     'projekt.nummer': project.nummer,
@@ -55,6 +59,8 @@ export function werteFuerKontext(ctx: MailKontext): Record<string, string> {
     plan: doc?.titel ?? '',
     'plan.nummer': doc?.nummer ?? '',
     'plan.index': doc?.index ?? '',
+    'plan.gewerk': doc?.gewerk ?? '',
+    'plan.phase': doc?.planungsphase ?? '',
     planlauf: run.name,
     schritt: step.name,
     soll: formatDate(step.sollDatum),
@@ -84,7 +90,10 @@ export interface VorbereiteteMail {
   an: string;
   betreff: string;
   text: string;
+  /** Öffnet das lokal eingerichtete Outlook (bzw. das Standard-Mailprogramm). */
   mailto: string;
+  /** Öffnet ein neues Fenster in Outlook im Web. */
+  outlookWeb: string;
 }
 
 export function mailVorbereiten(template: EmailTemplate, ctx: MailKontext): VorbereiteteMail {
@@ -92,8 +101,17 @@ export function mailVorbereiten(template: EmailTemplate, ctx: MailKontext): Vorb
   const betreff = fuelleVorlage(template.betreff, werte);
   const text = fuelleVorlage(template.text, werte);
   const an = ctx.contact?.email ?? '';
-  const mailto = `mailto:${encodeURIComponent(an)}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
-  return { an, betreff, text, mailto };
+  return { an, betreff, text, ...mailLinks(an, betreff, text) };
+}
+
+/** Baut die Verknüpfungen für Outlook (lokal) und Outlook im Web. */
+export function mailLinks(an: string, betreff: string, text: string) {
+  return {
+    mailto: `mailto:${encodeURIComponent(an)}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`,
+    outlookWeb:
+      'https://outlook.office.com/mail/deeplink/compose?' +
+      `to=${encodeURIComponent(an)}&subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`,
+  };
 }
 
 /** Wählt die zum Ampelstatus passende Vorlage vor. */

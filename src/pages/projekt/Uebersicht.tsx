@@ -21,7 +21,7 @@ export function Uebersicht({
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   const laeufe = data.runs.filter((r) => r.projectId === project.id);
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
-  const fristen = offeneFristen(data, project.id);
+  const fristen = offeneFristen(data, [project.id]);
   const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig');
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
 

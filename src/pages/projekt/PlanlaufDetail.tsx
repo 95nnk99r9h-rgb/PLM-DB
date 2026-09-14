@@ -1,23 +1,22 @@
 /**
- * Detailansicht eines Planlaufs: Prozesskette als Zeitstrahl, Soll-/Ist-Termine,
- * individuelle Abweichungen und die Erinnerungsfunktion je Schritt.
+ * Detailansicht eines Planlaufs: Prozesskette als Verlauf, Soll-/Ist-Termine,
+ * Entscheidungen mit Antwortmöglichkeiten und die Erinnerungsfunktion.
  */
 import { useState } from 'react';
 import {
   aktuellerSchritt,
   ampelFuerSchritt,
-  fortschritt,
-  verzugTage,
+  massgeblicheAntwort,
+  nichtImPfad,
+  pfad,
   type Ampel,
 } from '../../domain/engine';
-import { formatDate, formatDateShort, relativeLabel, tageLabel, today } from '../../lib/dates';
+import { formatDate, formatDateShort, tageLabel, today } from '../../lib/dates';
 import {
-  RUN_STATUS_LABEL,
   STEP_STATUS_LABEL,
   STEP_TYPE_LABEL,
   type PlanRun,
   type Project,
-  type RunStatus,
   type RunStep,
   type StepStatus,
   type StepType,
@@ -33,7 +32,6 @@ import {
   ConfirmDialog,
   Field,
   Modal,
-  Progress,
   Select,
   TextArea,
   TextInput,
@@ -50,99 +48,77 @@ export function PlanlaufDetail({
   run: PlanRun;
   onZurueck: () => void;
 }) {
-  const { data, updateRun, updateStep, deleteStep, moveStep, addStep, deleteRun } = useStore();
+  const { data, updateRun, updateStep, addStep, deleteRun, abbrechenRun } = useStore();
   const toast = useToast();
   const [mailStep, setMailStep] = useState<RunStep | null>(null);
   const [bearbeiten, setBearbeiten] = useState<RunStep | null>(null);
   const [neuerSchritt, setNeuerSchritt] = useState(false);
   const [laufLoeschen, setLaufLoeschen] = useState(false);
+  const [abbrechen, setAbbrechen] = useState(false);
 
   const doc = data.documents.find((d) => d.id === run.documentId);
+  const verlauf = pfad(run.steps);
+  const abseits = nichtImPfad(run.steps);
   const aktiv = aktuellerSchritt(run);
-  const pct = fortschritt(run);
-  const verzug = verzugTage(run);
   const vorlauf = project.settings.erinnerungVorlaufTage;
   const abweichungen = run.steps.filter((s) => s.abweichung).length;
+  const beendet = run.status !== 'laufend';
 
+  /** Setzt den Status eines Schritts und rückt den Lauf ggf. weiter. */
   const setzeStatus = (step: RunStep, status: StepStatus) => {
     const patch: Partial<RunStep> = { status };
-    if (status === 'erledigt' && !step.istDatum) patch.istDatum = today();
+    if ((status === 'erledigt' || status === 'uebersprungen') && !step.istDatum) patch.istDatum = today();
     if (status === 'offen' || status === 'laufend') patch.istDatum = null;
     updateStep(run.id, step.id, patch);
 
-    // Nächsten Schritt automatisch auf "laufend" setzen
-    if (status === 'erledigt') {
-      const idx = run.steps.findIndex((s) => s.id === step.id);
-      const naechster = run.steps.slice(idx + 1).find((s) => s.status === 'offen');
-      if (naechster) updateStep(run.id, naechster.id, { status: 'laufend' });
-      const restOffen = run.steps.filter((s) => s.id !== step.id && s.status !== 'erledigt' && s.status !== 'uebersprungen');
-      if (restOffen.length === 0) {
+    if (status === 'erledigt' || status === 'uebersprungen') {
+      const aktualisiert = run.steps.map((s) => (s.id === step.id ? { ...s, ...patch } : s));
+      const rest = pfad(aktualisiert).filter((s) => s.status !== 'erledigt' && s.status !== 'uebersprungen');
+      if (rest.length === 0) {
         updateRun(run.id, { status: 'abgeschlossen' });
         toast('Alle Schritte erledigt – Planlauf abgeschlossen.');
         return;
       }
+      if (rest[0].status === 'offen') updateStep(run.id, rest[0].id, { status: 'laufend' });
     }
     toast(`„${step.name}“: ${STEP_STATUS_LABEL[status]}`);
+  };
+
+  const waehleAntwort = (step: RunStep, antwortId: string) => {
+    updateStep(run.id, step.id, { gewaehlteAntwortId: antwortId });
   };
 
   return (
     <div className="stack">
       <div className="row-between wrap">
         <button type="button" className="btn btn-ghost" onClick={onZurueck}>
-          <Icon name="zurueck" size={14} /> Planläufe
+          <Icon name="zurueck" size={14} /> Übersicht
         </button>
         <div className="row">
-          <Select
-            value={run.status}
-            onChange={(v) => updateRun(run.id, { status: v as RunStatus })}
-            options={Object.entries(RUN_STATUS_LABEL).map(([value, label]) => ({ value, label }))}
-          />
+          {run.status === 'laufend' ? (
+            <button type="button" className="btn btn-outline" onClick={() => setAbbrechen(true)}>
+              Planlauf abbrechen
+            </button>
+          ) : null}
           <button type="button" className="btn btn-danger" onClick={() => setLaufLoeschen(true)}>
             <Icon name="loeschen" size={14} /> Lauf löschen
           </button>
         </div>
       </div>
 
-      <div className="grid grid-4">
-        <Card>
-          <div className="stat">
-            <div className="stat-value">{pct}%</div>
-            <div className="stat-label">Fortschritt</div>
-            <div style={{ marginTop: 8 }}>
-              <Progress wert={pct} ton={verzug > 0 ? 'red' : pct === 100 ? 'green' : ''} />
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div className="stat">
-            <div className="stat-value" style={{ fontSize: 17, paddingTop: 8 }}>
-              {aktiv?.name ?? 'abgeschlossen'}
-            </div>
-            <div className="stat-label">Aktueller Schritt · {relativeLabel(aktiv?.sollDatum ?? null)}</div>
-          </div>
-        </Card>
-        <Card>
-          <div className={`stat ${verzug > 0 ? 'red' : 'green'}`}>
-            <div className="stat-value">{verzug > 0 ? `${verzug} T` : 'im Plan'}</div>
-            <div className="stat-label">{verzug > 0 ? 'Verzug gegenüber Soll' : 'Kein Verzug'}</div>
-          </div>
-        </Card>
-        <Card>
-          <div className="stat">
-            <div className="stat-value" style={{ fontSize: 17, paddingTop: 8 }}>
-              {formatDate(run.steps[run.steps.length - 1]?.sollDatum ?? null)}
-            </div>
-            <div className="stat-label">Soll-Ende des Laufs</div>
-          </div>
-        </Card>
-      </div>
+      {run.status === 'abgebrochen' ? (
+        <Callout ton="error" icon="!">
+          <strong>Planlauf abgebrochen{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}.</strong>
+          <div>{run.abbruchGrund || 'Ohne Begründung.'}</div>
+        </Callout>
+      ) : null}
 
       <Card>
         <CardHeader
           titel={run.name}
           sub={
             <>
-              {doc ? `${doc.nummer} · ${doc.titel} (Index ${doc.index})` : 'ohne Plan'} · Start{' '}
+              {doc ? `${doc.nummer} · ${doc.titel}${doc.index ? ` (Index ${doc.index})` : ''}` : 'ohne Plan'} · Start{' '}
               {formatDate(run.start)} · Vorlage: {run.templateName}
             </>
           }
@@ -150,7 +126,7 @@ export function PlanlaufDetail({
         />
         <div className="card-pad">
           <div className="chain">
-            {run.steps.map((s, i) => {
+            {verlauf.map((s, i) => {
               const ampel = ampelFuerSchritt(s, vorlauf);
               const klasse =
                 ampel === 'erledigt'
@@ -160,18 +136,24 @@ export function PlanlaufDetail({
                     : s.id === aktiv?.id
                       ? 'current'
                       : '';
+              const antwort = massgeblicheAntwort(s);
               return (
                 <div key={s.id} className="row" style={{ gap: 0 }}>
-                  <div className={`chain-node ${klasse} ${s.typ === 'gateway' ? 'gateway' : ''}`}>
+                  <div className={`chain-node ${klasse} ${s.typ === 'entscheidung' ? 'gateway' : ''}`}>
                     <div className="cn-name">{s.name}</div>
                     <div className="cn-meta">
                       {s.roleName || STEP_TYPE_LABEL[s.typ]}
                       <br />
                       {s.istDatum ? `Ist ${formatDateShort(s.istDatum)}` : `Soll ${formatDateShort(s.sollDatum)}`}
-                      {s.abweichung ? ' · abweichend' : ''}
+                      {antwort ? (
+                        <>
+                          <br />
+                          <span style={{ color: 'var(--purple)' }}>→ {antwort.text}</span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
-                  {i < run.steps.length - 1 ? (
+                  {i < verlauf.length - 1 ? (
                     <div className="chain-arrow">
                       <Icon name="chevron" size={13} />
                     </div>
@@ -180,6 +162,11 @@ export function PlanlaufDetail({
               );
             })}
           </div>
+
+          <p className="small tertiary" style={{ marginTop: 2 }}>
+            Der Verlauf folgt bei Entscheidungen der gewählten Antwort – ohne Auswahl der ersten Möglichkeit.
+          </p>
+
           {abweichungen > 0 ? (
             <Callout ton="warn" icon="!">
               {abweichungen} Schritt(e) weichen von der Standard-Prozesskette ab. Änderungen wirken nur in diesem
@@ -195,43 +182,45 @@ export function PlanlaufDetail({
           titel="Prozessschritte"
           sub="Soll-Termine ergeben sich aus den Fristen; Ist-Termine dokumentieren die Erledigung"
           actions={
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => setNeuerSchritt(true)}>
-              <Icon name="plus" size={13} /> Schritt einfügen
-            </button>
+            !beendet ? (
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setNeuerSchritt(true)}>
+                <Icon name="plus" size={13} /> Schritt einfügen
+              </button>
+            ) : null
           }
         />
-        {run.steps.map((step, i) => {
+        {verlauf.map((step, i) => {
           const ampel: Ampel = ampelFuerSchritt(step, vorlauf);
           const kontakt = data.contacts.find((c) => c.id === step.contactId);
           const istAktiv = step.id === aktiv?.id;
+          const erledigt = step.status === 'erledigt' || step.status === 'uebersprungen';
           return (
-            <div className={`step-row ${istAktiv ? 'aktiv' : ''}`} key={step.id}>
+            <div className={`step-row ${istAktiv && !beendet ? 'aktiv' : ''}`} key={step.id}>
               <div className="step-marker">
                 <div
                   className={`step-num ${
                     ampel === 'erledigt' ? 'done' : ampel === 'ueberfaellig' ? 'late' : istAktiv ? 'current' : ''
                   }`}
                 >
-                  {ampel === 'erledigt' ? <Icon name="check" size={12} strokeWidth={2.4} /> : i + 1}
+                  {erledigt ? <Icon name="check" size={12} strokeWidth={2.4} /> : i + 1}
                 </div>
-                {i < run.steps.length - 1 ? <div className="step-line" /> : null}
+                {i < verlauf.length - 1 ? <div className="step-line" /> : null}
               </div>
 
               <div className="step-body">
                 <div className="step-title">
                   <strong>{step.name}</strong>
                   <StepTypBadge typ={step.typ} />
-                  <AmpelBadge ampel={ampel} />
+                  {step.status === 'uebersprungen' ? <Badge>Übersprungen</Badge> : <AmpelBadge ampel={ampel} />}
                   {step.abweichung ? <Badge ton="orange">Abweichung</Badge> : null}
                 </div>
 
                 <div className="step-meta">
                   <span>
-                    Rolle: <b>{step.roleName || '–'}</b>
+                    Verantwortlich: <b>{step.roleName || '–'}</b>
                   </span>
                   <span>
-                    Zuständig:{' '}
-                    <b>{kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'nicht zugeordnet'}</b>
+                    Person: <b>{kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'nicht zugeordnet'}</b>
                   </span>
                   <span>
                     Frist: <b>{tageLabel(step.fristTage)}</b>
@@ -245,69 +234,95 @@ export function PlanlaufDetail({
                   </span>
                 </div>
 
+                {step.typ === 'entscheidung' && step.antworten.length > 0 ? (
+                  <div className="row wrap" style={{ gap: 6 }}>
+                    <span className="small muted">Antwort:</span>
+                    {step.antworten.map((a) => {
+                      const gewaehlt = massgeblicheAntwort(step)?.id === a.id;
+                      const gesetzt = step.gewaehlteAntwortId === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          className={`antwort-chip ${gewaehlt ? 'gewaehlt' : ''}`}
+                          onClick={() => waehleAntwort(step, a.id)}
+                          disabled={beendet}
+                          title={
+                            a.ziel === 'ende'
+                              ? 'beendet den Planlauf'
+                              : a.ziel
+                                ? `weiter mit „${run.steps.find((s) => s.id === a.ziel)?.name ?? '?'}“`
+                                : 'weiter mit dem nächsten Schritt'
+                          }
+                        >
+                          {a.text}
+                          {gesetzt ? ' ✓' : ''}
+                        </button>
+                      );
+                    })}
+                    {!step.gewaehlteAntwortId ? (
+                      <span className="small tertiary">(Vorschau: erste Möglichkeit)</span>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {step.bemerkung ? <p className="small tertiary">{step.bemerkung}</p> : null}
 
-                <div className="step-actions">
-                  {step.status !== 'erledigt' ? (
-                    <button type="button" className="btn btn-sm btn-primary" onClick={() => setzeStatus(step, 'erledigt')}>
-                      <Icon name="check" size={13} /> Erledigt
+                {!beendet ? (
+                  <div className="step-actions">
+                    {!erledigt ? (
+                      <>
+                        <button type="button" className="btn btn-sm btn-primary" onClick={() => setzeStatus(step, 'erledigt')}>
+                          <Icon name="check" size={13} /> Erledigt
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'uebersprungen')}>
+                          Überspringen
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
+                        Wieder öffnen
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline"
+                      onClick={() => setMailStep(step)}
+                      disabled={erledigt}
+                      title="Vorbereitete E-Mail an die zuständige Person"
+                    >
+                      <Icon name="mail" size={13} /> Erinnern
                     </button>
-                  ) : (
-                    <button type="button" className="btn btn-sm" onClick={() => setzeStatus(step, 'laufend')}>
-                      Wieder öffnen
+                    <button type="button" className="btn btn-sm" onClick={() => setBearbeiten(step)}>
+                      <Icon name="bearbeiten" size={13} /> Anpassen
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={() => setMailStep(step)}
-                    disabled={step.status === 'erledigt'}
-                    title="Vorgefertigte E-Mail an die zuständige Person"
-                  >
-                    <Icon name="mail" size={13} /> Erinnern
-                  </button>
-                  <button type="button" className="btn btn-sm" onClick={() => setBearbeiten(step)}>
-                    <Icon name="bearbeiten" size={13} /> Anpassen
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    onClick={() => moveStep(run.id, step.id, -1)}
-                    disabled={i === 0}
-                    aria-label="Nach oben"
-                  >
-                    <Icon name="hoch" size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    onClick={() => moveStep(run.id, step.id, 1)}
-                    disabled={i === run.steps.length - 1}
-                    aria-label="Nach unten"
-                  >
-                    <Icon name="runter" size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    onClick={() => {
-                      deleteStep(run.id, step.id);
-                      toast('Schritt entfernt.');
-                    }}
-                    aria-label="Schritt entfernen"
-                  >
-                    <Icon name="loeschen" size={14} />
-                  </button>
-                  {step.letzteErinnerung ? (
-                    <span className="small tertiary">
-                      erinnert am {new Date(step.letzteErinnerung).toLocaleDateString('de-DE')}
-                    </span>
-                  ) : null}
-                </div>
+                    {step.letzteErinnerung ? (
+                      <span className="small tertiary">
+                        erinnert am {new Date(step.letzteErinnerung).toLocaleDateString('de-DE')}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           );
         })}
+
+        {abseits.length > 0 ? (
+          <div className="card-pad" style={{ borderTop: '1px solid var(--separator)' }}>
+            <div className="small muted" style={{ marginBottom: 6 }}>
+              Nicht im aktuellen Verlauf – werden bei anderer Entscheidung durchlaufen:
+            </div>
+            <div className="row wrap" style={{ gap: 6 }}>
+              {abseits.map((s) => (
+                <span key={s.id} className="badge">
+                  {s.name}
+                  {s.roleName ? ` · ${s.roleName}` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </Card>
 
       {mailStep ? (
@@ -315,12 +330,7 @@ export function PlanlaufDetail({
       ) : null}
 
       {bearbeiten ? (
-        <SchrittDialog
-          project={project}
-          run={run}
-          step={bearbeiten}
-          onClose={() => setBearbeiten(null)}
-        />
+        <SchrittDialog project={project} run={run} step={bearbeiten} onClose={() => setBearbeiten(null)} />
       ) : null}
 
       {neuerSchritt ? (
@@ -336,8 +346,21 @@ export function PlanlaufDetail({
               status: 'offen',
               abweichung: true,
               letzteErinnerung: null,
+              antworten: [],
+              gewaehlteAntwortId: null,
             });
             toast('Schritt eingefügt – als Abweichung markiert.');
+          }}
+        />
+      ) : null}
+
+      {abbrechen ? (
+        <AbbruchDialog
+          run={run}
+          onClose={() => setAbbrechen(false)}
+          onAbbrechen={(grund) => {
+            abbrechenRun(run.id, grund);
+            toast('Planlauf abgebrochen – er bleibt in der Projektansicht sichtbar.');
           }}
         />
       ) : null}
@@ -355,6 +378,66 @@ export function PlanlaufDetail({
         />
       ) : null}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function AbbruchDialog({
+  run,
+  onClose,
+  onAbbrechen,
+}: {
+  run: PlanRun;
+  onClose: () => void;
+  onAbbrechen: (grund: string) => void;
+}) {
+  const toast = useToast();
+  const [grund, setGrund] = useState('');
+
+  return (
+    <Modal
+      titel="Planlauf abbrechen"
+      sub={run.name}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Zurück
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ background: 'var(--red)' }}
+            onClick={() => {
+              if (!grund.trim()) {
+                toast('Bitte einen Grund angeben.');
+                return;
+              }
+              onAbbrechen(grund.trim());
+              onClose();
+            }}
+          >
+            Planlauf abbrechen
+          </button>
+        </>
+      }
+    >
+      <div className="stack" style={{ gap: 12 }}>
+        <Callout icon="i">
+          Der Lauf bleibt ausgegraut in der Projektansicht mit dem Grund sichtbar. In den übergeordneten Ansichten
+          (Übersicht, Fristen) erscheint er nicht mehr.
+        </Callout>
+        <Field label="Grund des Abbruchs" hint="wird in der Projektübersicht und im Export angezeigt">
+          <TextArea
+            value={grund}
+            onChange={setGrund}
+            rows={3}
+            placeholder="z.B. Planinhalt entfällt, Leistung neu beauftragt …"
+          />
+        </Field>
+      </div>
+    </Modal>
   );
 }
 
@@ -388,7 +471,7 @@ function SchrittDialog({
 
   const [form, setForm] = useState({
     name: step?.name ?? '',
-    typ: step?.typ ?? ('task' as StepType),
+    typ: step?.typ ?? ('aufgabe' as StepType),
     roleName: step?.roleName ?? '',
     contactId: step?.contactId ?? null,
     fristTage: step?.fristTage ?? 5,
@@ -469,11 +552,11 @@ function SchrittDialog({
             options={Object.entries(STEP_TYPE_LABEL).map(([value, label]) => ({ value, label }))}
           />
         </Field>
-        <Field label="Rolle">
+        <Field label="Verantwortlicher">
           <Select
             value={form.roleName}
             onChange={(v) => set('roleName', v)}
-            placeholder="– keine –"
+            placeholder="– keine Rolle –"
             options={rollen.map((r) => ({ value: r.name, label: r.name }))}
           />
         </Field>

@@ -29,7 +29,7 @@ export function Fristen({
   const [suche, setSuche] = useState('');
   const [mail, setMail] = useState<{ project: Project; run: PlanRun; step: RunStep } | null>(null);
 
-  const alle = useMemo(() => offeneFristen(data, projectId), [data, projectId]);
+  const alle = useMemo(() => offeneFristen(data, projectId ? [projectId] : undefined), [data, projectId]);
 
   const eintraege = alle.filter((f) => {
     if (filter !== 'alle' && f.ampel !== (filter as Ampel)) return false;

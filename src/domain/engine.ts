@@ -1,16 +1,19 @@
 /**
- * Planlauf-Logik: Soll-Termine aus Fristen rechnen, Ampelstatus bestimmen
- * und offene Fristen für Erinnerungen einsammeln.
+ * Planlauf-Logik: Weg durch die Prozesskette bestimmen, Soll-Termine aus
+ * Fristen rechnen, Ampelstatus vergeben und offene Aufgaben einsammeln.
  */
 import { addDays, diffDays, today } from '../lib/dates';
-import type {
-  AppData,
-  ISODate,
-  PlanRun,
-  Project,
-  ProcessTemplate,
-  RunStep,
-  ID,
+import {
+  EIGENE_ROLLE,
+  type Antwort,
+  type AppData,
+  type ID,
+  type ISODate,
+  type PlanRun,
+  type ProcessTemplate,
+  type ProcessTemplateStep,
+  type Project,
+  type RunStep,
 } from './types';
 
 export type Ampel = 'erledigt' | 'ueberfaellig' | 'faellig' | 'geplant' | 'neutral';
@@ -23,12 +26,67 @@ export const AMPEL_LABEL: Record<Ampel, string> = {
   neutral: 'Ohne Termin',
 };
 
+/* ------------------------------------------------------------------ */
+/* Weg durch die Kette                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Die Antwort, die den weiteren Verlauf bestimmt (ohne Auswahl: die erste). */
+export function massgeblicheAntwort(step: { antworten: Antwort[]; gewaehlteAntwortId?: ID | null }): Antwort | undefined {
+  if (step.antworten.length === 0) return undefined;
+  const gewaehlt = step.antworten.find((a) => a.id === step.gewaehlteAntwortId);
+  return gewaehlt ?? step.antworten[0];
+}
+
 /**
- * Rechnet die Soll-Termine einer Schrittkette neu durch.
+ * Reihenfolge der tatsächlich durchlaufenen Schritte.
+ *
+ * Schritte werden der Reihe nach abgearbeitet; eine Entscheidung springt
+ * gemäß der maßgeblichen Antwort zu einem anderen Schritt, zum Ende oder
+ * (ohne Ziel) zum unmittelbar folgenden Schritt.
+ */
+export function pfad<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
+  const ergebnis: T[] = [];
+  const besucht = new Set<ID>();
+  let index = 0;
+
+  while (index >= 0 && index < steps.length) {
+    const step = steps[index];
+    if (besucht.has(step.id)) break; // Schleife im Ablauf – Abbruch
+    besucht.add(step.id);
+    ergebnis.push(step);
+
+    if (step.typ === 'entscheidung' && step.antworten.length > 0) {
+      const antwort = massgeblicheAntwort(step);
+      if (!antwort || antwort.ziel === 'ende') break;
+      if (antwort.ziel) {
+        const ziel = steps.findIndex((s) => s.id === antwort.ziel);
+        if (ziel < 0) break;
+        index = ziel;
+        continue;
+      }
+    }
+    index += 1;
+  }
+  return ergebnis;
+}
+
+/** Schritte, die im aktuellen Verlauf nicht durchlaufen werden. */
+export function nichtImPfad<T extends ProcessTemplateStep | RunStep>(steps: T[]): T[] {
+  const drin = new Set(pfad(steps).map((s) => s.id));
+  return steps.filter((s) => !drin.has(s.id));
+}
+
+/* ------------------------------------------------------------------ */
+/* Termine                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Rechnet die Soll-Termine der Schrittkette neu durch.
  *
  * Regel: Soll = Soll des Vorgängers + Frist des Schritts. Ein manuell
  * gesetztes Soll-Datum bleibt erhalten und wird zur neuen Basis für alle
- * folgenden Schritte (so lassen sich individuelle Abweichungen abbilden).
+ * folgenden Schritte. Schritte außerhalb des aktuellen Verlaufs erhalten
+ * keinen Termin.
  */
 export function recalcSollDaten(
   steps: RunStep[],
@@ -36,15 +94,24 @@ export function recalcSollDaten(
   arbeitstage: boolean,
   feiertage: ISODate[],
 ): RunStep[] {
+  const reihenfolge = pfad(steps);
+  const termine = new Map<ID, ISODate>();
   let basis = start;
-  return steps.map((step) => {
+
+  for (const step of reihenfolge) {
     if (step.sollManuell && step.sollDatum) {
       basis = step.sollDatum;
-      return step;
+      termine.set(step.id, step.sollDatum);
+      continue;
     }
     const soll = addDays(basis, step.fristTage, arbeitstage, feiertage);
     basis = soll;
-    return { ...step, sollDatum: soll };
+    termine.set(step.id, soll);
+  }
+
+  return steps.map((step) => {
+    const soll = termine.get(step.id) ?? null;
+    return soll === step.sollDatum ? step : { ...step, sollDatum: soll };
   });
 }
 
@@ -55,6 +122,10 @@ export function recalcRun(run: PlanRun, project: Project | undefined): PlanRun {
   return { ...run, steps: recalcSollDaten(run.steps, run.start, arbeitstage, feiertage) };
 }
 
+/* ------------------------------------------------------------------ */
+/* Status                                                              */
+/* ------------------------------------------------------------------ */
+
 export function ampelFuerSchritt(step: RunStep, vorlaufTage: number): Ampel {
   if (step.status === 'erledigt' || step.status === 'uebersprungen') return 'erledigt';
   if (!step.sollDatum) return 'neutral';
@@ -64,15 +135,18 @@ export function ampelFuerSchritt(step: RunStep, vorlaufTage: number): Ampel {
   return 'geplant';
 }
 
-/** Der erste nicht erledigte Schritt – der Lauf "hängt" hier. */
+const offenerSchritt = (s: RunStep) => s.status !== 'erledigt' && s.status !== 'uebersprungen';
+
+/** Der erste nicht erledigte Schritt im aktuellen Verlauf. */
 export function aktuellerSchritt(run: PlanRun): RunStep | undefined {
-  return run.steps.find((s) => s.status !== 'erledigt' && s.status !== 'uebersprungen');
+  return pfad(run.steps).find(offenerSchritt);
 }
 
 export function fortschritt(run: PlanRun): number {
-  if (run.steps.length === 0) return 0;
-  const fertig = run.steps.filter((s) => s.status === 'erledigt' || s.status === 'uebersprungen').length;
-  return Math.round((fertig / run.steps.length) * 100);
+  const reihenfolge = pfad(run.steps);
+  if (reihenfolge.length === 0) return 0;
+  const fertig = reihenfolge.filter((s) => !offenerSchritt(s)).length;
+  return Math.round((fertig / reihenfolge.length) * 100);
 }
 
 /** Verzug des Laufs in Tagen (>0 = überfällig), bezogen auf den aktuellen Schritt. */
@@ -83,6 +157,15 @@ export function verzugTage(run: PlanRun): number {
   return delta < 0 ? Math.abs(delta) : 0;
 }
 
+/** Läuft noch und ist nicht abgebrochen. */
+export function istAktiv(run: PlanRun): boolean {
+  return run.status === 'laufend';
+}
+
+/* ------------------------------------------------------------------ */
+/* Auswertungen                                                        */
+/* ------------------------------------------------------------------ */
+
 export interface FristEintrag {
   run: PlanRun;
   step: RunStep;
@@ -92,21 +175,21 @@ export interface FristEintrag {
 }
 
 /**
- * Alle offenen Schritte über alle (oder ein) Projekt(e), sortiert nach
- * Dringlichkeit – Datenbasis für Dashboard und Erinnerungen.
+ * Alle offenen Schritte des aktuellen Verlaufs, sortiert nach Dringlichkeit.
+ * Abgebrochene und abgeschlossene Läufe bleiben außen vor.
  */
-export function offeneFristen(data: AppData, projectId?: ID): FristEintrag[] {
+export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] {
   const eintraege: FristEintrag[] = [];
   for (const run of data.runs) {
-    if (projectId && run.projectId !== projectId) continue;
-    if (run.status === 'abgeschlossen' || run.status === 'abgebrochen') continue;
+    if (projectIds && !projectIds.includes(run.projectId)) continue;
+    if (!istAktiv(run)) continue;
     const project = data.projects.find((p) => p.id === run.projectId);
     if (!project) continue;
     const vorlauf = project.settings.erinnerungVorlaufTage;
-    for (const step of run.steps) {
-      if (step.status === 'erledigt' || step.status === 'uebersprungen') continue;
+    for (const step of pfad(run.steps)) {
+      if (!offenerSchritt(step)) continue;
       const ampel = ampelFuerSchritt(step, vorlauf);
-      if (ampel !== 'ueberfaellig' && ampel !== 'faellig' && ampel !== 'geplant') continue;
+      if (ampel === 'erledigt') continue;
       eintraege.push({
         run,
         step,
@@ -119,14 +202,31 @@ export function offeneFristen(data: AppData, projectId?: ID): FristEintrag[] {
   return eintraege.sort((a, b) => a.tageBisSoll - b.tageBisSoll);
 }
 
+/**
+ * Anstehende Schritte im eigenen Verantwortungsbereich (Rolle des Bearbeiters).
+ * Berücksichtigt werden der jeweils aktuelle Schritt eines Laufs sowie bereits
+ * laufende Schritte – nicht dagegen Schritte, die erst später an die Reihe kommen.
+ */
+export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
+  const rolle = (data.bearbeiter?.rolle || EIGENE_ROLLE).toLowerCase();
+  return offeneFristen(data, projectIds).filter((f) => {
+    if (f.step.roleName.trim().toLowerCase() !== rolle) return false;
+    return f.step.status === 'laufend' || aktuellerSchritt(f.run)?.id === f.step.id;
+  });
+}
+
 /** Erzeugt aus einer Vorlage die Schritte eines neuen Laufs. */
 export function stepsAusTemplate(
   template: ProcessTemplate,
   contactFuerRolle: (roleName: string) => ID | null,
   newId: () => string,
 ): RunStep[] {
+  // Schritt-IDs werden neu vergeben; Antwortziele müssen mitgezogen werden.
+  const idMap = new Map<ID, ID>();
+  template.steps.forEach((s) => idMap.set(s.id, newId()));
+
   return template.steps.map((s) => ({
-    id: newId(),
+    id: idMap.get(s.id)!,
     name: s.name,
     typ: s.typ,
     roleName: s.roleName,
@@ -139,10 +239,16 @@ export function stepsAusTemplate(
     abweichung: false,
     bemerkung: s.beschreibung,
     letzteErinnerung: null,
+    antworten: s.antworten.map((a) => ({
+      id: newId(),
+      text: a.text,
+      ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+    })),
+    gewaehlteAntwortId: null,
   }));
 }
 
-/** Gesamtdauer einer Vorlage in Tagen. */
+/** Gesamtdauer einer Vorlage entlang des Standardverlaufs. */
 export function templateDauer(template: ProcessTemplate): number {
-  return template.steps.reduce((sum, s) => sum + s.fristTage, 0);
+  return pfad(template.steps).reduce((sum, s) => sum + s.fristTage, 0);
 }

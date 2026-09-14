@@ -1,17 +1,17 @@
 /** Anwendungsrahmen: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
 import { useState } from 'react';
-import { offeneFristen } from './domain/engine';
+import { eigeneTodos, offeneFristen } from './domain/engine';
 import { exportiereDaten } from './store/storage';
 import { useStore } from './store/store';
 import { useRoute, type Route } from './lib/router';
 import { useToast } from './components/toast';
-import { Dashboard } from './pages/Dashboard';
+import { Dashboard, sichtbareProjekte } from './pages/Dashboard';
 import { Fristen } from './pages/Fristen';
 import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Prozessketten } from './pages/Prozessketten';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
-import { Card, ConfirmDialog, EmptyState } from './components/ui';
+import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from './components/ui';
 import { Icon } from './components/icons';
 import type { IconName } from './components/icons';
 
@@ -21,8 +21,12 @@ export function App() {
   const [route, navigate] = useRoute();
   const [menuOffen, setMenuOffen] = useState(false);
   const [zuruecksetzenDialog, setZuruecksetzenDialog] = useState(false);
+  const [bearbeiterDialog, setBearbeiterDialog] = useState(false);
 
-  const ueberfaellig = offeneFristen(data).filter((f) => f.ampel === 'ueberfaellig').length;
+  const markierte = sichtbareProjekte(data.projects);
+  const markierteIds = markierte.map((p) => p.id);
+  const ueberfaellig = offeneFristen(data, markierteIds).filter((f) => f.ampel === 'ueberfaellig').length;
+  const todos = eigeneTodos(data, markierteIds).length;
   const projekt =
     route.view === 'projekt' || route.view === 'planlauf'
       ? data.projects.find((p) => p.id === route.projectId)
@@ -47,7 +51,13 @@ export function App() {
           </div>
         </div>
 
-        <NavItem icon="dashboard" label="Übersicht" aktiv={route.view === 'dashboard'} onClick={() => gehe({ view: 'dashboard' })} />
+        <NavItem
+          icon="dashboard"
+          label="Übersicht"
+          aktiv={route.view === 'dashboard'}
+          badge={todos > 0 ? String(todos) : undefined}
+          onClick={() => gehe({ view: 'dashboard' })}
+        />
         <NavItem
           icon="frist"
           label="Fristen"
@@ -59,9 +69,12 @@ export function App() {
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
         <NavItem icon="kette" label="Prozessketten" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
 
-        <div className="nav-group-label">Projekte</div>
-        {data.projects.map((p) => {
-          const offen = offeneFristen(data, p.id).filter((f) => f.ampel === 'ueberfaellig').length;
+        <div className="nav-group-label">
+          Projekte
+          {markierte.length < data.projects.length ? <span className="tertiary"> (markierte)</span> : null}
+        </div>
+        {markierte.map((p) => {
+          const offen = offeneFristen(data, [p.id]).filter((f) => f.ampel === 'ueberfaellig').length;
           return (
             <NavItem
               key={p.id}
@@ -76,9 +89,23 @@ export function App() {
         })}
 
         <div className="sidebar-footer">
-          <div className="row" style={{ gap: 4, marginBottom: 8 }}>
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => exportiereDaten(data)}>
-              <Icon name="export" size={12} /> Export
+          <button type="button" className="bearbeiter" onClick={() => setBearbeiterDialog(true)}>
+            <span className="avatar" style={{ width: 26, height: 26 }}>
+              {data.bearbeiter.rolle.slice(0, 3).toUpperCase()}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <strong className="truncate">{data.bearbeiter.name}</strong>
+              <span className="tertiary small"> · {data.bearbeiter.rolle}</span>
+            </span>
+          </button>
+          <div className="row" style={{ gap: 4, margin: '8px 0' }}>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => exportiereDaten(data)}
+              title="Gesamten Datenbestand als JSON sichern"
+            >
+              <Icon name="export" size={12} /> Sicherung
             </button>
             <button type="button" className="btn btn-sm btn-outline" onClick={() => setZuruecksetzenDialog(true)}>
               Zurücksetzen
@@ -135,6 +162,8 @@ export function App() {
         />
       ) : null}
 
+      {bearbeiterDialog ? <BearbeiterDialog onClose={() => setBearbeiterDialog(false)} /> : null}
+
       {zuruecksetzenDialog ? (
         <ConfirmDialog
           titel="Daten zurücksetzen?"
@@ -149,6 +178,54 @@ export function App() {
         />
       ) : null}
     </div>
+  );
+}
+
+function BearbeiterDialog({ onClose }: { onClose: () => void }) {
+  const { data, setBearbeiter } = useStore();
+  const [name, setName] = useState(data.bearbeiter.name);
+  const [rolle, setRolle] = useState(data.bearbeiter.rolle);
+  const [email, setEmail] = useState(data.bearbeiter.email);
+
+  return (
+    <Modal
+      titel="Angemeldet als"
+      sub="Bestimmt, welche Prozessschritte als eigene To-Dos gelten"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setBearbeiter({ name: name.trim() || 'PLM', rolle: rolle.trim() || 'PLM', email });
+              onClose();
+            }}
+          >
+            Übernehmen
+          </button>
+        </>
+      }
+    >
+      <div className="form-grid">
+        <Field label="Name">
+          <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
+        </Field>
+        <Field label="Eigene Rolle im Projekt" hint="Schritte mit dieser Rolle erscheinen als To-Dos">
+          <TextInput value={rolle} onChange={setRolle} placeholder="PLM" />
+        </Field>
+        <Field label="E-Mail" full>
+          <TextInput value={email} onChange={setEmail} type="email" />
+        </Field>
+      </div>
+      <p className="small tertiary" style={{ marginTop: 12 }}>
+        Alle Bearbeiter sehen alle Projekte. Der Datenbestand liegt in dieser Fassung lokal im Browser – ein
+        gemeinsamer Zugriff mehrerer Personen auf denselben Stand setzt die Anbindung einer Datenbank voraus.
+      </p>
+    </Modal>
   );
 }
 
@@ -204,7 +281,7 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
     case 'projekte':
       return { titel: 'Projekte', sub: 'Projektverwaltung' };
     case 'ketten':
-      return { titel: 'Prozessketten', sub: 'Standardketten und BPMN-2.0-Import' };
+      return { titel: 'Prozessketten', sub: 'Standardketten und Projektvarianten' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':

@@ -95,6 +95,9 @@ export function Adressbuch({ project }: { project: Project }) {
                         {c.email}
                       </a>
                       {c.telefon ? <div className="tertiary small">{c.telefon}</div> : null}
+                      {c.anschrift ? (
+                        <div className="tertiary small">{c.anschrift.replace(/\s*\n\s*/g, ', ')}</div>
+                      ) : null}
                     </td>
                     <td className="actions">
                       <button type="button" className="btn-icon" aria-label="Bearbeiten">
@@ -145,6 +148,7 @@ function KontaktDialog({
     firma: contact?.firma ?? '',
     email: contact?.email ?? '',
     telefon: contact?.telefon ?? '',
+    anschrift: contact?.anschrift ?? '',
     roleIds: contact?.roleIds ?? ([] as ID[]),
     notiz: contact?.notiz ?? '',
   });
@@ -205,6 +209,9 @@ function KontaktDialog({
           </Field>
           <Field label="Telefon">
             <TextInput value={form.telefon} onChange={(v) => set('telefon', v)} />
+          </Field>
+          <Field label="Anschrift" full hint="Straße, PLZ und Ort">
+            <TextArea value={form.anschrift} onChange={(v) => set('anschrift', v)} rows={2} placeholder={'Hafenstraße 12\n20359 Hamburg'} />
           </Field>
           <Field label="Rollen im Projekt" full hint="Bestimmt, welche Prozessschritte automatisch zugeordnet werden.">
             <div className="row wrap" style={{ gap: 6 }}>

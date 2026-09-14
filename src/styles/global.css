@@ -395,6 +395,59 @@ a:hover { text-decoration: underline; }
 .mono { font-family: var(--font-mono); font-size: 12.5px; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Sortierbare Spaltenüberschriften */
+.sort-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: none; background: none; padding: 0;
+  font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
+  cursor: pointer;
+}
+.sort-btn:hover { color: var(--text); }
+.sort-pfeil { opacity: 0; font-size: 10px; }
+.sort-btn:hover .sort-pfeil { opacity: 0.5; }
+.sort-pfeil.aktiv { opacity: 1; color: var(--accent); }
+
+/* Antwortmöglichkeiten einer Entscheidung */
+.antwort-chip {
+  padding: 3px 11px;
+  border-radius: 980px;
+  border: 1px solid var(--separator-strong);
+  background: #fff;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.antwort-chip:not(.gewaehlt):hover:not(:disabled) { border-color: var(--purple); color: var(--purple); }
+.antwort-chip.gewaehlt { background: var(--purple); border-color: var(--purple); color: #fff; }
+.antwort-chip:disabled { opacity: 0.5; cursor: default; }
+
+/* Projektmarkierung */
+.stern {
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-tertiary);
+  padding: 2px;
+  border-radius: 6px;
+}
+.stern:hover { background: var(--bg-hover); color: var(--orange); }
+.stern.aktiv { color: var(--orange); }
+
+/* Angemeldeter Bearbeiter in der Seitenleiste */
+.bearbeiter {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--separator);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12.5px;
+}
+.bearbeiter:hover { background: #fff; }
+.bearbeiter strong { display: block; font-size: 12.5px; font-weight: 600; }
+
 /* ------------------------------------------------------------------ */
 /* Badges & Ampeln                                                     */
 /* ------------------------------------------------------------------ */

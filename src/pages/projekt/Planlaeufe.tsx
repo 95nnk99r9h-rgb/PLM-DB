@@ -1,13 +1,31 @@
 /** Liste der Planläufe eines Projekts sowie der Startdialog für neue Läufe. */
 import { useState } from 'react';
-import { aktuellerSchritt, ampelFuerSchritt, fortschritt, stepsAusTemplate, templateDauer } from '../../domain/engine';
+import {
+  aktuellerSchritt,
+  ampelFuerSchritt,
+  fortschritt,
+  istAktiv,
+  pfad,
+  stepsAusTemplate,
+} from '../../domain/engine';
 import { formatDate, relativeLabel, tageLabel, today } from '../../lib/dates';
-import type { PlanDocument, Project, RunStatus } from '../../domain/types';
-import { RUN_STATUS_LABEL } from '../../domain/types';
+import type { PlanDocument, PlanRun, ProcessTemplateStep, Project } from '../../domain/types';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { AmpelPunkt, RunStatusBadge } from '../../components/common';
-import { Callout, Card, CardHeader, EmptyState, Field, Modal, Progress, Select, TextArea, TextInput } from '../../components/ui';
+import { SchrittListe } from '../Prozessketten';
+import {
+  Callout,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  Modal,
+  Progress,
+  Select,
+  TextArea,
+  TextInput,
+} from '../../components/ui';
 import { Icon } from '../../components/icons';
 
 export function Planlaeufe({
@@ -25,24 +43,36 @@ export function Planlaeufe({
   const [startDialog, setStartDialog] = useState(false);
 
   const laeufe = data.runs.filter((r) => r.projectId === project.id);
-  const offen = laeufe.filter((r) => r.status === 'laufend' || r.status === 'geplant');
-  const erledigt = laeufe.filter((r) => r.status === 'abgeschlossen' || r.status === 'abgebrochen');
+  const aktiv = laeufe.filter(istAktiv);
+  const beendet = laeufe.filter((r) => !istAktiv(r));
 
   return (
     <div className="stack">
       <div className="row-between wrap">
-        <p className="muted small">
+        <p className="muted small" style={{ maxWidth: 620 }}>
           Ein Planlauf ist eine laufende Prozesskette für einen Plan, ein Paket oder ein Verzeichnis.
-          Abweichungen vom Standard wirken sich nur auf den jeweiligen Lauf aus.
+          Abweichungen wirken sich nur auf den jeweiligen Lauf aus.
         </p>
         <button type="button" className="btn btn-primary" onClick={() => setStartDialog(true)}>
           <Icon name="plus" size={14} /> Planlauf starten
         </button>
       </div>
 
-      <LaufTabelle titel="Aktive Planläufe" laeufe={offen} project={project} onOeffnen={onOeffnen} leerAktion={() => setStartDialog(true)} />
-      {erledigt.length > 0 ? (
-        <LaufTabelle titel="Abgeschlossen" laeufe={erledigt} project={project} onOeffnen={onOeffnen} />
+      <LaufTabelle
+        titel="Aktive Planläufe"
+        laeufe={aktiv}
+        project={project}
+        onOeffnen={onOeffnen}
+        leerAktion={() => setStartDialog(true)}
+      />
+      {beendet.length > 0 ? (
+        <LaufTabelle
+          titel="Abgeschlossen & abgebrochen"
+          laeufe={beendet}
+          project={project}
+          onOeffnen={onOeffnen}
+          sub="Abgebrochene Läufe erscheinen nur in dieser Projektansicht"
+        />
       ) : null}
 
       {startDialog || startFuerDokument ? (
@@ -66,13 +96,15 @@ export function Planlaeufe({
 
 function LaufTabelle({
   titel,
+  sub,
   laeufe,
   project,
   onOeffnen,
   leerAktion,
 }: {
   titel: string;
-  laeufe: ReturnType<typeof useStore>['data']['runs'];
+  sub?: string;
+  laeufe: PlanRun[];
   project: Project;
   onOeffnen: (runId: string) => void;
   leerAktion?: () => void;
@@ -80,12 +112,12 @@ function LaufTabelle({
   const { data } = useStore();
   return (
     <Card>
-      <CardHeader titel={titel} sub={`${laeufe.length} Planläufe`} />
+      <CardHeader titel={titel} sub={sub ?? `${laeufe.length} Planläufe`} />
       {laeufe.length === 0 ? (
         <EmptyState
           icon="kette"
           titel="Kein Planlauf vorhanden"
-          text="Starten Sie einen Lauf auf Basis einer Standard-Prozesskette."
+          text="Starten Sie einen Lauf auf Basis einer Prozesskette."
           action={
             leerAktion ? (
               <button type="button" className="btn btn-primary" onClick={leerAktion}>
@@ -95,63 +127,85 @@ function LaufTabelle({
           }
         />
       ) : (
-        <div className="table-scroll"><table className="table">
-          <thead>
-            <tr>
-              <th>Planlauf</th>
-              <th className="col-optional">Plan / Paket</th>
-              <th>Aktueller Schritt</th>
-              <th style={{ width: 140 }}>Fortschritt</th>
-              <th className="col-optional">Ende (Soll)</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {laeufe.map((run) => {
-              const doc = data.documents.find((d) => d.id === run.documentId);
-              const step = aktuellerSchritt(run);
-              const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
-              const pct = fortschritt(run);
-              const ende = run.steps[run.steps.length - 1]?.sollDatum ?? null;
-              const abweichungen = run.steps.filter((s) => s.abweichung).length;
-              return (
-                <tr key={run.id} className="clickable" onClick={() => onOeffnen(run.id)}>
-                  <td>
-                    <strong>{run.name}</strong>
-                    <div className="small tertiary">
-                      {run.templateName}
-                      {abweichungen > 0 ? ` · ${abweichungen} Abweichung${abweichungen > 1 ? 'en' : ''}` : ''}
-                    </div>
-                  </td>
-                  <td className="small muted col-optional">
-                    {doc ? (
-                      <>
-                        <span className="num">{doc.nummer}</span> {doc.titel}
-                      </>
-                    ) : (
-                      <span className="tertiary">–</span>
-                    )}
-                  </td>
-                  <td className="small">
-                    <span className="row" style={{ gap: 7 }}>
-                      <AmpelPunkt ampel={ampel} />
-                      {step?.name ?? 'alle Schritte erledigt'}
-                    </span>
-                    {step ? <span className="tertiary small">{relativeLabel(step.sollDatum)}</span> : null}
-                  </td>
-                  <td>
-                    <span className="row" style={{ gap: 8 }}>
-                      <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : pct === 100 ? 'green' : ''} />
-                      <span className="small tertiary">{pct}%</span>
-                    </span>
-                  </td>
-                  <td className="small col-optional">{formatDate(ende)}</td>
-                  <td><RunStatusBadge status={run.status} /></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table></div>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Planlauf</th>
+                <th className="col-optional">Plan / Paket</th>
+                <th>Aktueller Schritt</th>
+                <th style={{ width: 140 }}>Fortschritt</th>
+                <th className="col-optional">Ende (Soll)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {laeufe.map((run) => {
+                const doc = data.documents.find((d) => d.id === run.documentId);
+                const step = aktuellerSchritt(run);
+                const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
+                const pct = fortschritt(run);
+                const reihenfolge = pfad(run.steps);
+                const ende = reihenfolge[reihenfolge.length - 1]?.sollDatum ?? null;
+                const abweichungen = run.steps.filter((s) => s.abweichung).length;
+                const abgebrochen = run.status === 'abgebrochen';
+                return (
+                  <tr
+                    key={run.id}
+                    className="clickable"
+                    style={abgebrochen ? { opacity: 0.55 } : undefined}
+                    onClick={() => onOeffnen(run.id)}
+                  >
+                    <td>
+                      <strong>{run.name}</strong>
+                      <div className="small tertiary">
+                        {run.templateName}
+                        {abweichungen > 0 ? ` · ${abweichungen} Abweichung${abweichungen > 1 ? 'en' : ''}` : ''}
+                      </div>
+                      {abgebrochen && run.abbruchGrund ? (
+                        <div className="small" style={{ color: 'var(--red)' }}>
+                          Abgebrochen{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}: {run.abbruchGrund}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="small muted col-optional">
+                      {doc ? (
+                        <>
+                          <span className="num">{doc.nummer}</span> {doc.titel}
+                        </>
+                      ) : (
+                        <span className="tertiary">–</span>
+                      )}
+                    </td>
+                    <td className="small">
+                      {abgebrochen ? (
+                        <span className="tertiary">–</span>
+                      ) : (
+                        <>
+                          <span className="row" style={{ gap: 7 }}>
+                            <AmpelPunkt ampel={ampel} />
+                            {step?.name ?? 'alle Schritte erledigt'}
+                          </span>
+                          {step ? <span className="tertiary small">{relativeLabel(step.sollDatum)}</span> : null}
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      <span className="row" style={{ gap: 8 }}>
+                        <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : pct === 100 ? 'green' : ''} />
+                        <span className="small tertiary">{pct}%</span>
+                      </span>
+                    </td>
+                    <td className="small col-optional">{formatDate(ende)}</td>
+                    <td>
+                      <RunStatusBadge status={run.status} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </Card>
   );
@@ -182,34 +236,82 @@ function StartDialog({
   const [name, setName] = useState('');
   const [bemerkung, setBemerkung] = useState('');
 
+  /** Bearbeitbare Kopie der Schritte – Grundlage des neuen Laufs. */
+  const kopie = (id: string): ProcessTemplateStep[] => {
+    const t = vorlagen.find((v) => v.id === id);
+    if (!t) return [];
+    const idMap = new Map(t.steps.map((s) => [s.id, newId('ts')]));
+    return t.steps.map((s) => ({
+      ...s,
+      id: idMap.get(s.id)!,
+      antworten: s.antworten.map((a) => ({
+        ...a,
+        id: newId('ant'),
+        ziel: a.ziel === 'ende' || a.ziel === null ? a.ziel : (idMap.get(a.ziel) ?? null),
+      })),
+    }));
+  };
+
+  const [steps, setSteps] = useState<ProcessTemplateStep[]>(() => kopie(vorlagen[0]?.id ?? ''));
+
+  const vorlageWechseln = (id: string) => {
+    setTemplateId(id);
+    setSteps(kopie(id));
+  };
+
   const template = vorlagen.find((t) => t.id === templateId);
   const doc = dokumente.find((d) => d.id === documentId);
 
   /** Ordnet jedem Schritt automatisch die Person zu, die die Rolle innehat. */
   const kontaktFuerRolle = (roleName: string): string | null => {
-    const rolle = rollen.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
+    const rolle = rollen.find((r) => r.name.toLowerCase() === roleName.trim().toLowerCase());
     if (!rolle) return null;
     return kontakte.find((c) => c.roleIds.includes(rolle.id))?.id ?? null;
   };
 
   const starten = () => {
-    if (!doc || !template) {
-      toast('Bitte Plan und Prozesskette wählen.');
+    if (!doc) {
+      toast('Bitte einen Plan wählen.');
       return;
     }
-    const steps = stepsAusTemplate(template, kontaktFuerRolle, () => newId('rs'));
-    const ohneKontakt = steps.filter((s) => !s.contactId).length;
+    if (steps.length === 0 || steps.some((s) => !s.name.trim())) {
+      toast('Bitte jeden Schritt benennen.');
+      return;
+    }
+    const runSteps = stepsAusTemplate(
+      { id: templateId, projectId: null, name: '', beschreibung: '', herkunft: 'manuell', steps },
+      kontaktFuerRolle,
+      () => newId('rs'),
+    );
+    // Abweichungen gegenüber der gewählten Vorlage kennzeichnen
+    const original = template?.steps ?? [];
+    const markiert = runSteps.map((s, i) => {
+      const vorlage = original[i];
+      const abweichend =
+        !vorlage ||
+        vorlage.name !== s.name ||
+        vorlage.fristTage !== s.fristTage ||
+        vorlage.roleName !== s.roleName ||
+        vorlage.typ !== s.typ ||
+        original.length !== runSteps.length;
+      return abweichend ? { ...s, abweichung: true } : s;
+    });
+
     const id = addRun({
       projectId: project.id,
       documentId: doc.id,
-      templateId: template.id,
-      templateName: template.name,
-      name: name.trim() || `Planlauf ${doc.nummer} Index ${doc.index}`,
+      templateId: template?.id ?? null,
+      templateName: template?.name ?? 'Individuelle Kette',
+      name: name.trim() || `Planlauf ${doc.nummer}${doc.index ? ` Index ${doc.index}` : ''}`,
       start,
-      status: 'laufend' as RunStatus,
-      steps,
+      status: 'laufend',
+      abbruchGrund: null,
+      abbruchDatum: null,
+      steps: markiert,
       bemerkung,
     });
+
+    const ohneKontakt = markiert.filter((s) => !s.contactId).length;
     toast(
       ohneKontakt > 0
         ? `Planlauf gestartet – ${ohneKontakt} Schritt(e) noch ohne Person.`
@@ -218,17 +320,20 @@ function StartDialog({
     onFertig(id);
   };
 
+  const dauer = steps.reduce((s, x) => s + x.fristTage, 0);
+
   return (
     <Modal
       titel="Planlauf starten"
-      sub="Prozesskette auswählen – Abweichungen sind danach jederzeit möglich"
+      sub="Prozesskette auswählen und für diesen Lauf anpassen"
+      wide
       onClose={onClose}
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
             Abbrechen
           </button>
-          <button type="button" className="btn btn-primary" onClick={starten} disabled={!doc || !template}>
+          <button type="button" className="btn btn-primary" onClick={starten} disabled={!doc}>
             Planlauf starten
           </button>
         </>
@@ -250,70 +355,42 @@ function StartDialog({
               options={dokumente.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
             />
           </Field>
-          <Field label="Prozesskette" full hint={template ? template.beschreibung : undefined}>
+          <Field label="Prozesskette" full hint={template?.beschreibung}>
             <Select
               value={templateId}
-              onChange={setTemplateId}
-              options={vorlagen.map((t) => ({
-                value: t.id,
-                label: `${t.name} (${t.steps.length} Schritte, ${templateDauer(t)} Tage)`,
-              }))}
+              onChange={vorlageWechseln}
+              options={vorlagen.map((t) => ({ value: t.id, label: `${t.name} (${t.steps.length} Schritte)` }))}
             />
           </Field>
           <Field label="Startdatum">
             <TextInput value={start} onChange={setStart} type="date" />
           </Field>
           <Field label="Bezeichnung" hint="leer = automatisch">
-            <TextInput value={name} onChange={setName} placeholder={doc ? `Planlauf ${doc.nummer} Index ${doc.index}` : ''} />
+            <TextInput
+              value={name}
+              onChange={setName}
+              placeholder={doc ? `Planlauf ${doc.nummer}` : ''}
+            />
           </Field>
           <Field label="Bemerkung" full>
             <TextArea value={bemerkung} onChange={setBemerkung} rows={2} />
           </Field>
         </div>
 
-        {template ? (
-          <div>
-            <h3 style={{ marginBottom: 8 }}>Vorschau der Schritte</h3>
-            <div className="card">
-              <div className="table-scroll"><table className="table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Schritt</th>
-                    <th>Rolle</th>
-                    <th>Frist</th>
-                    <th>Zuständig</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {template.steps.map((s, i) => {
-                    const cid = kontaktFuerRolle(s.roleName);
-                    const kontakt = kontakte.find((c) => c.id === cid);
-                    return (
-                      <tr key={s.id}>
-                        <td className="num">{i + 1}</td>
-                        <td>{s.name}</td>
-                        <td className="small muted">{s.roleName || '–'}</td>
-                        <td className="small">{tageLabel(s.fristTage)}</td>
-                        <td className="small">
-                          {kontakt ? (
-                            `${kontakt.vorname} ${kontakt.nachname}`
-                          ) : (
-                            <span className="tertiary">offen</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table></div>
-            </div>
-            <p className="small tertiary" style={{ marginTop: 8 }}>
-              Gesamtdauer laut Vorlage: {templateDauer(template)} {project.settings.fristenInArbeitstagen ? 'Arbeitstage' : 'Kalendertage'} · Status:{' '}
-              {RUN_STATUS_LABEL.laufend}
-            </p>
+        <div>
+          <div className="row-between wrap" style={{ marginBottom: 8 }}>
+            <h3>Schritte dieses Planlaufs</h3>
+            <span className="small tertiary">
+              {steps.length} Schritte · {tageLabel(dauer)} Gesamtdauer
+              {project.settings.fristenInArbeitstagen ? ' (Arbeitstage)' : ''}
+            </span>
           </div>
-        ) : null}
+          <p className="small muted" style={{ marginBottom: 10 }}>
+            Schritte lassen sich hier hinzufügen, ändern oder entfernen. Die gewählte Prozesskette bleibt davon
+            unberührt; Änderungen gelten nur für diesen Lauf.
+          </p>
+          <SchrittListe steps={steps} setSteps={setSteps} rollen={[...new Set(rollen.map((r) => r.name))]} />
+        </div>
       </div>
     </Modal>
   );

@@ -8,8 +8,10 @@ import type { ReactNode } from 'react';
 import { recalcRun } from '../domain/engine';
 import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
+import { today } from '../lib/dates';
 import type {
   AppData,
+  Bearbeiter,
   Contact,
   ID,
   PlanDocument,
@@ -26,8 +28,11 @@ export function newId(prefix = 'id'): ID {
 
 interface StoreValue {
   data: AppData;
+  /* Bearbeiter */
+  setBearbeiter: (b: Partial<Bearbeiter>) => void;
   /* Projekte */
   addProject: (p: Omit<Project, 'id'>) => ID;
+  toggleMarkiert: (id: ID) => void;
   updateProject: (id: ID, patch: Partial<Project>) => void;
   deleteProject: (id: ID) => void;
   /* Rollen */
@@ -52,8 +57,8 @@ interface StoreValue {
   deleteRun: (id: ID) => void;
   updateStep: (runId: ID, stepId: ID, patch: Partial<RunStep>) => void;
   addStep: (runId: ID, step: Omit<RunStep, 'id'>, position?: number) => void;
-  deleteStep: (runId: ID, stepId: ID) => void;
-  moveStep: (runId: ID, stepId: ID, richtung: -1 | 1) => void;
+  /** Bricht einen Lauf mit Begründung ab; er bleibt im Projekt sichtbar. */
+  abbrechenRun: (runId: ID, grund: string) => void;
   /* Verwaltung */
   ersetzeDaten: (d: AppData) => void;
   zuruecksetzen: () => void;
@@ -89,6 +94,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     return {
       data,
+
+      setBearbeiter: (b) =>
+        mutate((d) => ({ ...d, bearbeiter: { ...d.bearbeiter, ...b } })),
+
+      toggleMarkiert: (id) =>
+        mutate((d) => ({
+          ...d,
+          projects: d.projects.map((p) => (p.id === id ? { ...p, markiert: !p.markiert } : p)),
+        })),
 
       addProject: (p) => {
         const id = newId('prj');
@@ -130,9 +144,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => ({
           ...d,
           contacts: d.contacts.filter((c) => c.id !== id),
-          documents: d.documents.map((x) =>
-            x.verantwortlichContactId === id ? { ...x, verantwortlichContactId: null } : x,
-          ),
           runs: d.runs.map((r) => ({
             ...r,
             steps: r.steps.map((s) => (s.contactId === id ? { ...s, contactId: null } : s)),
@@ -190,24 +201,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }),
         })),
 
-      deleteStep: (runId, stepId) =>
+      abbrechenRun: (runId, grund) =>
         mutate((d) => ({
           ...d,
-          runs: d.runs.map((r) => (r.id === runId ? { ...r, steps: r.steps.filter((s) => s.id !== stepId) } : r)),
-        })),
-
-      moveStep: (runId, stepId, richtung) =>
-        mutate((d) => ({
-          ...d,
-          runs: d.runs.map((r) => {
-            if (r.id !== runId) return r;
-            const idx = r.steps.findIndex((s) => s.id === stepId);
-            const ziel = idx + richtung;
-            if (idx < 0 || ziel < 0 || ziel >= r.steps.length) return r;
-            const steps = [...r.steps];
-            [steps[idx], steps[ziel]] = [steps[ziel], steps[idx]];
-            return { ...r, steps };
-          }),
+          runs: d.runs.map((r) =>
+            r.id === runId
+              ? { ...r, status: 'abgebrochen' as const, abbruchGrund: grund, abbruchDatum: today() }
+              : r,
+          ),
         })),
 
       ersetzeDaten: (d) => mutate(() => d),

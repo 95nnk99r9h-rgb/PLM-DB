@@ -3,11 +3,9 @@ import { AMPEL_LABEL, type Ampel } from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
 import {
   DOCUMENT_KIND_LABEL,
-  DOCUMENT_STATUS_LABEL,
   RUN_STATUS_LABEL,
   STEP_TYPE_LABEL,
   type DocumentKind,
-  type DocumentStatus,
   type ISODate,
   type Role,
   type RunStatus,
@@ -29,24 +27,10 @@ export function AmpelBadge({ ampel }: { ampel: Ampel }) {
 }
 
 export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
-  const ton = AMPEL_TON[ampel] || '';
-  return <span className={`dot ${ton}`} title={AMPEL_LABEL[ampel]} />;
-}
-
-const DOC_STATUS_TON: Record<DocumentStatus, '' | 'green' | 'orange' | 'red' | 'blue' | 'purple'> = {
-  entwurf: '',
-  im_umlauf: 'blue',
-  geprueft: 'purple',
-  freigegeben: 'green',
-  archiviert: '',
-};
-
-export function DocStatusBadge({ status }: { status: DocumentStatus }) {
-  return <Badge ton={DOC_STATUS_TON[status]}>{DOCUMENT_STATUS_LABEL[status]}</Badge>;
+  return <span className={`dot ${AMPEL_TON[ampel] || ''}`} title={AMPEL_LABEL[ampel]} />;
 }
 
 const RUN_STATUS_TON: Record<RunStatus, '' | 'green' | 'orange' | 'red' | 'blue'> = {
-  geplant: '',
   laufend: 'blue',
   abgeschlossen: 'green',
   abgebrochen: 'red',
@@ -71,7 +55,7 @@ export function DocKindIcon({ kind }: { kind: DocumentKind }) {
 }
 
 export function StepTypBadge({ typ }: { typ: StepType }) {
-  const ton = typ === 'freigabe' ? 'green' : typ === 'review' ? 'purple' : typ === 'versand' ? 'blue' : '';
+  const ton = typ === 'entscheidung' ? 'purple' : typ === 'sonstiges' ? 'blue' : '';
   return <Badge ton={ton}>{STEP_TYPE_LABEL[typ]}</Badge>;
 }
 

@@ -4,7 +4,7 @@
  */
 import { useMemo, useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type PlanRun, type Project, type RunStep } from '../domain/types';
-import { mailVorbereiten, vorlageVorschlagen } from '../domain/email';
+import { mailLinks, mailVorbereiten, vorlageVorschlagen } from '../domain/email';
 import { ampelFuerSchritt } from '../domain/engine';
 import { useStore } from '../store/store';
 import { useToast } from './toast';
@@ -52,16 +52,25 @@ export function EmailDialog({
     setText(vorbereitet.text);
   }
 
-  const mailto = `mailto:${encodeURIComponent(an)}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
+  const { mailto, outlookWeb } = mailLinks(an, betreff, text);
 
   const merkeVersand = () => {
     updateStep(run.id, step.id, { letzteErinnerung: new Date().toISOString() });
   };
 
-  const oeffnen = () => {
+  /** Öffnet Outlook auf dem Rechner (Standard-Mailprogramm). */
+  const inOutlook = () => {
     window.location.href = mailto;
     merkeVersand();
-    toast('E-Mail-Programm wird geöffnet – Erinnerung vermerkt.');
+    toast('Outlook wird mit der vorbereiteten E-Mail geöffnet.');
+    onClose();
+  };
+
+  /** Öffnet ein neues Fenster in Outlook im Web. */
+  const imWeb = () => {
+    window.open(outlookWeb, '_blank', 'noopener,noreferrer');
+    merkeVersand();
+    toast('Outlook im Web wird geöffnet.');
     onClose();
   };
 
@@ -88,7 +97,7 @@ export function EmailDialog({
 
   return (
     <Modal
-      titel="E-Mail vorbereiten"
+      titel="E-Mail für Outlook vorbereiten"
       sub={`${step.name} · ${run.name}`}
       wide
       onClose={onClose}
@@ -100,8 +109,11 @@ export function EmailDialog({
           <button type="button" className="btn btn-outline" onClick={kopieren}>
             <Icon name="kopieren" size={14} /> Kopieren
           </button>
-          <button type="button" className="btn btn-primary" onClick={oeffnen} disabled={!an}>
-            <Icon name="mail" size={14} /> In E-Mail-Programm öffnen
+          <button type="button" className="btn btn-outline" onClick={imWeb} disabled={!an}>
+            Outlook im Web
+          </button>
+          <button type="button" className="btn btn-primary" onClick={inOutlook} disabled={!an}>
+            <Icon name="mail" size={14} /> In Outlook öffnen
           </button>
         </>
       }

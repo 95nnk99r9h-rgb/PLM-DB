@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { offeneFristen } from '../domain/engine';
 import { addDays, formatDate, today } from '../lib/dates';
-import type { Project, ProjectStatus } from '../domain/types';
+import { EIGENE_ROLLE, type Project, type ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useToast } from '../components/toast';
-import { STANDARD_TEMPLATES } from '../domain/seed';
+import { STANDARD_TEMPLATES, standardVorlagen } from '../domain/seed';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../components/ui';
 import { Icon } from '../components/icons';
 
@@ -23,7 +23,7 @@ const STATUS_TON: Record<ProjectStatus, '' | 'green' | 'orange'> = {
 };
 
 export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
-  const { data } = useStore();
+  const { data, toggleMarkiert } = useStore();
   const [suche, setSuche] = useState('');
   const [dialog, setDialog] = useState<{ project?: Project } | null>(null);
 
@@ -34,7 +34,13 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <div className="stack">
       <div className="row-between wrap">
-        <Search value={suche} onChange={setSuche} placeholder="Projekt, Nummer, Bauherr …" />
+        <div className="row wrap">
+          <Search value={suche} onChange={setSuche} placeholder="Projekt, Nummer, Bauherr …" />
+          <span className="small tertiary">
+            Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
+            Seitenleiste.
+          </span>
+        </div>
         <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
           <Icon name="plus" size={14} /> Neues Projekt
         </button>
@@ -56,7 +62,7 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
       ) : (
         <div className="grid grid-2">
           {projekte.map((p) => {
-            const fristen = offeneFristen(data, p.id);
+            const fristen = offeneFristen(data, [p.id]);
             const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig').length;
             const laeufe = data.runs.filter((r) => r.projectId === p.id && r.status === 'laufend').length;
             const dokumente = data.documents.filter((d) => d.projectId === p.id).length;
@@ -76,7 +82,28 @@ export function Projekte({ navigate }: { navigate: (r: Route) => void }) {
                         {p.bauherr} · {p.ort}
                       </div>
                     </div>
-                    <Badge ton={STATUS_TON[p.status]}>{STATUS_OPTIONEN.find((s) => s.value === p.status)?.label}</Badge>
+                    <span className="row" style={{ gap: 6 }}>
+                      <Badge ton={STATUS_TON[p.status]}>{STATUS_OPTIONEN.find((s) => s.value === p.status)?.label}</Badge>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className={`stern ${p.markiert ? 'aktiv' : ''}`}
+                        title={p.markiert ? 'Markierung aufheben' : 'Projekt markieren – erscheint in Übersicht und Seitenleiste'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMarkiert(p.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleMarkiert(p.id);
+                          }
+                        }}
+                      >
+                        {p.markiert ? '★' : '☆'}
+                      </span>
+                    </span>
                   </div>
 
                   <div className="row wrap" style={{ gap: 16, marginTop: 14 }}>
@@ -126,6 +153,7 @@ export function ProjektDialog({
     bauherr: project?.bauherr ?? '',
     ort: project?.ort ?? '',
     status: project?.status ?? ('aktiv' as ProjectStatus),
+    markiert: project?.markiert ?? true,
     start: project?.start ?? today(),
     ende: project?.ende ?? addDays(today(), 365),
     beschreibung: project?.beschreibung ?? '',
@@ -158,7 +186,7 @@ export function ProjektDialog({
       },
     });
     // Grundrollen anlegen, damit Prozessketten sofort zugeordnet werden können
-    const grundrollen = STANDARD_TEMPLATES.flatMap((t) => t.steps.map((s) => s.roleName));
+    const grundrollen = [EIGENE_ROLLE, ...STANDARD_TEMPLATES.flatMap((t) => t.steps.map((s) => s.roleName))];
     const farben = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de'];
     [...new Set(grundrollen)].filter(Boolean).forEach((name, i) => {
       addRole({
@@ -218,42 +246,4 @@ export function ProjektDialog({
       </div>
     </Modal>
   );
-}
-
-/** Standard-E-Mail-Vorlagen für neu angelegte Projekte. */
-function standardVorlagen() {
-  return [
-    {
-      id: `mail-${Math.random().toString(36).slice(2, 8)}`,
-      name: 'Freundliche Erinnerung',
-      anlass: 'erinnerung' as const,
-      betreff: '[{{projekt.nummer}}] Erinnerung: {{schritt}} – {{plan.nummer}} (fällig {{soll}})',
-      text: `{{anrede}}
-
-im Projekt „{{projekt}}“ ({{projekt.nummer}}) steht der Prozessschritt „{{schritt}}“ für den Planlauf „{{planlauf}}“ aus.
-
-  Plan:        {{plan.nummer}} – {{plan}} (Index {{plan.index}})
-  Ihre Rolle:  {{rolle}}
-  Soll-Termin: {{soll}} ({{frist}})
-
-Bitte geben Sie uns bis zum genannten Termin eine kurze Rückmeldung.
-
-Vielen Dank und freundliche Grüße
-{{absender}}`,
-    },
-    {
-      id: `mail-${Math.random().toString(36).slice(2, 8)}`,
-      name: 'Mahnung bei Fristüberschreitung',
-      anlass: 'ueberfaellig' as const,
-      betreff: '[{{projekt.nummer}}] Überfällig seit {{verzug}} Tagen: {{schritt}} – {{plan.nummer}}',
-      text: `{{anrede}}
-
-der Prozessschritt „{{schritt}}“ im Projekt „{{projekt}}“ ({{projekt.nummer}}) ist seit {{verzug}} Tagen überfällig (Soll-Termin: {{soll}}).
-
-Da der weitere Planlauf hiervon abhängt, bitten wir um kurzfristige Erledigung.
-
-Mit freundlichen Grüßen
-{{absender}}`,
-    },
-  ];
 }

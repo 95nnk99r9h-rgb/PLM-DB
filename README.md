@@ -5,7 +5,12 @@ Prozessketten, die diese durchlaufen – mit Soll-/Ist-Terminen, Fristenüberwac
 vorbereiteten Erinnerungs-E-Mails.
 
 Dieser Stand ist ein **lauffähiger Prototyp ohne Datenbank**: Alle Daten liegen lokal im Browser
-(`localStorage`). Die Anwendung ist responsiv und als PWA installierbar. Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
+(`localStorage`). Die Anwendung ist responsiv und als PWA installierbar.
+
+Die Software ist auf die Nutzung durch mehrere Personen ausgelegt – alle sehen alle Projekte, und
+jede Person stellt in der Seitenleiste ein, wer sie ist (Rolle im Projekt: **PLM**). Solange die
+Daten lokal im Browser liegen, arbeitet allerdings jeder Arbeitsplatz auf einem eigenen Stand; ein
+gemeinsamer Datenbestand setzt den nächsten Schritt – die Anbindung einer Datenbank – voraus. Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
 der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
 
 ## Starten
@@ -80,41 +85,67 @@ Anwendung beim Start eines Planlaufs automatisch die zuständige Person.
 
 ### Pläne, Planpakete, Planverzeichnisse
 Hierarchischer Planbestand: Planpakete und Planverzeichnisse können Pläne enthalten. Je Eintrag
-werden Nummer, Titel, Index, Maßstab, Gewerk, Status und verantwortliche Person geführt.
+werden Nummer, Titel, Index (standardmäßig leer), Gewerk (KIB, VA, OLA, LST, TK, OSE, EEA oder freie
+Eingabe), Planungsphase (Entwurfs-, Genehmigungs- oder Ausführungsplanung, ebenfalls frei ergänzbar),
+der Soll-Termin für den Eingang und eine Bemerkung geführt. Die Liste zeigt je Eintrag, ob er
+**im Planlauf** ist oder noch **aussteht**, und lässt sich über die Spaltenüberschriften sortieren.
 
 ### Prozessketten
-* Drei **Standardketten** (Ausführungsplanung, Genehmigungsplanung, Werk- & Montageplanung),
-  die den mitgelieferten BPMN-Diagrammen entsprechen.
-* **BPMN-2.0-Import**: `.bpmn`/`.xml`-Datei per Drag & Drop einlesen. Ausgewertet werden
-  Aktivitäten und Gateways entlang der Sequenzflüsse, Lanes als Rollen sowie Fristen aus
-  Attributen (`frist="5"`), Extension-Properties oder ISO-8601-Dauern (`P5D`). Vor der Übernahme
-  lassen sich Rollen und Fristen in einer Vorschautabelle korrigieren.
-  Beispieldateien liegen unter [`beispiele/`](beispiele/).
-* Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen.
+Ein Schritt ist eine **Aufgabe**, eine **Entscheidung** oder **Sonstiges**, hat eine Frist in Tagen und
+einen Verantwortlichen (Rolle). Entscheidungen erhalten zwei Antwortmöglichkeiten („Ja“/„Nein“ als
+Vorbelegung, frei überschreibbar); weitere lassen sich ergänzen. Je Antwort wird festgelegt, mit
+welchem Schritt es weitergeht – mit dem nächsten Schritt, einem beliebigen anderen oder dem Ende des
+Laufs.
+
+Mitgeliefert sind drei Standardketten (Ausführungs-, Genehmigungs- sowie Werk- und Montageplanung).
+Ketten lassen sich duplizieren und als **Projektvariante** abweichend pflegen. Die eigene Rolle im
+Projekt ist **PLM**.
 
 ### Planläufe (Soll-/Ist-Termine)
 Ein Planlauf ist die laufende Instanz einer Prozesskette für einen Plan, ein Paket oder ein
-Verzeichnis. Beim Start werden die Schritte der Vorlage kopiert – **individuelle Abweichungen
-wirken deshalb nur auf den jeweiligen Lauf** und sind als solche gekennzeichnet.
+Verzeichnis. Beim Start werden die Schritte der Vorlage kopiert und lassen sich **für diesen Lauf**
+noch ergänzen, ändern oder entfernen – **individuelle Abweichungen** wirken deshalb nur auf den
+jeweiligen Lauf und sind als solche gekennzeichnet.
 
 * **Soll-Termine** werden aus den Fristen gerechnet: Soll = Soll des Vorgängers + Frist. Wahlweise
   in Arbeitstagen (Mo–Fr, ohne hinterlegte Feiertage) oder Kalendertagen.
 * Ein Soll-Termin kann **manuell festgesetzt** werden und bildet dann die Basis für alle folgenden
   Schritte.
-* **Ist-Termine** dokumentieren die Erledigung; der jeweils nächste Schritt wird automatisch aktiv,
-  der Lauf schließt sich, wenn alle Schritte erledigt sind.
-* Schritte lassen sich im Lauf einfügen, verschieben, löschen und in Frist, Rolle und Zuständigkeit
-  ändern.
+* **Ist-Termine** dokumentieren die Erledigung; Schritte lassen sich auch **überspringen**. Der
+  jeweils nächste Schritt wird automatisch aktiv, der Lauf schließt sich, wenn alle Schritte des
+  Verlaufs erledigt sind.
+* Bei **Entscheidungen** wird die Antwort im Lauf gewählt. Der angezeigte Verlauf folgt dieser
+  Antwort; ohne Auswahl der ersten Möglichkeit. Schritte, die nur bei anderer Antwort durchlaufen
+  werden, sind unterhalb der Liste aufgeführt.
+* Ein Lauf kann mit Begründung **abgebrochen** werden. Er bleibt ausgegraut samt Grund in der
+  Projektansicht sichtbar und erscheint nicht mehr in Übersicht und Fristenliste.
 
 ### Fristen & Erinnerungen
 Zentrale Fristenübersicht über alle Projekte, sortiert nach Dringlichkeit und gefiltert nach
 überfällig / fällig / im Plan. Ein Schritt gilt als *fällig*, sobald der Soll-Termin näher liegt als
 die in den Projekteinstellungen gepflegte Vorlaufzeit.
 
-Je Schritt bereitet der Button **Erinnern** eine E-Mail vor: Die zur Lage passende Vorlage
-(Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan, Schritt, Frist und
-Empfänger ersetzt. Die Mail kann im lokalen E-Mail-Programm geöffnet (`mailto:`) oder in die
-Zwischenablage kopiert werden; der Zeitpunkt wird am Schritt vermerkt.
+Je Schritt öffnet der Button **Erinnern** ein Fenster mit der vorbereiteten E-Mail: Die zur Lage
+passende Vorlage (Erinnerung oder Mahnung) wird ausgewählt, die Platzhalter aus Projekt, Plan,
+Schritt, Frist und Empfänger ersetzt. Von dort lässt sich die Nachricht in **Outlook** öffnen
+(`mailto:`, also das eingerichtete Standardprogramm), in **Outlook im Web** anlegen oder in die
+Zwischenablage kopieren; der Zeitpunkt wird am Schritt vermerkt.
+
+### Export je Projekt
+Über **Export** im Projekt lassen sich Planpakete, Pläne und Planverzeichnisse auswählen und in zwei
+Umfängen ausgeben:
+
+* **Kurzfassung** – je Eintrag der aktuelle Stand, der nächste Schritt und die Verantwortlichen.
+* **Langfassung** – zusätzlich alle bereits durchlaufenen und alle ausstehenden Schritte.
+
+Beides jeweils als **Excel** (.xlsx, ohne zusätzliche Programmbibliothek erzeugt) und als **PDF**
+über den Druckdialog des Browsers („Als PDF sichern“).
+
+### Übersicht und Markierung von Projekten
+Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
+Seitenleiste; ohne Markierung werden alle angezeigt. Die Übersicht zeigt Kennzahlen, die eigenen
+**To-Dos** (laufende Schritte in der eigenen Rolle) und die laufenden Planläufe nach Projekt
+gegliedert. Wer man ist, wird unten links in der Seitenleiste eingestellt.
 
 ### Projekteinstellungen
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage, Absenderangaben sowie die
@@ -126,14 +157,18 @@ Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage, Absenderangaben sowie die
 src/
   domain/        Fachlogik ohne UI-Bezug
     types.ts     Datenmodell (Projekt, Rolle, Kontakt, Plan, Vorlage, Planlauf …)
-    engine.ts    Fristenrechnung, Ampelstatus, offene Fristen
-    bpmn.ts      Import von BPMN-2.0-Diagrammen
+    engine.ts    Verlauf durch die Kette, Fristenrechnung, Ampelstatus, To-Dos
     email.ts     Platzhalter und Aufbereitung der Vorlagen
+    export.ts    Kurz- und Langfassung für Excel und PDF
     seed.ts      Standard-Prozessketten und Demodaten
   store/
     storage.ts   Persistenz (localStorage) – Austauschpunkt für eine spätere Datenbank
     store.tsx    Zentraler Zustand, alle Schreibzugriffe
-  pages/         Ansichten (Dashboard, Fristen, Projekte, Prozessketten, Projektreiter)
+  lib/
+    xlsx.ts      Erzeugt Excel-Arbeitsmappen ohne externe Abhängigkeit
+    print.ts     Druckausgabe als Grundlage der PDF-Fassung
+    dates.ts     Fristen- und Datumsrechnung, router.ts, pwa.ts
+  pages/         Ansichten (Übersicht, Fristen, Projekte, Prozessketten, Projektreiter)
   components/    Wiederverwendbare Bausteine (ui.tsx, icons.tsx, EmailDialog …)
   styles/        Design-Tokens im hellen Apple-Erscheinungsbild
 ```
@@ -149,7 +184,8 @@ Pill-Buttons. Die Oberfläche ist bis auf Telefonbreite (~400 px) nutzbar.
 
 * Ablösung von `storage.ts` durch eine Datenbank (z.B. PostgreSQL) samt API – das Datenmodell in
   `domain/types.ts` ist bereits auf Tabellen mit ID-Referenzen ausgelegt.
-* Mehrbenutzerbetrieb mit Anmeldung und Rechten je Rolle.
+* Mehrbenutzerbetrieb auf einem gemeinsamen Datenbestand mit Anmeldung und Rechten je Rolle
+  (heute sieht jeder Arbeitsplatz nur seinen lokalen Stand).
 * Automatischer Mailversand über SMTP statt `mailto:` inkl. Erinnerungslauf im Hintergrund.
 * Dateiablage für die eigentlichen Plandateien (PDF/DWG) je Index.
 * Auswertungen: Terminlisten, Planlieferlisten und Verzugsberichte als Export.
