@@ -18,7 +18,13 @@ export type Aenderung =
 export type Abschluss =
   /** Vor dem Erledigen muss erst die Freigabe- bzw. Prüfbericht-Nr. erfasst werden. */
   | { art: 'nachweis'; step: RunStep }
-  | { art: 'aenderung'; aenderungen: Aenderung[]; meldung: string };
+  | {
+      art: 'aenderung';
+      aenderungen: Aenderung[];
+      meldung: string;
+      /** Schritt, der nach dieser Änderung ansteht – Grundlage für eine E-Mail. */
+      naechster: RunStep | null;
+    };
 
 /**
  * Ein Nachweis wird verlangt, wenn der Schritt erfolgreich abgeschlossen
@@ -75,6 +81,7 @@ export function schrittStatusSetzen(
         art: 'aenderung',
         aenderungen,
         meldung: `Rücksprung zu „${zielName}“ – weiterer Durchlauf gestartet.`,
+        naechster: run.steps.find((s) => s.id === ziel) ?? null,
       };
     }
   }
@@ -91,12 +98,28 @@ export function schrittStatusSetzen(
     );
     if (rest.length === 0) {
       aenderungen.push({ art: 'run', patch: { status: 'abgeschlossen' } });
-      return { art: 'aenderung', aenderungen, meldung: 'Alle Schritte erledigt – Planlauf abgeschlossen.' };
+      return {
+        art: 'aenderung',
+        aenderungen,
+        meldung: 'Alle Schritte erledigt – Planlauf abgeschlossen.',
+        naechster: null,
+      };
     }
     if (rest[0].status === 'offen') {
       aenderungen.push({ art: 'step', stepId: rest[0].id, patch: { status: 'laufend' } });
     }
+    return {
+      art: 'aenderung',
+      aenderungen,
+      meldung: `„${step.name}“: ${STEP_STATUS_LABEL[status]}`,
+      naechster: rest[0],
+    };
   }
 
-  return { art: 'aenderung', aenderungen, meldung: `„${step.name}“: ${STEP_STATUS_LABEL[status]}` };
+  return {
+    art: 'aenderung',
+    aenderungen,
+    meldung: `„${step.name}“: ${STEP_STATUS_LABEL[status]}`,
+    naechster: null,
+  };
 }

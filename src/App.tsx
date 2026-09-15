@@ -11,6 +11,7 @@ import { ProjektDetail } from './pages/ProjektDetail';
 import { Projekte } from './pages/Projekte';
 import { Workflows } from './pages/Workflows';
 import { Funktionen } from './pages/Funktionen';
+import { Vorlagen } from './pages/Vorlagen';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from './components/ui';
 import { Icon } from './components/icons';
@@ -61,6 +62,12 @@ export function App() {
         <NavItem icon="projekt" label="Projekte" aktiv={route.view === 'projekte'} onClick={() => gehe({ view: 'projekte' })} />
         <NavItem icon="kette" label="Workflows" aktiv={route.view === 'ketten'} onClick={() => gehe({ view: 'ketten' })} />
         <NavItem icon="person" label="Funktionen" aktiv={route.view === 'rollen'} onClick={() => gehe({ view: 'rollen' })} />
+        <NavItem
+          icon="kopieren"
+          label="Vorlagen"
+          aktiv={route.view === 'vorlagen'}
+          onClick={() => gehe({ view: 'vorlagen' })}
+        />
 
         <div className="nav-group-label">
           Projekte
@@ -126,6 +133,7 @@ export function App() {
             {route.view === 'projekte' ? <Projekte navigate={gehe} /> : null}
             {route.view === 'ketten' ? <Workflows /> : null}
             {route.view === 'rollen' ? <Funktionen /> : null}
+            {route.view === 'vorlagen' ? <Vorlagen /> : null}
             {route.view === 'projekt' ? (
               projekt ? (
                 <ProjektDetail project={projekt} tab={route.tab} navigate={gehe} />
@@ -279,6 +287,8 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
       return { titel: 'Workflows', sub: 'Standard-Workflows und Projektvarianten' };
     case 'rollen':
       return { titel: 'Funktionen', sub: 'Projektübergreifend, gegliedert nach Gewerken' };
+    case 'vorlagen':
+      return { titel: 'Vorlagen', sub: 'E-Mail-Texte und Excel-Vorlagen für den Upload' };
     case 'projekt':
       return { titel: projektName ?? 'Projekt', sub: 'Projektarbeitsbereich' };
     case 'planlauf':

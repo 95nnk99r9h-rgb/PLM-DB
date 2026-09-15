@@ -11,6 +11,7 @@ import {
   type Role,
   type ID,
   type ISODate,
+  type PlanDocument,
   type PlanRun,
   type ProcessTemplate,
   type ProcessTemplateStep,
@@ -127,15 +128,26 @@ export function recalcSollDaten(
   start: ISODate,
   arbeitstage: boolean,
   feiertage: ISODate[],
+  /**
+   * Soll-Termin für den Eingang der Unterlage. Ist er hinterlegt, hat der
+   * erste Schritt keine Frist, sondern genau dieses Datum; die folgenden
+   * Fristen rechnen von dort weiter.
+   */
+  eingangSoll: ISODate | null = null,
 ): RunStep[] {
   const reihenfolge = pfad(steps);
   const termine = new Map<ID, ISODate>();
   let basis = start;
 
-  for (const step of reihenfolge) {
+  for (const [i, step] of reihenfolge.entries()) {
     if (step.sollManuell && step.sollDatum) {
       basis = step.sollDatum;
       termine.set(step.id, step.sollDatum);
+      continue;
+    }
+    if (i === 0 && eingangSoll) {
+      basis = eingangSoll;
+      termine.set(step.id, eingangSoll);
       continue;
     }
     const soll = addDays(basis, step.fristTage, arbeitstage, feiertage);
@@ -150,10 +162,17 @@ export function recalcSollDaten(
 }
 
 /** Rechnet einen kompletten Lauf mit den Projekteinstellungen durch. */
-export function recalcRun(run: PlanRun, project: Project | undefined): PlanRun {
+export function recalcRun(
+  run: PlanRun,
+  project: Project | undefined,
+  doc?: { eingangSoll: ISODate | null },
+): PlanRun {
   const arbeitstage = project?.settings.fristenInArbeitstagen ?? true;
   const feiertage = project?.settings.feiertage ?? [];
-  return { ...run, steps: recalcSollDaten(run.steps, run.start, arbeitstage, feiertage) };
+  return {
+    ...run,
+    steps: recalcSollDaten(run.steps, run.start, arbeitstage, feiertage, doc?.eingangSoll ?? null),
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -262,6 +281,38 @@ export function kontaktFuerRolleUndGewerk(
   const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
   if (!rolle) return null;
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
+}
+
+/**
+ * Laufende Nummerierung der Pläne und Planverzeichnisse eines Projekts.
+ *
+ * Planverzeichnisse und Einzelpläne werden in der Reihenfolge ihrer Anlage
+ * fortlaufend nummeriert; die Pläne eines Verzeichnisses erhalten dessen
+ * Nummer mit angehängtem Zähler (3.1, 3.2 …). Planpakete bleiben ohne Nummer.
+ * Gelöschte Einträge geben ihre Nummer wieder frei, da stets neu durchgezählt
+ * wird; abgebrochene Einträge behalten sie, weil der Eintrag bestehen bleibt.
+ */
+export function lfdNummern(documents: PlanDocument[]): Map<ID, string> {
+  const nummern = new Map<ID, string>();
+  const eintraege = documents.filter((d) => d.kind !== 'paket');
+  const istKind = (d: PlanDocument) =>
+    d.kind === 'plan' && d.parentId !== null && eintraege.some((x) => x.id === d.parentId);
+
+  let zaehler = 0;
+  for (const d of eintraege) {
+    if (!istKind(d)) nummern.set(d.id, String(++zaehler));
+  }
+
+  const unterZaehler = new Map<ID, number>();
+  for (const d of eintraege) {
+    if (!istKind(d)) continue;
+    const eltern = nummern.get(d.parentId!);
+    if (!eltern) continue;
+    const n = (unterZaehler.get(d.parentId!) ?? 0) + 1;
+    unterZaehler.set(d.parentId!, n);
+    nummern.set(d.id, `${eltern}.${n}`);
+  }
+  return nummern;
 }
 
 /** Erzeugt aus einer Vorlage die Schritte eines neuen Laufs. */

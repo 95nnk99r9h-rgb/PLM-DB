@@ -16,6 +16,7 @@
   --text: #1d1d1f;
   --text-secondary: #6e6e73;
   --text-tertiary: #8e8e93;
+  --fill-gruppe: #f2f2f7;
 
   --separator: rgba(0, 0, 0, 0.08);
   --separator-strong: rgba(0, 0, 0, 0.14);
@@ -545,6 +546,12 @@ a:hover { text-decoration: underline; }
 .step-body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .step-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .step-title strong { font-size: 13.5px; font-weight: 600; }
+/* Gruppen- und Paketzeilen heben sich vom Inhalt ab */
+.table tr.gruppe-zeile td,
+.table tr.paket-zeile td { background: var(--fill-gruppe); border-top: 1px solid var(--separator); }
+.table tr.gruppe-zeile td { padding-top: 9px; padding-bottom: 9px; }
+.table tr.gruppe-zeile + tr td { border-top: none; }
+
 /* Gruppenzeile (Planpaket) und ihre Einträge in Übersichtslisten */
 .gruppe-btn { display: flex; align-items: center; gap: 9px; padding: 0; margin: 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
 .gruppe-btn:hover strong { color: var(--blue); }
@@ -635,6 +642,8 @@ a:hover { text-decoration: underline; }
 .kv { display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px; font-size: 13.5px; }
 .kv dt { color: var(--text-secondary); font-size: 12.5px; }
 .kv dd { margin: 0; }
+.kv-breit { grid-template-columns: 190px 1fr; }
+.mail-vorschau { white-space: pre-wrap; font-family: inherit; font-size: 13.5px; margin: 10px 0 0; color: var(--text-secondary); }
 
 .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--separator); overflow-x: auto; }
 .tabs button {

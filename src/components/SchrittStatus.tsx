@@ -8,16 +8,19 @@
  */
 import { useState } from 'react';
 import { schrittStatusSetzen } from '../domain/abschluss';
-import { NACHWEIS_LABEL, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
+import { EIGENE_ROLLE, NACHWEIS_LABEL, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from './toast';
-import { Field, Modal, TextInput } from './ui';
+import { ConfirmDialog, Field, Modal, TextInput } from './ui';
+import { EmailDialog } from './EmailDialog';
 import { Icon } from './icons';
 
 export function useSchrittStatus() {
-  const { updateRun, updateStep } = useStore();
+  const { data, updateRun, updateStep } = useStore();
   const toast = useToast();
   const [nachweisFuer, setNachweisFuer] = useState<{ run: PlanRun; step: RunStep } | null>(null);
+  const [frage, setFrage] = useState<{ run: PlanRun; step: RunStep } | null>(null);
+  const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
 
   const setzeStatus = (run: PlanRun, step: RunStep, status: StepStatus, nachweisNummer?: string) => {
     const ergebnis = schrittStatusSetzen(run, step, status, nachweisNummer);
@@ -29,15 +32,59 @@ export function useSchrittStatus() {
       a.art === 'run' ? updateRun(run.id, a.patch) : updateStep(run.id, a.stepId, a.patch),
     );
     toast(ergebnis.meldung);
+
+    // Nach einem eigenen erledigten Schritt anbieten, den nächsten
+    // Ansprechpartner gleich per E-Mail zu informieren.
+    const eigene = (data.bearbeiter?.rolle || EIGENE_ROLLE).trim().toLowerCase();
+    if (
+      status === 'erledigt' &&
+      ergebnis.naechster &&
+      step.roleName.trim().toLowerCase() === eigene &&
+      ergebnis.naechster.contactId
+    ) {
+      setFrage({ run, step: ergebnis.naechster });
+    }
   };
 
-  const nachweisDialog = nachweisFuer ? (
-    <NachweisDialog
-      step={nachweisFuer.step}
-      onClose={() => setNachweisFuer(null)}
-      onErfassen={(nummer) => setzeStatus(nachweisFuer.run, nachweisFuer.step, 'erledigt', nummer)}
-    />
-  ) : null;
+  const project = (run: PlanRun) => data.projects.find((p) => p.id === run.projectId);
+  const kontakt = (step: RunStep) => data.contacts.find((c) => c.id === step.contactId);
+
+  const nachweisDialog = (
+    <>
+      {nachweisFuer ? (
+        <NachweisDialog
+          step={nachweisFuer.step}
+          onClose={() => setNachweisFuer(null)}
+          onErfassen={(nummer) => setzeStatus(nachweisFuer.run, nachweisFuer.step, 'erledigt', nummer)}
+        />
+      ) : null}
+
+      {frage ? (
+        <ConfirmDialog
+          titel="E-Mail schreiben?"
+          text={`Der nächste Schritt „${frage.step.name}“ liegt bei ${
+            kontakt(frage.step)
+              ? `${kontakt(frage.step)!.vorname} ${kontakt(frage.step)!.nachname}`
+              : 'der zuständigen Person'
+          } (${frage.step.roleName}). Soll dazu eine E-Mail vorbereitet werden?`}
+          bestaetigenLabel="E-Mail vorbereiten"
+          abbrechenLabel="Nein, danke"
+          ton="blau"
+          onConfirm={() => setMail(frage)}
+          onClose={() => setFrage(null)}
+        />
+      ) : null}
+
+      {mail && project(mail.run) ? (
+        <EmailDialog
+          project={project(mail.run)!}
+          run={mail.run}
+          step={mail.step}
+          onClose={() => setMail(null)}
+        />
+      ) : null}
+    </>
+  );
 
   return { setzeStatus, nachweisDialog };
 }

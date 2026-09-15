@@ -11,6 +11,7 @@ import {
   ampelFuerSchritt,
   fortschritt,
   istAktiv,
+  lfdNummern,
   kontaktFuerRolleUndGewerk,
   stepsAusTemplate,
 } from '../../domain/engine';
@@ -53,6 +54,9 @@ import { Icon } from '../../components/icons';
 import { ErledigtButton, useSchrittStatus } from '../../components/SchrittStatus';
 
 type Filter = 'alle' | 'plan' | 'verzeichnis';
+
+/** Sonderwert der Auswahlfelder: Eintrag direkt neu anlegen. */
+const NEU = '__neu__';
 type SortFeld = 'nummer' | 'titel' | 'gewerk' | 'planungsphase' | 'eingangSoll' | 'stand';
 
 /** Ableitbarer Bearbeitungsstand eines Eintrags. */
@@ -111,15 +115,40 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     });
   };
 
-  // Hierarchie: untergeordnete Pläne stehen unter ihrem Paket bzw. Verzeichnis
-  const zeilen: { doc: PlanDocument; tiefe: number }[] = [];
-  const sammle = (doc: PlanDocument, tiefe: number) => {
-    zeilen.push({ doc, tiefe });
-    sortiere(gefiltert.filter((d) => d.parentId === doc.id)).forEach((k) => sammle(k, tiefe + 1));
+  // Gliederung: Planpaket › Planverzeichnis › Plan. Einträge ohne Paket
+  // stehen gebündelt am Ende.
+  type Zeile = { doc: PlanDocument; tiefe: number };
+
+  /** Das für die Gliederung maßgebliche Paket – bei Plänen das des Verzeichnisses. */
+  const paketVon = (d: PlanDocument): ID | null => {
+    if (d.kind === 'plan' && d.parentId) {
+      const eltern = alle.find((x) => x.id === d.parentId);
+      if (eltern) return eltern.paketId;
+    }
+    return d.paketId;
   };
-  sortiere(gefiltert.filter((d) => !d.parentId || !gefiltert.some((p) => p.id === d.parentId))).forEach((d) =>
-    sammle(d, 0),
-  );
+
+  const eintraegeFuer = (paketId: ID | null): Zeile[] => {
+    const zeilen: Zeile[] = [];
+    const sammle = (doc: PlanDocument, tiefe: number) => {
+      zeilen.push({ doc, tiefe });
+      sortiere(gefiltert.filter((d) => d.parentId === doc.id)).forEach((k) => sammle(k, tiefe + 1));
+    };
+    sortiere(
+      gefiltert.filter(
+        (d) =>
+          paketVon(d) === paketId && (!d.parentId || !gefiltert.some((p) => p.id === d.parentId)),
+      ),
+    ).forEach((d) => sammle(d, 0));
+    return zeilen;
+  };
+
+  const gruppen: { paket: PlanDocument | null; zeilen: Zeile[] }[] = [
+    ...pakete.map((paket) => ({ paket, zeilen: eintraegeFuer(paket.id) })),
+    { paket: null, zeilen: eintraegeFuer(null) },
+  ].filter((g) => g.zeilen.length > 0 || g.paket !== null);
+
+  const nummern = lfdNummern(data.documents.filter((d) => d.projectId === project.id));
 
   const sortieren = (feld: SortFeld) => {
     if (feld === sortFeld) setAbsteigend((a) => !a);
@@ -169,14 +198,14 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
       <Card>
         <CardHeader
-          titel="Pläne & Planläufe"
+          titel="Planliste"
           sub={
             ohneLauf > 0
               ? `${ohneLauf} Eintrag/Einträge ohne Planlauf · Spaltenüberschrift klicken zum Sortieren`
-              : 'Zu jedem Eintrag läuft eine Workflow · Spaltenüberschrift klicken zum Sortieren'
+              : 'Gegliedert nach Planpaketen · Spaltenüberschrift klicken zum Sortieren'
           }
         />
-        {zeilen.length === 0 ? (
+        {gefiltert.length === 0 ? (
           <EmptyState
             icon="plan"
             titel="Noch keine Einträge"
@@ -192,149 +221,161 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
             <table className="table">
               <thead>
                 <tr>
+                  <th style={{ width: 58 }}>Nr.</th>
                   <Kopf feld="nummer">Bezeichnung / Titel</Kopf>
                   <Kopf feld="gewerk" klasse="col-optional">Gewerk</Kopf>
-                  <th className="col-optional">Planpaket</th>
-                  <Kopf feld="eingangSoll" klasse="col-optional">Eingang Soll</Kopf>
                   <Kopf feld="stand">Aktueller Schritt</Kopf>
                   <th className="col-optional" style={{ width: 140 }}>Fortschritt</th>
                   <th className="actions" />
                 </tr>
               </thead>
               <tbody>
-                {zeilen.map(({ doc, tiefe }) => {
-                  const stand = standFuer(doc, runs);
-                  const run = stand.run;
-                  const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
-                  const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
-                  // Abgebrochene Vorgänger – etwa nach einem neuen Index – bleiben
-                  // als graue Zeile sichtbar.
-                  const abgebrochene = runs.filter(
-                    (r) => r.documentId === doc.id && r.status === 'abgebrochen' && r.id !== run?.id,
-                  );
-                  return (
-                    <Fragment key={doc.id}>
-                    <tr
-                      className={`clickable ${run?.status === 'abgebrochen' ? 'zeile-verworfen' : ''}`}
-                      onClick={() => (run ? oeffneLauf(run.id) : setDialog({ doc }))}
-                    >
-                      <td style={{ paddingLeft: 14 + tiefe * 22 }}>
+                {gruppen.map((gruppe) => (
+                  <Fragment key={gruppe.paket?.id ?? 'ohne-paket'}>
+                    <tr className="gruppe-zeile">
+                      <td colSpan={6}>
                         <span className="row" style={{ gap: 9 }}>
-                          <DocKindIcon kind={doc.kind} />
-                          <span style={{ minWidth: 0 }}>
-                            <span className="num">
-                              {doc.nummer}
-                              {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
-                            </span>
-                            <div>
-                              <strong>{doc.titel}</strong>
-                            </div>
+                          {gruppe.paket ? <DocKindIcon kind="paket" /> : null}
+                          <span>
+                            <strong>{gruppe.paket ? gruppe.paket.titel : 'Ohne Planpaket'}</strong>
+                            <span className="small tertiary"> · {gruppe.zeilen.length} Einträge</span>
                           </span>
                         </span>
                       </td>
-                      <td className="small muted col-optional">{doc.gewerk || '–'}</td>
-                      <td className="small muted col-optional">
-                        {pakete.find((p) => p.id === doc.paketId)?.titel ?? '–'}
-                      </td>
-                      <td className="small col-optional">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
-                      <td>
-                        {run && istAktiv(run) ? (
-                          <>
-                            <span className="row" style={{ gap: 7 }}>
-                              <AmpelPunkt ampel={ampel} />
-                              <strong className="small">{stand.text}</strong>
-                            </span>
-                            <span className="tertiary small">
-                              {step?.roleName ? `${step.roleName} · ` : ''}
-                              {relativeLabel(step?.sollDatum ?? null)}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Badge ton={stand.ton}>{stand.text}</Badge>
-                            {run?.status === 'abgebrochen' && run.abbruchGrund ? (
-                              <div className="small tertiary truncate">{run.abbruchGrund}</div>
-                            ) : null}
-                          </>
-                        )}
-                      </td>
-                      <td className="col-optional">
-                        {run ? (
-                          <span className="row" style={{ gap: 8 }}>
-                            <Progress
-                              wert={fortschritt(run)}
-                              ton={ampel === 'ueberfaellig' ? 'red' : fortschritt(run) === 100 ? 'green' : ''}
-                            />
-                            <span className="small tertiary">{fortschritt(run)} %</span>
-                          </span>
-                        ) : (
-                          <span className="small tertiary">–</span>
-                        )}
-                      </td>
-                      <td className="actions">
-                        {run && step ? (
-                          <ErledigtButton
-                            run={run}
-                            step={step}
-                            onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
-                          />
-                        ) : null}
-                        <button
-                          type="button"
-                          className="btn-icon"
-                          aria-label="Eintrag bearbeiten"
-                          title="Stammdaten bearbeiten"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDialog({ doc });
-                          }}
-                        >
-                          <Icon name="bearbeiten" size={15} />
-                        </button>
-                      </td>
                     </tr>
 
-                    {abgebrochene.map((alt) => (
-                      <tr
-                        key={alt.id}
-                        className="clickable zeile-verworfen"
-                        onClick={() => oeffneLauf(alt.id)}
-                      >
-                        <td style={{ paddingLeft: 14 + tiefe * 22 }}>
-                          <span className="row" style={{ gap: 9 }}>
-                            <DocKindIcon kind={doc.kind} />
-                            <span style={{ minWidth: 0 }}>
-                              <span className="num">
-                                {doc.nummer}
-                                {alt.index ? ` · ${INDEX_LABEL[doc.kind]} ${alt.index}` : ''}
+                    {gruppe.zeilen.map(({ doc, tiefe }) => {
+                      const stand = standFuer(doc, runs);
+                      const run = stand.run;
+                      const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
+                      const ampel = step
+                        ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage)
+                        : 'neutral';
+                      // Abgebrochene Vorgänger – etwa nach einer neuen Ausgabe –
+                      // bleiben als graue Zeile sichtbar und behalten ihre Nummer.
+                      const abgebrochene = runs.filter(
+                        (r) => r.documentId === doc.id && r.status === 'abgebrochen' && r.id !== run?.id,
+                      );
+                      const einzug = 14 + tiefe * 20;
+                      return (
+                        <Fragment key={doc.id}>
+                          <tr
+                            className={`clickable ${run?.status === 'abgebrochen' ? 'zeile-verworfen' : ''}`}
+                            onClick={() => (run ? oeffneLauf(run.id) : setDialog({ doc }))}
+                          >
+                            <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
+                            <td style={{ paddingLeft: einzug }}>
+                              <span className="row" style={{ gap: 9 }}>
+                                <DocKindIcon kind={doc.kind} />
+                                <span style={{ minWidth: 0 }}>
+                                  <span className="num">
+                                    {doc.nummer}
+                                    {doc.index ? ` · ${INDEX_LABEL[doc.kind]} ${doc.index}` : ''}
+                                  </span>
+                                  <div>
+                                    <strong>{doc.titel}</strong>
+                                  </div>
+                                </span>
                               </span>
-                              <div className="small">{doc.titel}</div>
-                            </span>
-                          </span>
-                        </td>
-                        <td className="small col-optional">{doc.gewerk || '–'}</td>
-                        <td className="small col-optional">
-                          {pakete.find((p) => p.id === doc.paketId)?.titel ?? '–'}
-                        </td>
-                        <td className="small col-optional">{doc.eingangSoll ? formatDate(doc.eingangSoll) : '–'}</td>
-                        <td>
-                          <Badge>Abgebrochen</Badge>
-                          <div className="small tertiary truncate">
-                            {alt.abbruchDatum ? `${formatDate(alt.abbruchDatum)} · ` : ''}
-                            {alt.abbruchArt === 'neuer_index' && alt.abbruchNeuerIndex
-                              ? `ersetzt durch ${INDEX_LABEL[doc.kind]} ${alt.abbruchNeuerIndex}`
-                              : (alt.abbruchGrund || 'ersatzlos')}
-                          </div>
-                        </td>
-                        <td className="col-optional">
-                          <span className="small tertiary">–</span>
-                        </td>
-                        <td className="actions" />
-                      </tr>
-                    ))}
-                    </Fragment>
-                  );
-                })}
+                            </td>
+                            <td className="small muted col-optional">{doc.gewerk || '–'}</td>
+                            <td>
+                              {run && istAktiv(run) ? (
+                                <>
+                                  <span className="row" style={{ gap: 7 }}>
+                                    <AmpelPunkt ampel={ampel} />
+                                    <strong className="small">{stand.text}</strong>
+                                  </span>
+                                  <span className="tertiary small">
+                                    {step?.roleName ? `${step.roleName} · ` : ''}
+                                    {relativeLabel(step?.sollDatum ?? null)}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <Badge ton={stand.ton}>{stand.text}</Badge>
+                                  {run?.status === 'abgebrochen' && run.abbruchGrund ? (
+                                    <div className="small tertiary truncate">{run.abbruchGrund}</div>
+                                  ) : null}
+                                </>
+                              )}
+                            </td>
+                            <td className="col-optional">
+                              {run ? (
+                                <span className="row" style={{ gap: 8 }}>
+                                  <Progress
+                                    wert={fortschritt(run)}
+                                    ton={ampel === 'ueberfaellig' ? 'red' : fortschritt(run) === 100 ? 'green' : ''}
+                                  />
+                                  <span className="small tertiary">{fortschritt(run)} %</span>
+                                </span>
+                              ) : (
+                                <span className="small tertiary">–</span>
+                              )}
+                            </td>
+                            <td className="actions">
+                              {run && step ? (
+                                <ErledigtButton
+                                  run={run}
+                                  step={step}
+                                  onErledigen={(r, sch) => setzeStatus(r, sch, 'erledigt')}
+                                />
+                              ) : null}
+                              <button
+                                type="button"
+                                className="btn-icon"
+                                aria-label="Eintrag bearbeiten"
+                                title="Stammdaten bearbeiten"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDialog({ doc });
+                                }}
+                              >
+                                <Icon name="bearbeiten" size={15} />
+                              </button>
+                            </td>
+                          </tr>
+
+                          {abgebrochene.map((alt) => (
+                            <tr
+                              key={alt.id}
+                              className="clickable zeile-verworfen"
+                              onClick={() => oeffneLauf(alt.id)}
+                            >
+                              <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
+                              <td style={{ paddingLeft: einzug }}>
+                                <span className="row" style={{ gap: 9 }}>
+                                  <DocKindIcon kind={doc.kind} />
+                                  <span style={{ minWidth: 0 }}>
+                                    <span className="num">
+                                      {doc.nummer}
+                                      {alt.index ? ` · ${INDEX_LABEL[doc.kind]} ${alt.index}` : ''}
+                                    </span>
+                                    <div className="small">{doc.titel}</div>
+                                  </span>
+                                </span>
+                              </td>
+                              <td className="small col-optional">{doc.gewerk || '–'}</td>
+                              <td>
+                                <Badge>Abgebrochen</Badge>
+                                <div className="small tertiary truncate">
+                                  {alt.abbruchDatum ? `${formatDate(alt.abbruchDatum)} · ` : ''}
+                                  {alt.abbruchArt === 'neuer_index' && alt.abbruchNeuerIndex
+                                    ? `ersetzt durch ${INDEX_LABEL[doc.kind]} ${alt.abbruchNeuerIndex}`
+                                    : (alt.abbruchGrund || 'ersatzlos')}
+                                </div>
+                              </td>
+                              <td className="col-optional">
+                                <span className="small tertiary">–</span>
+                              </td>
+                              <td className="actions" />
+                            </tr>
+                          ))}
+                        </Fragment>
+                      );
+                    })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>
@@ -408,6 +449,37 @@ function PlanDialog({
   );
   const pakete = data.documents.filter((d) => d.projectId === project.id && d.kind === 'paket');
 
+  // Pläne eines Verzeichnisses gehören automatisch zu dessen Planpaket
+  const elternPaket = moeglicheEltern.find((d) => d.id === form.parentId)?.paketId ?? null;
+  const wirksamesPaket = untergeordnet ? elternPaket : form.paketId;
+
+  /** Anlage eines Planverzeichnisses bzw. Planpakets direkt aus der Auswahl. */
+  const [schnell, setSchnell] = useState<'verzeichnis' | 'paket' | null>(null);
+
+  const schnellAnlegen = (art: 'verzeichnis' | 'paket', titel: string, nummer: string) => {
+    const id = addDocument({
+      projectId: project.id,
+      kind: art,
+      parentId: null,
+      paketId: art === 'verzeichnis' ? form.paketId : null,
+      nummer,
+      titel,
+      index: '',
+      gewerk: form.gewerk,
+      planungsphase: art === 'verzeichnis' ? form.planungsphase : '',
+      eingangSoll: null,
+      datum: null,
+      bemerkung: '',
+    });
+    if (art === 'verzeichnis') set('parentId', id);
+    else set('paketId', id);
+    toast(
+      art === 'verzeichnis'
+        ? 'Planverzeichnis angelegt – der Planlauf lässt sich über den Eintrag starten.'
+        : 'Planpaket angelegt.',
+    );
+  };
+
   /** Bearbeitbare Kopie der Vorlagenschritte. */
   const kopie = (id: string): ProcessTemplateStep[] => {
     const t = vorlagen.find((v) => v.id === id);
@@ -450,12 +522,23 @@ function PlanDialog({
       eingangSoll: form.eingangSoll || null,
       datum: form.kind === 'verzeichnis' ? form.datum || null : null,
       parentId: form.kind === 'plan' ? form.parentId : null,
+      paketId: wirksamesPaket,
     };
 
-    // Bestehenden Eintrag mit Planlauf nur aktualisieren
-    if (doc && !braucheLauf) {
-      updateDocument(doc.id, werte);
-      toast('Eintrag aktualisiert.');
+    // Einträge ohne eigenen Planlauf – etwa Pläne eines Verzeichnisses –
+    // werden nur gespeichert.
+    if (!braucheLauf) {
+      if (doc) {
+        updateDocument(doc.id, werte);
+        toast('Eintrag aktualisiert.');
+      } else {
+        addDocument({ ...werte, projectId: project.id });
+        toast(
+          untergeordnet
+            ? 'Plan angelegt – er läuft im Planlauf des Verzeichnisses mit.'
+            : 'Eintrag angelegt.',
+        );
+      }
       onClose();
       return;
     }
@@ -564,19 +647,40 @@ function PlanDialog({
               >
                 <Select
                   value={form.parentId ?? ''}
-                  onChange={(v) => set('parentId', v || null)}
+                  onChange={(v) => (v === NEU ? setSchnell('verzeichnis') : set('parentId', v || null))}
                   placeholder="– Einzelplan –"
-                  options={moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` }))}
+                  options={[
+                    ...moeglicheEltern.map((d) => ({ value: d.id, label: `${d.nummer} · ${d.titel}` })),
+                    { value: NEU, label: '+ Neues Planverzeichnis anlegen …' },
+                  ]}
                 />
               </Field>
             ) : null}
-            <Field label="Planpaket" hint="Ordnungsmerkmal ohne Einfluss auf den Planlauf">
-              <Select
-                value={form.paketId ?? ''}
-                onChange={(v) => set('paketId', v || null)}
-                placeholder="– keinem Paket zugeordnet –"
-                options={pakete.map((d) => ({ value: d.id, label: d.titel || d.nummer }))}
-              />
+            <Field
+              label="Planpaket"
+              hint={
+                untergeordnet
+                  ? 'Ergibt sich aus dem Planverzeichnis'
+                  : 'Ordnungsmerkmal ohne Einfluss auf den Planlauf'
+              }
+            >
+              {untergeordnet ? (
+                <input
+                  className="input"
+                  readOnly
+                  value={pakete.find((p) => p.id === elternPaket)?.titel ?? 'keinem Paket zugeordnet'}
+                />
+              ) : (
+                <Select
+                  value={form.paketId ?? ''}
+                  onChange={(v) => (v === NEU ? setSchnell('paket') : set('paketId', v || null))}
+                  placeholder="– keinem Paket zugeordnet –"
+                  options={[
+                    ...pakete.map((d) => ({ value: d.id, label: d.titel || d.nummer })),
+                    { value: NEU, label: '+ Neues Planpaket anlegen …' },
+                  ]}
+                />
+              )}
             </Field>
             <Field label={NUMMER_LABEL[form.kind]}>
               <TextInput
@@ -619,7 +723,7 @@ function PlanDialog({
                 ))}
               </datalist>
             </Field>
-            <Field label="Eingang Soll">
+            <Field label="Eingang Soll" hint="Soll-Termin des ersten Prozessschritts">
               <TextInput value={form.eingangSoll} onChange={(v) => set('eingangSoll', v)} type="date" />
             </Field>
             {form.kind === 'verzeichnis' ? (
@@ -677,6 +781,14 @@ function PlanDialog({
         </div>
       </Modal>
 
+      {schnell ? (
+        <SchnellDialog
+          art={schnell}
+          onClose={() => setSchnell(null)}
+          onAnlegen={(titel, nummer) => schnellAnlegen(schnell, titel, nummer)}
+        />
+      ) : null}
+
       {loeschen && doc ? (
         <ConfirmDialog
           titel="Eintrag löschen?"
@@ -690,5 +802,73 @@ function PlanDialog({
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Kleiner Dialog, um aus der Auswahl heraus ein Planverzeichnis oder ein
+ * Planpaket anzulegen, ohne den Eintrag zu verlassen.
+ */
+function SchnellDialog({
+  art,
+  onClose,
+  onAnlegen,
+}: {
+  art: 'verzeichnis' | 'paket';
+  onClose: () => void;
+  onAnlegen: (titel: string, nummer: string) => void;
+}) {
+  const toast = useToast();
+  const [titel, setTitel] = useState('');
+  const [nummer, setNummer] = useState('');
+
+  const speichern = () => {
+    if (!titel.trim()) {
+      toast('Bitte eine Bezeichnung angeben.');
+      return;
+    }
+    onAnlegen(titel.trim(), nummer.trim());
+    onClose();
+  };
+
+  return (
+    <Modal
+      titel={art === 'verzeichnis' ? 'Neues Planverzeichnis' : 'Neues Planpaket'}
+      sub={
+        art === 'verzeichnis'
+          ? 'Wird angelegt und dem Plan übergeordnet; der Planlauf lässt sich später starten.'
+          : 'Wird angelegt und dem Eintrag zugeordnet.'
+      }
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button type="button" className="btn btn-primary" onClick={speichern}>
+            Anlegen
+          </button>
+        </>
+      }
+    >
+      <div className="form-grid">
+        <Field label={art === 'verzeichnis' ? NUMMER_LABEL.verzeichnis : NUMMER_LABEL.paket} full>
+          <TextInput
+            value={titel}
+            onChange={setTitel}
+            autoFocus
+            placeholder={art === 'verzeichnis' ? 'Planverzeichnis Überbau' : 'Eisenbahnüberführung Nordkanal'}
+            onKeyDown={(e) => e.key === 'Enter' && speichern()}
+          />
+        </Field>
+        <Field label="Kurzzeichen" full hint="optional">
+          <TextInput
+            value={nummer}
+            onChange={setNummer}
+            placeholder={art === 'verzeichnis' ? 'NK-KIB-PV-001' : 'PP-Nordkanal'}
+          />
+        </Field>
+      </div>
+    </Modal>
   );
 }

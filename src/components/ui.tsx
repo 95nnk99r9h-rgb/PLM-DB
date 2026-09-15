@@ -106,14 +106,18 @@ export function TextArea({
   value,
   onChange,
   mono = false,
+  inputRef,
   ...rest
 }: {
   value: string;
   onChange: (v: string) => void;
   mono?: boolean;
+  /** Zugriff auf das Feld, etwa um an der Schreibmarke einzufügen. */
+  inputRef?: React.Ref<HTMLTextAreaElement>;
 } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'>) {
   return (
     <textarea
+      ref={inputRef}
       className={`textarea ${mono ? 'mono' : ''}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -306,12 +310,17 @@ export function ConfirmDialog({
   titel,
   text,
   bestaetigenLabel = 'Löschen',
+  abbrechenLabel = 'Abbrechen',
+  ton = 'rot',
   onConfirm,
   onClose,
 }: {
   titel: string;
   text: string;
   bestaetigenLabel?: string;
+  abbrechenLabel?: string;
+  /** „rot“ für Löschvorgänge, „blau“ für gewöhnliche Rückfragen. */
+  ton?: 'rot' | 'blau';
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -322,12 +331,12 @@ export function ConfirmDialog({
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
+            {abbrechenLabel}
           </button>
           <button
             type="button"
             className="btn btn-primary"
-            style={{ background: 'var(--red)' }}
+            style={ton === 'rot' ? { background: 'var(--red)' } : undefined}
             onClick={() => {
               onConfirm();
               onClose();

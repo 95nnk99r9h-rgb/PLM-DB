@@ -5,7 +5,6 @@ import type { Project, ProjectStatus } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { useToast } from '../components/toast';
-import { standardVorlagen } from '../domain/seed';
 import { Badge, Card, EmptyState, Field, Modal, Search, Select, TextArea, TextInput } from '../components/ui';
 import { Icon } from '../components/icons';
 
@@ -175,7 +174,6 @@ export function ProjektDialog({
         feiertage: [],
         absenderName: '',
         absenderEmail: '',
-        emailTemplates: standardVorlagen(),
       },
     });
     // Funktionen als Projektfunktionen übernehmen

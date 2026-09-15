@@ -8,34 +8,15 @@
 import { useRef, useState } from 'react';
 import { UEBERGREIFEND, type Contact, type Project, type Zuordnung } from '../../domain/types';
 import { spaltenZuordnen, tabelleLesen } from '../../lib/xlsxLesen';
-import { dateiLaden, xlsxErzeugen } from '../../lib/xlsx';
+import {
+  KONTAKT_KOPFZEILE as KOPFZEILE,
+  KONTAKT_SPALTEN as SPALTEN,
+  kontaktVorlageLaden,
+} from '../../domain/importVorlagen';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { Callout, Modal } from '../../components/ui';
 import { Icon } from '../../components/icons';
-
-/**
- * Erwartete Spalten laut Vorgabe. Zusätzliche Überschriften werden erkannt,
- * damit auch abweichend benannte Listen eingelesen werden können.
- */
-const SPALTEN: Record<string, string[]> = {
-  vorname: ['Vorname'],
-  nachname: ['Name', 'Nachname'],
-  firma: ['Firma', 'Büro', 'Unternehmen'],
-  telefon: ['Telefon', 'Tel', 'Telefonnummer'],
-  email: ['Email', 'E-Mail', 'Mail'],
-  strasse: ['Straße', 'Strasse'],
-  hausnummer: ['Nr.', 'Nr', 'Hausnummer'],
-  plz: ['PLZ', 'Postleitzahl'],
-  ort: ['Ort'],
-  // Nicht Teil der Vorgabe, wird aber übernommen, falls vorhanden
-  anrede: ['Anrede'],
-  gewerk: ['Gewerk'],
-  funktion: ['Funktion', 'Rolle'],
-  notiz: ['Notiz', 'Bemerkung'],
-};
-
-const KOPFZEILE = ['Vorname', 'Name', 'Firma', 'Telefon', 'Email', 'Straße', 'Nr.', 'PLZ', 'Ort'];
 
 /** Setzt die Anschrift aus Straße, Hausnummer, PLZ und Ort zusammen. */
 function anschriftBauen(strasse: string, nr: string, plz: string, ort: string): string {
@@ -61,20 +42,7 @@ export function KontakteImport({ project, onClose }: { project: Project; onClose
   const rollen = data.roles.filter((r) => r.projectId === project.id);
   const vorhandene = data.contacts.filter((c) => c.projectId === project.id);
 
-  const vorlage = () => {
-    const beispiel = [
-      'Katrin',
-      'Berger',
-      'Ingenieurbüro Berger',
-      '+49 40 998877-12',
-      'k.berger@example.de',
-      'Billstraße',
-      '88',
-      '20539',
-      'Hamburg',
-    ];
-    dateiLaden(xlsxErzeugen([{ name: 'Kontakte', zeilen: [KOPFZEILE, beispiel] }]), 'Vorlage-Kontakte.xlsx');
-  };
+  const vorlage = kontaktVorlageLaden;
 
   const lies = async (f: File) => {
     setFehler('');

@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 6;
+export const DATEN_VERSION = 7;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -64,8 +64,6 @@ export interface ProjectSettings {
   fristenInArbeitstagen: boolean;
   /** Projektbezogene Feiertage, die bei Arbeitstagen übersprungen werden. */
   feiertage: ISODate[];
-  /** E-Mail-Vorlagen für Erinnerungen, Freigaben, Rückfragen … */
-  emailTemplates: EmailTemplate[];
   /** Absender, der in der Vorlage als {{absender}} eingesetzt wird. */
   absenderName: string;
   absenderEmail: string;
@@ -404,6 +402,8 @@ export interface AppData {
   bearbeiter: Bearbeiter;
   /** Projektübergreifende Funktionen. */
   standardRollen: StandardRolle[];
+  /** Projektübergreifende E-Mail-Vorlagen (Reiter „Vorlagen“). */
+  emailVorlagen: EmailTemplate[];
   projects: Project[];
   roles: Role[];
   contacts: Contact[];

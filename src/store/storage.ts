@@ -9,12 +9,14 @@ import {
   GEWERKE,
   STAMMDATEN_VERSION,
   type AppData,
+  type EmailTemplate,
   type ProcessTemplate,
   type Role,
   type StandardRolle,
   type StepType,
 } from '../domain/types';
-import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData } from '../domain/seed';
+import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData, standardVorlagen } from '../domain/seed';
+import { recalcRun } from '../domain/engine';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
@@ -60,13 +62,31 @@ const KEY = 'planlauf-management.data.v1';
 export function ladeDaten(): AppData {
   try {
     const roh = localStorage.getItem(KEY);
-    if (!roh) return seedData();
+    if (!roh) return durchrechnen(seedData());
     const daten = JSON.parse(roh) as AppData;
-    if (!daten || !Array.isArray(daten.projects)) return seedData();
-    return stammdatenAktualisieren(migriere(daten));
+    if (!daten || !Array.isArray(daten.projects)) return durchrechnen(seedData());
+    return durchrechnen(stammdatenAktualisieren(migriere(daten)));
   } catch {
-    return seedData();
+    return durchrechnen(seedData());
   }
+}
+
+/**
+ * Rechnet alle Planläufe einmal mit den aktuellen Projekteinstellungen und
+ * dem Eingangstermin des Eintrags durch, damit die Soll-Termine schon beim
+ * Laden stimmen und nicht erst nach der ersten Änderung.
+ */
+function durchrechnen(daten: AppData): AppData {
+  return {
+    ...daten,
+    runs: daten.runs.map((r) =>
+      recalcRun(
+        r,
+        daten.projects.find((p) => p.id === r.projectId),
+        daten.documents.find((d) => d.id === r.documentId),
+      ),
+    ),
+  };
 }
 
 const neueId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -155,7 +175,28 @@ function migriere(daten: AppData): AppData {
       daten.standardRollen && daten.standardRollen.length > 0
         ? rollenAufteilen(daten.standardRollen)
         : STANDARD_ROLLEN.map((r) => ({ ...r })),
-    projects: (daten.projects ?? []).map((p) => ({ ...p, markiert: p.markiert ?? true })),
+    // E-Mail-Vorlagen werden projektübergreifend gepflegt; frühere
+    // Projektvorlagen wandern beim ersten Laden in die gemeinsame Liste.
+    emailVorlagen:
+      daten.emailVorlagen && daten.emailVorlagen.length > 0
+        ? daten.emailVorlagen
+        : ((daten.projects ?? []).flatMap(
+            (p) => (p.settings as { emailTemplates?: EmailTemplate[] }).emailTemplates ?? [],
+          ).length > 0
+            ? [
+                ...new Map(
+                  (daten.projects ?? [])
+                    .flatMap((p) => (p.settings as { emailTemplates?: EmailTemplate[] }).emailTemplates ?? [])
+                    .map((t) => [t.name, t]),
+                ).values(),
+              ]
+            : standardVorlagen()),
+    projects: (daten.projects ?? []).map((p) => {
+      const { emailTemplates: _alt, ...settings } = p.settings as typeof p.settings & {
+        emailTemplates?: EmailTemplate[];
+      };
+      return { ...p, markiert: p.markiert ?? true, settings };
+    }),
     roles: rollenAufteilen(daten.roles ?? []),
     contacts: (daten.contacts ?? []).map((c) => {
       const alt = c as unknown as { roleIds?: string[] };

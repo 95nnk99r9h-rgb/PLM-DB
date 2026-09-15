@@ -175,6 +175,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                 <PlanlaufListe
                   project={project}
                   runs={laeufe}
+                  alleRuns={data.runs.filter((r) => r.projectId === project.id)}
                   oeffneLauf={(runId) => navigate({ view: 'planlauf', projectId: project.id, runId })}
                 />
               </Card>

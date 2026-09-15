@@ -270,7 +270,15 @@ export function PlanlaufDetail({
                         Person: <b>{kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'nicht zugeordnet'}</b>
                       </span>
                       <span>
-                        Frist: <b>{tageLabel(step.fristTage)}</b>
+                        {i === 0 && doc?.eingangSoll ? (
+                          <>
+                            Frist: <b>Eingang laut Eintrag</b>
+                          </>
+                        ) : (
+                          <>
+                            Frist: <b>{tageLabel(step.fristTage)}</b>
+                          </>
+                        )}
                       </span>
                       <span>
                         Soll: <b>{formatDate(step.sollDatum)}</b>

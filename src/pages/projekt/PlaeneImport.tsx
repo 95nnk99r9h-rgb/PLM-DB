@@ -15,54 +15,17 @@ import {
   type Project,
 } from '../../domain/types';
 import { datumLesen, spaltenZuordnen, tabelleLesen } from '../../lib/xlsxLesen';
+import {
+  PLAN_KOPFZEILE as KOPFZEILE,
+  PLAN_SPALTEN as SPALTEN,
+  planVorlageLaden,
+} from '../../domain/importVorlagen';
 import { kontaktFuerRolleUndGewerk, stepsAusTemplate } from '../../domain/engine';
 import { formatDate, today } from '../../lib/dates';
-import { dateiLaden, xlsxErzeugen } from '../../lib/xlsx';
 import { newId, useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { Callout, Modal } from '../../components/ui';
 import { Icon } from '../../components/icons';
-
-/**
- * Erwartete Spalten laut Vorgabe. Zusätzliche Überschriften werden erkannt,
- * damit auch abweichend benannte Listen eingelesen werden können.
- */
-const SPALTEN: Record<string, string[]> = {
-  art: ['Art', 'Typ'],
-  nummer: [
-    'Plancodierung/Name Planpaket / Name Plan VZ',
-    'Plancodierung',
-    'Name Planpaket',
-    'Name PlanVZ',
-    'Name Plan VZ',
-    'Nummer',
-    'Name',
-  ],
-  index: ['Index/Ausgabe', 'Index', 'Ausgabe', 'Revision'],
-  titel: ['Titel', 'Bezeichnung'],
-  gewerk: ['Gewerk'],
-  planungsphase: ['Planungsphase', 'Phase'],
-  eingangSoll: ['Eingang Soll', 'Eingang', 'Soll'],
-  bemerkung: ['Bemerkung', 'Notiz'],
-  workflow: ['Workflow', 'Prozesskette', 'Kette'],
-  // Nicht Teil der Vorgabe, wird aber ausgewertet, falls vorhanden
-  parent: ['Übergeordnet', 'Planverzeichnis', 'Gehört zu'],
-  paket: ['Planpaket', 'Paket'],
-};
-
-const KOPFZEILE = [
-  'Art',
-  'Plancodierung/Name Planpaket / Name Plan VZ',
-  'Index/Ausgabe',
-  'Titel',
-  'Gewerk',
-  'Planungsphase',
-  'Eingang Soll',
-  'Planpaket',
-  'Planverzeichnis',
-  'Bemerkung',
-  'Workflow',
-];
 
 /** Erkennt die Art aus der Spaltenangabe. */
 function artLesen(wert: string): DocumentKind {
@@ -97,18 +60,15 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
   const rollen = data.roles.filter((r) => r.projectId === project.id);
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
 
-  const vorlage = () => {
-    const beispiele = [
-      ['Planpaket', 'PP-Nordkanal', '', 'Eisenbahnüberführung Nordkanal', 'KIB', '', '', '', '', '', ''],
-      ['Planverzeichnis', 'NK-KIB-PV-001', 'C', 'Planverzeichnis Überbau', 'KIB', 'Ausführungsplanung', '14.10.2026', 'Eisenbahnüberführung Nordkanal', '', '', 'VVBau mit Prüfstatik'],
-      ['Plan', 'NK-KIB-EÜ-001-GR', 'C', 'Grundriss Überbau', 'KIB', 'Ausführungsplanung', '14.10.2026', 'Eisenbahnüberführung Nordkanal', 'NK-KIB-PV-001', '', ''],
-      ['Plan', 'NK-LST-SP-102', 'B', 'Signallageplan Bereich Nord', 'LST', 'Ausführungsplanung', '30.10.2026', '', '', '', 'VVBau STE'],
-    ];
-    dateiLaden(
-      xlsxErzeugen([{ name: 'Pläne', zeilen: [KOPFZEILE, ...beispiele] }]),
-      'Vorlage-Plaene.xlsx',
-    );
-  };
+  const vorlage = planVorlageLaden;
+
+  /** Ist das Paket bzw. Verzeichnis im Projekt oder in der Liste selbst enthalten? */
+  const paketBekannt = (name: string) =>
+    vorhandene.some((d) => d.kind === 'paket' && (d.titel === name || d.nummer === name)) ||
+    vorschau.some((z) => z.doc.kind === 'paket' && (z.doc.titel === name || z.doc.nummer === name));
+  const verzeichnisBekannt = (name: string) =>
+    vorhandene.some((d) => d.kind === 'verzeichnis' && (d.nummer === name || d.titel === name)) ||
+    vorschau.some((z) => z.doc.kind === 'verzeichnis' && (z.doc.nummer === name || z.doc.titel === name));
 
   const lies = async (f: File) => {
     setFehler('');
@@ -145,6 +105,10 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           hinweise.push('Eintrag mit dieser Bezeichnung ist bereits vorhanden');
         }
         if (parentNummer && art !== 'plan') hinweise.push('nur Pläne können einem Planverzeichnis zugeordnet werden');
+        if (paketName && !paketBekannt(paketName)) hinweise.push(`Planpaket „${paketName}“ wird angelegt`);
+        if (art === 'plan' && parentNummer && !verzeichnisBekannt(parentNummer)) {
+          hinweise.push(`Planverzeichnis „${parentNummer}“ wird angelegt`);
+        }
 
         const vorlage = workflow
           ? vorlagen.find((t) => t.name.trim().toLowerCase() === workflow.toLowerCase())
@@ -161,7 +125,7 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
             gewerk: wert(zeile, 'gewerk'),
             planungsphase: wert(zeile, 'planungsphase'),
             eingangSoll: datumLesen(wert(zeile, 'eingangSoll')),
-            datum: art === 'verzeichnis' ? datumLesen(wert(zeile, 'eingangSoll')) : null,
+            datum: art === 'verzeichnis' ? datumLesen(wert(zeile, 'datum')) : null,
             bemerkung: wert(zeile, 'bemerkung'),
           },
           parentNummer: art === 'plan' ? parentNummer : '',
@@ -189,24 +153,43 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       if (z.doc.kind === 'paket' && z.doc.titel) neueIds.set(z.doc.titel, id);
     }
 
+    let ergaenzt = 0;
+    /** Legt ein in der Liste genanntes, aber noch unbekanntes Paket bzw.
+     *  Verzeichnis an, damit die Zuordnung nicht verloren geht. */
+    const findenOderAnlegen = (name: string, kind: 'paket' | 'verzeichnis', gewerk: string): string => {
+      const vorhandenerEintrag =
+        neueIds.get(name) ??
+        vorhandene.find((d) => d.kind === kind && (d.nummer === name || d.titel === name))?.id;
+      if (vorhandenerEintrag) return vorhandenerEintrag;
+      const id = addDocument({
+        projectId: project.id,
+        kind,
+        parentId: null,
+        paketId: null,
+        nummer: kind === 'verzeichnis' ? name : '',
+        titel: name,
+        index: '',
+        gewerk,
+        planungsphase: '',
+        eingangSoll: null,
+        datum: null,
+        bemerkung: 'beim Import angelegt',
+      });
+      neueIds.set(name, id);
+      ergaenzt += 1;
+      return id;
+    };
+
     let laeufe = 0;
     for (const z of reihenfolge) {
       const eigeneId = z.doc.nummer ? neueIds.get(z.doc.nummer) : undefined;
       if (!eigeneId) continue;
 
-      // Zuordnungen nachziehen (auch auf bereits vorhandene Einträge)
+      // Zuordnungen nachziehen; fehlende Pakete und Verzeichnisse entstehen dabei
       const parentId = z.parentNummer
-        ? (neueIds.get(z.parentNummer) ??
-           vorhandene.find((d) => d.kind === 'verzeichnis' && d.nummer === z.parentNummer)?.id ??
-           null)
+        ? findenOderAnlegen(z.parentNummer, 'verzeichnis', z.doc.gewerk)
         : null;
-      const paketId = z.paketName
-        ? (neueIds.get(z.paketName) ??
-           vorhandene.find(
-             (d) => d.kind === 'paket' && (d.titel === z.paketName || d.nummer === z.paketName),
-           )?.id ??
-           null)
-        : null;
+      const paketId = z.paketName ? findenOderAnlegen(z.paketName, 'paket', z.doc.gewerk) : null;
       if (parentId || paketId) updateDocument(eigeneId, { parentId, paketId });
 
       // Planlauf starten, sofern ein Workflow benannt ist und der Eintrag einen eigenen Lauf hat
@@ -237,11 +220,10 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       laeufe += 1;
     }
 
-    toast(
-      laeufe > 0
-        ? `${vorschau.length} Einträge übernommen, ${laeufe} Planläufe gestartet.`
-        : `${vorschau.length} Einträge übernommen.`,
-    );
+    const teile = [`${vorschau.length} Einträge übernommen`];
+    if (ergaenzt > 0) teile.push(`${ergaenzt} Paket(e)/Verzeichnis(se) ergänzt`);
+    if (laeufe > 0) teile.push(`${laeufe} Planläufe gestartet`);
+    toast(`${teile.join(', ')}.`);
     onClose();
   };
 
@@ -322,8 +304,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
             oder Planverzeichnis. Ist in <em>Workflow</em> ein hinterlegter Workflow benannt, wird der Planlauf
             beim Import gleich gestartet. <em>Planpaket</em> ordnet den Eintrag einem Paket zu (reines
             Ordnungsmerkmal), <em>Planverzeichnis</em> ordnet einen Plan einem Verzeichnis unter – solche Pläne
-            laufen im Planlauf des Verzeichnisses mit und erhalten keinen eigenen. Über <em>Vorlage</em> erhalten
-            Sie eine Datei mit genau diesen Spalten.
+            laufen im Planlauf des Verzeichnisses mit und erhalten keinen eigenen. Noch nicht angelegte Pakete
+            und Verzeichnisse entstehen beim Import automatisch. Über <em>Vorlage</em> erhalten Sie eine Datei
+            mit genau diesen Spalten.
           </Callout>
         ) : null}
 

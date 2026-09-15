@@ -25,11 +25,14 @@ interface Eintrag {
 export function PlanlaufListe({
   project,
   runs,
+  alleRuns,
   oeffneLauf,
 }: {
   project: Project;
   /** Anzuzeigende Planläufe des Projekts. */
   runs: PlanRun[];
+  /** Alle Läufe des Projekts – Grundlage für den Stand der Planpakete. */
+  alleRuns?: PlanRun[];
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
@@ -42,13 +45,40 @@ export function PlanlaufListe({
     return { run, doc, step: aktuellerSchritt(run) };
   });
 
+  /** Maßgebliches Paket – bei Plänen eines Verzeichnisses dessen Paket. */
+  const paketVon = (doc: PlanDocument | undefined): string | null => {
+    if (!doc) return null;
+    if (doc.kind === 'plan' && doc.parentId) {
+      const eltern = data.documents.find((d) => d.id === doc.parentId);
+      if (eltern) return eltern.paketId;
+    }
+    return doc.paketId;
+  };
+
   // Einträge eines Planpakets stehen unter ihrer Paketzeile
   const pakete = data.documents.filter(
-    (d) => d.kind === 'paket' && eintraege.some((e) => e.doc?.paketId === d.id),
+    (d) => d.kind === 'paket' && eintraege.some((e) => paketVon(e.doc) === d.id),
   );
-  const ohnePaket = eintraege.filter((e) => !e.doc?.paketId || !pakete.some((p) => p.id === e.doc?.paketId));
+  const ohnePaket = eintraege.filter((e) => !pakete.some((p) => p.id === paketVon(e.doc)));
 
   const klappen = (id: string) => setOffen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
+
+  /**
+   * Stand eines Planpakets: Planpakete laufen selbst nicht, ihr Fortschritt
+   * und Status ergeben sich aus den enthaltenen Plänen und Verzeichnissen.
+   */
+  const paketStand = (paketId: string) => {
+    const zugehoerig = data.documents.filter((d) => d.kind !== 'paket' && paketVon(d) === paketId);
+    const laeufe = (alleRuns ?? runs).filter((r) => zugehoerig.some((d) => d.id === r.documentId));
+    if (laeufe.length === 0) return { pct: 0, status: null as PlanRun['status'] | null, anzahl: 0 };
+    const pct = Math.round(laeufe.reduce((sum, r) => sum + fortschritt(r), 0) / laeufe.length);
+    const status: PlanRun['status'] = laeufe.some((r) => r.status === 'laufend')
+      ? 'laufend'
+      : laeufe.every((r) => r.status === 'abgeschlossen')
+        ? 'abgeschlossen'
+        : 'abgebrochen';
+    return { pct, status, anzahl: laeufe.filter((r) => r.status === 'laufend').length };
+  };
 
   if (eintraege.length === 0) {
     return (
@@ -141,11 +171,12 @@ export function PlanlaufListe({
           </thead>
           <tbody>
             {pakete.map((paket) => {
-              const inhalt = eintraege.filter((e) => e.doc?.paketId === paket.id);
+              const inhalt = eintraege.filter((e) => paketVon(e.doc) === paket.id);
               const aufgeklappt = offen.includes(paket.id);
+              const stand = paketStand(paket.id);
               return (
                 <Fragment key={paket.id}>
-                  <tr>
+                  <tr className="paket-zeile">
                     <td>
                       <button
                         type="button"
@@ -169,15 +200,28 @@ export function PlanlaufListe({
                     <td className="small tertiary" colSpan={2}>
                       Planpaket · {inhalt.length} laufende Einträge
                     </td>
-                    <td className="col-optional" />
-                    <td />
+                    <td className="col-optional">
+                      <span className="row" style={{ gap: 8 }}>
+                        <Progress wert={stand.pct} />
+                        <span className="small tertiary">{stand.pct}%</span>
+                      </span>
+                    </td>
+                    <td>{stand.status ? <RunStatusBadge status={stand.status} /> : null}</td>
                     <td className="actions" />
                   </tr>
                   {aufgeklappt ? inhalt.map((e) => zeile(e, true)) : null}
                 </Fragment>
               );
             })}
-            {ohnePaket.map((e) => zeile(e))}
+
+            {ohnePaket.length > 0 && pakete.length > 0 ? (
+              <tr className="paket-zeile ohne-paket">
+                <td colSpan={7}>
+                  <span className="small muted">Ohne Planpaket · {ohnePaket.length} Einträge</span>
+                </td>
+              </tr>
+            ) : null}
+            {ohnePaket.map((e) => zeile(e, pakete.length > 0))}
           </tbody>
         </table>
       </div>

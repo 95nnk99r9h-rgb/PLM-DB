@@ -304,6 +304,7 @@ export function seedData(): AppData {
     stammdatenVersion: STAMMDATEN_VERSION,
     bearbeiter: { name: 'PLM', rolle: EIGENE_ROLLE, email: 'planlauf@example.de' },
     standardRollen: STANDARD_ROLLEN.map((r) => ({ ...r })),
+    emailVorlagen: standardVorlagen(),
     projects: [
       {
         id: 'prj-1',
@@ -316,7 +317,6 @@ export function seedData(): AppData {
           erinnerungVorlaufTage: 5,
           fristenInArbeitstagen: true,
           feiertage: [],
-          emailTemplates: standardVorlagen(),
           absenderName: 'Planlaufmanagement Nordkreuz',
           absenderEmail: 'planlauf@example.de',
         },

@@ -13,7 +13,7 @@ import { Icon } from '../components/icons';
 
 const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
-  { id: 'plaene', label: 'Pläne & Planläufe' },
+  { id: 'plaene', label: 'Planliste' },
   { id: 'pakete', label: 'Planpakete' },
   { id: 'adressbuch', label: 'Adressbuch' },
   { id: 'ketten', label: 'Workflows' },

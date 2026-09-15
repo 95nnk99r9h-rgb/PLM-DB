@@ -18,6 +18,7 @@ import type {
   PlanDocument,
   PlanRun,
   ProcessTemplate,
+  EmailTemplate,
   Project,
   Role,
   RunStep,
@@ -53,6 +54,9 @@ interface StoreValue {
   addDocument: (d: Omit<PlanDocument, 'id'>) => ID;
   updateDocument: (id: ID, patch: Partial<PlanDocument>) => void;
   deleteDocument: (id: ID) => void;
+  /* E-Mail-Vorlagen (projektübergreifend) */
+  setEmailVorlage: (t: EmailTemplate) => void;
+  deleteEmailVorlage: (id: ID) => void;
   /* Vorlagen */
   addTemplate: (t: Omit<ProcessTemplate, 'id'> & { id?: ID }) => ID;
   updateTemplate: (id: ID, patch: Partial<ProcessTemplate>) => void;
@@ -89,7 +93,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const neu = fn(alt);
       return {
         ...neu,
-        runs: neu.runs.map((r) => recalcRun(r, neu.projects.find((p) => p.id === r.projectId))),
+        runs: neu.runs.map((r) =>
+          recalcRun(
+            r,
+            neu.projects.find((p) => p.id === r.projectId),
+            neu.documents.find((d) => d.id === r.documentId),
+          ),
+        ),
       };
     });
   }, []);
@@ -181,6 +191,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           documents: d.documents.filter((x) => x.id !== id),
           runs: d.runs.filter((r) => r.documentId !== id),
         })),
+
+      setEmailVorlage: (t) =>
+        mutate((d) => ({
+          ...d,
+          emailVorlagen: d.emailVorlagen.some((x) => x.id === t.id)
+            ? d.emailVorlagen.map((x) => (x.id === t.id ? t : x))
+            : [...d.emailVorlagen, t],
+        })),
+
+      deleteEmailVorlage: (id) =>
+        mutate((d) => ({ ...d, emailVorlagen: d.emailVorlagen.filter((x) => x.id !== id) })),
 
       addTemplate: (t) => {
         const id = t.id ?? newId('tpl');

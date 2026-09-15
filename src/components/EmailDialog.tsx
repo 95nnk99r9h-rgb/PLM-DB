@@ -27,7 +27,7 @@ export function EmailDialog({
 
   const kontakt = data.contacts.find((c) => c.id === step.contactId) ?? null;
   const ueberfaellig = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) === 'ueberfaellig';
-  const vorlagen = project.settings.emailTemplates;
+  const vorlagen = data.emailVorlagen;
 
   const [templateId, setTemplateId] = useState(
     () => vorlageVorschlagen(vorlagen, ueberfaellig)?.id ?? vorlagen[0]?.id ?? '',
