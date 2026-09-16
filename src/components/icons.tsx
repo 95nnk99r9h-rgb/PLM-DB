@@ -5,7 +5,8 @@ const paths: Record<string, string> = {
   projekt: 'M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
   plan: 'M7 3h7l5 5v13H7zM14 3v5h5M10 12.5h6M10 16h4',
   paket: 'M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10',
-  verzeichnis: 'M5 4h14v16H5zM8.5 8.5h7M8.5 12h7M8.5 15.5h4',
+  // Planverzeichnis: Liste mit Aufzählungspunkten – klar vom Planblatt unterscheidbar
+  verzeichnis: 'M4.5 6.5h.01M9 6.5h10.5M4.5 12h.01M9 12h10.5M4.5 17.5h.01M9 17.5h10.5',
   kette: 'M9.5 14.5a3.5 3.5 0 0 1 0-5l2-2a3.5 3.5 0 1 1 5 5l-1 1M14.5 9.5a3.5 3.5 0 0 1 0 5l-2 2a3.5 3.5 0 1 1-5-5l1-1',
   adressbuch: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6zM6 7H3.5M6 12H3.5M6 17H3.5M12.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9 17c0-2 1.6-3 3.5-3s3.5 1 3.5 3',
   frist: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2',

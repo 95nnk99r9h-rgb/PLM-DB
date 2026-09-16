@@ -4,7 +4,7 @@ import { eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
 import { DOCUMENT_KIND_LABEL, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { Card, CardHeader, EmptyState, Progress, Segmented, Stat } from '../../components/ui';
+import { Card, CardHeader, EmptyState, Progress, Stat } from '../../components/ui';
 import { Icon } from '../../components/icons';
 import { PlanlaufListe } from '../../components/PlanlaufListe';
 
@@ -18,8 +18,8 @@ export function Uebersicht({
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
-  // Gliederungstiefe der Planlaufliste: Pakete – Verzeichnisse – Pläne
-  const [ebene, setEbene] = useState<'1' | '2' | '3'>('2');
+  // Pläne, die im Lauf ihres Verzeichnisses mitlaufen, sind zunächst ausgeblendet
+  const [unterplaene, setUnterplaene] = useState(false);
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   // Ohne die Läufe von Plänen, die in einem Planverzeichnis mitlaufen
   const laeufe = eigenstaendigeLaeufe(data.documents, data.runs).filter(
@@ -72,16 +72,15 @@ export function Uebersicht({
           titel="Planläufe"
           sub={`${aktiv.length} laufend · ${abgeschlossen.length} abgeschlossen`}
           actions={
-            <span className="row" style={{ gap: 8 }}>
-              <Segmented<'1' | '2' | '3'>
-                value={ebene}
-                onChange={setEbene}
-                options={[
-                  { value: '1', label: 'Pakete' },
-                  { value: '2', label: '+ Verzeichnisse' },
-                  { value: '3', label: '+ Pläne' },
-                ]}
-              />
+            <span className="row" style={{ gap: 10 }}>
+              <label className="checkbox">
+                <input
+                  type="checkbox"
+                  checked={unterplaene}
+                  onChange={(e) => setUnterplaene(e.target.checked)}
+                />
+                Untergeordnete Pläne anzeigen
+              </label>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => gotoTab('plaene')}>
                 Alle <Icon name="chevron" size={13} />
               </button>
@@ -99,7 +98,7 @@ export function Uebersicht({
             project={project}
             runs={massgeblich}
             alleRuns={laeufe}
-            ebene={Number(ebene) as 1 | 2 | 3}
+            unterplaene={unterplaene}
             oeffneLauf={oeffneLauf}
           />
         )}

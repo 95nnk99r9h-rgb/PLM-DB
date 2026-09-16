@@ -26,7 +26,7 @@ export function PlanlaufListe({
   project,
   runs,
   alleRuns,
-  ebene = 3,
+  unterplaene = true,
   oeffneLauf,
 }: {
   project: Project;
@@ -35,29 +35,26 @@ export function PlanlaufListe({
   /** Alle Läufe des Projekts – Grundlage für den Stand der Planpakete. */
   alleRuns?: PlanRun[];
   /**
-   * Bis zu welcher Ebene aufgeklappt wird: 1 = nur Planpakete,
-   * 2 = mit Planverzeichnissen und Einzelplänen, 3 = zusätzlich deren Pläne.
-   * Einzelne Zeilen lassen sich davon abweichend auf- und zuklappen.
+   * Zeigt unter jedem Planverzeichnis die Pläne, die darin mitlaufen.
+   * Ist sie abgeschaltet, bleiben diese Pläne ausgeblendet.
    */
-  ebene?: 1 | 2 | 3;
+  unterplaene?: boolean;
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
-  /** Zeilen, die abweichend von der gewählten Ebene auf- bzw. zugeklappt sind. */
-  const [abweichend, setAbweichend] = useState<string[]>([]);
-  const [zuletztEbene, setZuletztEbene] = useState(ebene);
+  /** Von Hand zugeklappte Planpakete und Planverzeichnisse. */
+  const [zu, setZu] = useState<string[]>([]);
+  const [zuletzt, setZuletzt] = useState(unterplaene);
 
-  // Wird die Ebene gewechselt, gilt wieder die einheitliche Gliederung.
-  if (zuletztEbene !== ebene) {
-    setZuletztEbene(ebene);
-    setAbweichend([]);
+  // Beim Umschalten der Pläne gilt wieder die einheitliche Gliederung.
+  if (zuletzt !== unterplaene) {
+    setZuletzt(unterplaene);
+    setZu([]);
   }
 
-  /** Ist die Zeile aufgeklappt? Ebene vorgeben, einzelne Abweichung sticht. */
-  const istOffen = (id: string, abEbene: 2 | 3) =>
-    (ebene >= abEbene) !== abweichend.includes(id);
+  const istOffen = (id: string) => !zu.includes(id);
 
   const eintraege: Eintrag[] = runs.map((run) => {
     const doc = data.documents.find((d) => d.id === run.documentId);
@@ -80,8 +77,7 @@ export function PlanlaufListe({
   );
   const ohnePaket = eintraege.filter((e) => !pakete.some((p) => p.id === paketVon(e.doc)));
 
-  const klappen = (id: string) =>
-    setAbweichend((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const klappen = (id: string) => setZu((k) => (k.includes(id) ? k.filter((x) => x !== id) : [...k, id]));
 
   /**
    * Stand eines Planpakets: Planpakete laufen selbst nicht, ihr Fortschritt
@@ -123,8 +119,11 @@ export function PlanlaufListe({
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
     // Pläne eines Planverzeichnisses laufen in dessen Lauf mit; sie lassen
     // sich unter dem Verzeichnis aufklappen.
-    const plaene = doc?.kind === 'verzeichnis' ? data.documents.filter((d) => d.parentId === doc.id) : [];
-    const aufgeklappt = doc ? istOffen(doc.id, 3) : false;
+    const plaene =
+      unterplaene && doc?.kind === 'verzeichnis'
+        ? data.documents.filter((d) => d.parentId === doc.id)
+        : [];
+    const aufgeklappt = doc ? istOffen(doc.id) : false;
     const einzug = eingerueckt ? 46 : 14;
     return (
       <Fragment key={run.id}>
@@ -265,7 +264,7 @@ export function PlanlaufListe({
           <tbody>
             {pakete.map((paket) => {
               const inhalt = eintraege.filter((e) => paketVon(e.doc) === paket.id);
-              const aufgeklappt = istOffen(paket.id, 2);
+              const aufgeklappt = istOffen(paket.id);
               const stand = paketStand(paket.id);
               return (
                 <Fragment key={paket.id}>
@@ -318,7 +317,7 @@ export function PlanlaufListe({
                 <td colSpan={7}>
                   <button
                     type="button"
-                    className={`gruppe-btn ${istOffen('ohne-paket', 2) ? 'offen' : ''}`}
+                    className={`gruppe-btn ${istOffen('ohne-paket') ? 'offen' : ''}`}
                     onClick={() => klappen('ohne-paket')}
                   >
                     <span className="chev">
@@ -331,7 +330,7 @@ export function PlanlaufListe({
                 </td>
               </tr>
             ) : null}
-            {pakete.length === 0 || istOffen('ohne-paket', 2)
+            {pakete.length === 0 || istOffen('ohne-paket')
               ? ohnePaket.map((e) => zeile(e, pakete.length > 0))
               : null}
           </tbody>
