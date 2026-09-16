@@ -4,7 +4,7 @@ import { eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
 import { DOCUMENT_KIND_LABEL, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { Card, CardHeader, EmptyState, Progress, Stat } from '../../components/ui';
+import { Card, CardHeader, EmptyState, Progress, Segmented, Stat } from '../../components/ui';
 import { Icon } from '../../components/icons';
 import { PlanlaufListe } from '../../components/PlanlaufListe';
 
@@ -18,7 +18,9 @@ export function Uebersicht({
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
-  // Pläne, die im Lauf ihres Verzeichnisses mitlaufen, sind zunächst ausgeblendet
+  // Gliederung der Planlaufliste: Pakete allein oder mit ihren Einträgen;
+  // Pläne, die im Lauf ihres Verzeichnisses mitlaufen, sind zunächst aus.
+  const [ebene, setEbene] = useState<'1' | '2'>('2');
   const [unterplaene, setUnterplaene] = useState(false);
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
   // Ohne die Läufe von Plänen, die in einem Planverzeichnis mitlaufen
@@ -72,7 +74,15 @@ export function Uebersicht({
           titel="Planläufe"
           sub={`${aktiv.length} laufend · ${abgeschlossen.length} abgeschlossen`}
           actions={
-            <span className="row" style={{ gap: 10 }}>
+            <span className="row wrap" style={{ gap: 10 }}>
+              <Segmented<'1' | '2'>
+                value={ebene}
+                onChange={setEbene}
+                options={[
+                  { value: '1', label: 'Planpakete' },
+                  { value: '2', label: '+ Pläne & Verzeichnisse' },
+                ]}
+              />
               <label className="checkbox">
                 <input
                   type="checkbox"
@@ -98,6 +108,7 @@ export function Uebersicht({
             project={project}
             runs={massgeblich}
             alleRuns={laeufe}
+            ebene={Number(ebene) as 1 | 2}
             unterplaene={unterplaene}
             oeffneLauf={oeffneLauf}
           />

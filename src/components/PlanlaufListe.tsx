@@ -26,6 +26,7 @@ export function PlanlaufListe({
   project,
   runs,
   alleRuns,
+  ebene = 2,
   unterplaene = true,
   oeffneLauf,
 }: {
@@ -34,6 +35,11 @@ export function PlanlaufListe({
   runs: PlanRun[];
   /** Alle Läufe des Projekts – Grundlage für den Stand der Planpakete. */
   alleRuns?: PlanRun[];
+  /**
+   * Gliederungstiefe: 1 = nur die Planpakete, 2 = mit ihren Plänen und
+   * Planverzeichnissen.
+   */
+  ebene?: 1 | 2;
   /**
    * Zeigt unter jedem Planverzeichnis die Pläne, die darin mitlaufen.
    * Ist sie abgeschaltet, bleiben diese Pläne ausgeblendet.
@@ -44,17 +50,18 @@ export function PlanlaufListe({
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
-  /** Von Hand zugeklappte Planpakete und Planverzeichnisse. */
-  const [zu, setZu] = useState<string[]>([]);
-  const [zuletzt, setZuletzt] = useState(unterplaene);
+  /** Zeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
+  const [abweichend, setAbweichend] = useState<string[]>([]);
+  const [zuletzt, setZuletzt] = useState(`${ebene}-${unterplaene}`);
 
-  // Beim Umschalten der Pläne gilt wieder die einheitliche Gliederung.
-  if (zuletzt !== unterplaene) {
-    setZuletzt(unterplaene);
-    setZu([]);
+  // Beim Umschalten der Gliederung gilt wieder die einheitliche Darstellung.
+  if (zuletzt !== `${ebene}-${unterplaene}`) {
+    setZuletzt(`${ebene}-${unterplaene}`);
+    setAbweichend([]);
   }
 
-  const istOffen = (id: string) => !zu.includes(id);
+  /** Paketzeilen folgen der Ebene, einzelne Abweichungen stechen. */
+  const istOffen = (id: string) => (ebene >= 2) !== abweichend.includes(id);
 
   const eintraege: Eintrag[] = runs.map((run) => {
     const doc = data.documents.find((d) => d.id === run.documentId);
@@ -77,7 +84,8 @@ export function PlanlaufListe({
   );
   const ohnePaket = eintraege.filter((e) => !pakete.some((p) => p.id === paketVon(e.doc)));
 
-  const klappen = (id: string) => setZu((k) => (k.includes(id) ? k.filter((x) => x !== id) : [...k, id]));
+  const klappen = (id: string) =>
+    setAbweichend((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
   /**
    * Stand eines Planpakets: Planpakete laufen selbst nicht, ihr Fortschritt
@@ -123,7 +131,8 @@ export function PlanlaufListe({
       unterplaene && doc?.kind === 'verzeichnis'
         ? data.documents.filter((d) => d.parentId === doc.id)
         : [];
-    const aufgeklappt = doc ? istOffen(doc.id) : false;
+    // Die Pläne eines Verzeichnisses hängen an der eigenen Schaltfläche
+    const aufgeklappt = doc ? !abweichend.includes(doc.id) : false;
     const einzug = eingerueckt ? 46 : 14;
     return (
       <Fragment key={run.id}>
