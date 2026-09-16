@@ -1,4 +1,4 @@
-# Planlauf-Management
+# MC Plan – Planlaufmanagement
 
 Verwaltungssoftware für Planläufe: Projekte, Planpakete/Pläne/Planverzeichnisse und die
 Prozessketten, die diese durchlaufen – mit Soll-/Ist-Terminen, Fristenüberwachung und
@@ -12,6 +12,15 @@ jede Person stellt in der Seitenleiste ein, wer sie ist (Rolle im Projekt: **PLM
 Daten lokal im Browser liegen, arbeitet allerdings jeder Arbeitsplatz auf einem eigenen Stand; ein
 gemeinsamer Datenbestand setzt den nächsten Schritt – die Anbindung einer Datenbank – voraus. Das Datenmodell ist bereits so geschnitten, dass es später ohne Änderungen an
 der Oberfläche auf eine relationale Datenbank umgestellt werden kann.
+
+## Logo austauschen
+
+Die Wortmarke in der Kopfzeile stammt aus der Datei `public/mailaender-consult.svg`. Die derzeit
+hinterlegte Fassung ist mit der Systemschrift nachgezeichnet. Um das Original zu verwenden, genügt
+es, diese Datei durch die Originaldatei zu **ersetzen** – gleicher Name, gleicher Ort; eine
+PNG-Datei funktioniert ebenso (`public/mailaender-consult.png`, dann in
+`src/components/logos.tsx` die Konstante `MAILAENDER_DATEI` anpassen). Die Anwendung skaliert die
+Datei ausschließlich über die Höhe, das Seitenverhältnis bleibt damit unverändert.
 
 ## Starten
 

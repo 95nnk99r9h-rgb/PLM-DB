@@ -45,13 +45,13 @@ export function App() {
   return (
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
-        <div className="sidebar-brand">
-          <AppIcon size={30} />
+        <button type="button" className="sidebar-brand" onClick={() => gehe({ view: 'dashboard' })} title="Zur Übersicht">
+          <AppIcon size={38} />
           <div className="sidebar-brand-text">
             <strong>MC Plan</strong>
             <span>Planlaufmanagement</span>
           </div>
-        </div>
+        </button>
 
         <NavItem
           icon="dashboard"
@@ -126,7 +126,7 @@ export function App() {
             {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
           </div>
           <div className="topbar-logo">
-            <MailaenderLogo height={30} />
+            <MailaenderLogo height={34} />
           </div>
         </header>
 

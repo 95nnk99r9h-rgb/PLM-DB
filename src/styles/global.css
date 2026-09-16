@@ -102,11 +102,20 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 6px 10px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius);
 }
+.sidebar-brand:hover strong { color: var(--accent); }
 .sidebar-brand-text { min-width: 0; }
-.sidebar-brand-text strong { display: block; font-size: 13.5px; font-weight: 600; }
-.sidebar-brand-text span { display: block; font-size: 11px; color: var(--text-tertiary); }
+.sidebar-brand-text strong { display: block; font-size: 15px; font-weight: 600; }
+.sidebar-brand-text span { display: block; font-size: 11.5px; color: var(--text-tertiary); }
 
 .nav-group-label {
   font-size: 11px;
@@ -168,7 +177,7 @@ a:hover { text-decoration: underline; }
 .topbar-title .sub { font-size: 12.5px; color: var(--text-secondary); }
 .topbar-actions { display: flex; gap: 8px; align-items: center; flex: none; }
 /* Hauslogo in der Kopfzeile – passt sich der Höhe des weißen Balkens an */
-.topbar-logo { flex: none; display: flex; align-items: center; padding-left: 8px; }
+.topbar-logo { flex: none; display: flex; align-items: center; padding-left: 12px; }
 
 .content { flex: 1; overflow-y: auto; padding: 24px 28px 64px; }
 .content-inner { max-width: 1180px; margin: 0 auto; }
