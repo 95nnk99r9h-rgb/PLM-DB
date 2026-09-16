@@ -2,15 +2,14 @@
  * Startseite: Kennzahlen, eigene To-Dos und die laufenden Planläufe,
  * nach Projekten gegliedert. Angezeigt werden die markierten Projekte.
  */
-import { eigeneTodos, eigenstaendigeLaeufe, istAktiv, offeneFristen } from '../domain/engine';
+import { eigeneTodos, eigenstaendigeLaeufe, fortschritt, istAktiv, offeneFristen } from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
 import { useState } from 'react';
 import type { PlanRun, Project, RunStep } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
-import { Card, CardHeader, EmptyState, Stat } from '../components/ui';
-import { PlanlaufListe } from '../components/PlanlaufListe';
+import { Card, CardHeader, EmptyState, Progress, Stat } from '../components/ui';
 import { EmailDialog } from '../components/EmailDialog';
 import { Icon } from '../components/icons';
 import { ErledigtButton, useSchrittStatus } from '../components/SchrittStatus';
@@ -146,46 +145,86 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
         )}
       </Card>
 
-      <h2>Laufende Planläufe</h2>
-      {laufend.length === 0 ? (
-        <Card>
-          <EmptyState icon="kette" titel="Kein Planlauf aktiv" text="Starten Sie einen Planlauf in einem Projekt." />
-        </Card>
-      ) : (
-        projekte
-          .filter((p) => laufend.some((r) => r.projectId === p.id))
-          .map((project) => {
-            const laeufe = laufend.filter((r) => r.projectId === project.id);
-            return (
-              <Card key={project.id}>
-                <CardHeader
-                  titel={
-                    <span className="row" style={{ gap: 8 }}>
-                      <span className="num tertiary">{project.nummer}</span>
-                      {project.name}
-                    </span>
-                  }
-                  sub={`${laeufe.length} laufende Planläufe`}
-                  actions={
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
+      <Card>
+        <CardHeader titel="Projekte" sub="Umfang und Fristenlage je Projekt" />
+        {projekte.length === 0 ? (
+          <EmptyState icon="projekt" titel="Kein Projekt" text="Legen Sie unter „Projekte“ ein Projekt an." />
+        ) : (
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Projekt</th>
+                  <th>Pläne &amp; Verzeichnisse</th>
+                  <th>Laufende Planläufe</th>
+                  <th>Demnächst fällig</th>
+                  <th>Überfällig</th>
+                  <th style={{ width: 170 }}>Fortschritt</th>
+                  <th className="actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {projekte.map((project) => {
+                  const eintraege = data.documents.filter(
+                    (d) => d.projectId === project.id && d.kind !== 'paket',
+                  );
+                  const eigene = eigenstaendigeLaeufe(data.documents, data.runs).filter(
+                    (r) => r.projectId === project.id,
+                  );
+                  const laufendeLaeufe = eigene.filter(istAktiv);
+                  const gezaehlt = eigene.filter((r) => r.status !== 'abgebrochen');
+                  const pct = gezaehlt.length
+                    ? Math.round(gezaehlt.reduce((summe, r) => summe + fortschritt(r), 0) / gezaehlt.length)
+                    : 0;
+                  const projektFristen = fristen.filter((f) => f.project.id === project.id);
+                  const bald = projektFristen.filter((f) => f.ampel === 'faellig').length;
+                  const spaet = projektFristen.filter((f) => f.ampel === 'ueberfaellig').length;
+                  return (
+                    <tr
+                      key={project.id}
+                      className="clickable"
                       onClick={() => navigate({ view: 'projekt', projectId: project.id, tab: 'uebersicht' })}
                     >
-                      Projekt öffnen <Icon name="chevron" size={13} />
-                    </button>
-                  }
-                />
-                <PlanlaufListe
-                  project={project}
-                  runs={laeufe}
-                  alleRuns={data.runs.filter((r) => r.projectId === project.id)}
-                  oeffneLauf={(runId) => navigate({ view: 'planlauf', projectId: project.id, runId })}
-                />
-              </Card>
-            );
-          })
-      )}
+                      <td>
+                        <span className="num tertiary">{project.nummer}</span>
+                        <div>
+                          <strong>{project.name}</strong>
+                        </div>
+                      </td>
+                      <td className="num">{eintraege.length}</td>
+                      <td className="num">{laufendeLaeufe.length}</td>
+                      <td className="num" style={{ color: bald ? 'var(--orange)' : undefined }}>
+                        {bald}
+                      </td>
+                      <td className="num" style={{ color: spaet ? 'var(--red)' : undefined }}>
+                        {spaet}
+                      </td>
+                      <td>
+                        <span className="row" style={{ gap: 8 }}>
+                          <Progress wert={pct} ton={spaet ? 'red' : pct === 100 ? 'green' : ''} />
+                          <span className="small tertiary">{pct}%</span>
+                        </span>
+                      </td>
+                      <td className="actions">
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate({ view: 'projekt', projectId: project.id, tab: 'uebersicht' });
+                          }}
+                        >
+                          Projekt öffnen <Icon name="chevron" size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       {mail ? (
         <EmailDialog project={mail.project} run={mail.run} step={mail.step} onClose={() => setMail(null)} />
