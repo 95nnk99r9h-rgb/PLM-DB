@@ -51,7 +51,7 @@ interface RollenVorlage {
 }
 
 const ROLLEN_VORLAGEN: RollenVorlage[] = [
-  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#0071e3', beschreibung: 'Eigene Bearbeitung', jeGewerk: false },
+  { id: 'srol-plm', name: EIGENE_ROLLE, kuerzel: 'PLM', farbe: '#24456e', beschreibung: 'Eigene Bearbeitung', jeGewerk: false },
   { id: 'srol-pl', name: ROLLE_PL, kuerzel: 'PL', farbe: '#5856d6', beschreibung: '', jeGewerk: false },
   { id: 'srol-fp', name: ROLLE_PLANER, kuerzel: 'FP', farbe: '#ff9500', beschreibung: 'Fachplanung des Gewerks', jeGewerk: true },
   { id: 'srol-fs', name: 'Fachspezialist', kuerzel: 'FS', farbe: '#c77700', beschreibung: '', jeGewerk: true },

@@ -11,7 +11,7 @@
   --bg-sidebar: rgba(246, 246, 248, 0.82);
   --bg-subtle: #fafafc;
   --bg-hover: rgba(0, 0, 0, 0.035);
-  --bg-active: rgba(0, 113, 227, 0.1);
+  --bg-active: rgba(36, 69, 110, 0.1);
 
   --text: #1d1d1f;
   --text-secondary: #6e6e73;
@@ -21,9 +21,10 @@
   --separator: rgba(0, 0, 0, 0.08);
   --separator-strong: rgba(0, 0, 0, 0.14);
 
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --accent-soft: rgba(0, 113, 227, 0.12);
+  /* Hausfarbe nach dem Logo Mailänder Consult */
+  --accent: #24456e;
+  --accent-hover: #2d5687;
+  --accent-soft: rgba(36, 69, 110, 0.12);
 
   --green: #34c759;
   --green-soft: rgba(52, 199, 89, 0.14);
@@ -103,16 +104,6 @@ a:hover { text-decoration: underline; }
   gap: 10px;
   padding: 6px 10px 16px;
 }
-.sidebar-logo {
-  width: 28px; height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(160deg, #0a84ff, #0055c4);
-  color: #fff;
-  display: grid; place-items: center;
-  font-size: 14px; font-weight: 700;
-  box-shadow: 0 2px 6px rgba(0, 85, 196, 0.32);
-  flex: none;
-}
 .sidebar-brand-text { min-width: 0; }
 .sidebar-brand-text strong { display: block; font-size: 13.5px; font-weight: 600; }
 .sidebar-brand-text span { display: block; font-size: 11px; color: var(--text-tertiary); }
@@ -176,6 +167,8 @@ a:hover { text-decoration: underline; }
 .topbar-title h1 { font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar-title .sub { font-size: 12.5px; color: var(--text-secondary); }
 .topbar-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+/* Hauslogo in der Kopfzeile – passt sich der Höhe des weißen Balkens an */
+.topbar-logo { flex: none; display: flex; align-items: center; padding-left: 8px; }
 
 .content { flex: 1; overflow-y: auto; padding: 24px 28px 64px; }
 .content-inner { max-width: 1180px; margin: 0 auto; }
@@ -531,7 +524,7 @@ a:hover { text-decoration: underline; }
 .step-row.mit-aktion { grid-template-columns: 26px 1fr auto; }
 .step-anpassen { align-self: start; margin-top: 2px; }
 .step-row:last-child { border-bottom: none; }
-.step-row.aktiv { background: rgba(0, 113, 227, 0.035); }
+.step-row.aktiv { background: rgba(36, 69, 110, 0.04); }
 .step-marker { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 2px; }
 .step-num {
   width: 22px; height: 22px; border-radius: 50%;
@@ -554,7 +547,7 @@ a:hover { text-decoration: underline; }
 
 /* Gruppenzeile (Planpaket) und ihre Einträge in Übersichtslisten */
 .gruppe-btn { display: flex; align-items: center; gap: 9px; padding: 0; margin: 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
-.gruppe-btn:hover strong { color: var(--blue); }
+.gruppe-btn:hover strong { color: var(--accent); }
 .gruppe-btn .chev { color: var(--text-tertiary); display: flex; transition: transform 0.15s ease; }
 .gruppe-btn.offen .chev { transform: rotate(90deg); }
 /* Kleiner Pfeil zum Auf- und Zuklappen einzelner Zeilen */
@@ -569,7 +562,7 @@ a:hover { text-decoration: underline; }
 .step-row.kompakt { padding-top: 7px; padding-bottom: 7px; }
 .step-row.kompakt .step-num { opacity: 0.75; }
 .step-aufklappen { display: inline-flex; align-items: center; gap: 6px; padding: 0; margin: 0; border: none; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
-.step-aufklappen:hover strong { color: var(--blue); }
+.step-aufklappen:hover strong { color: var(--accent); }
 .step-aufklappen .chev { color: var(--text-tertiary); transition: transform 0.15s ease; }
 .step-aufklappen.offen .chev { transform: rotate(90deg); }
 .step-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary); }
@@ -731,6 +724,7 @@ a:hover { text-decoration: underline; }
   .sidebar.open { transform: none; box-shadow: var(--shadow-lg); }
   .content { padding: 18px 16px 60px; }
   .topbar { padding: 12px 16px; }
+  .topbar-logo { display: none; }
   .kv { grid-template-columns: 1fr; gap: 2px 0; }
   .kv dd { margin-bottom: 8px; }
 }

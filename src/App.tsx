@@ -15,6 +15,7 @@ import { Vorlagen } from './pages/Vorlagen';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from './components/ui';
 import { Icon } from './components/icons';
+import { AppIcon, MailaenderLogo } from './components/logos';
 import type { IconName } from './components/icons';
 
 export function App() {
@@ -45,10 +46,10 @@ export function App() {
     <div className="app">
       <aside className={`sidebar ${menuOffen ? 'open' : ''}`}>
         <div className="sidebar-brand">
-          <div className="sidebar-logo">PL</div>
+          <AppIcon size={30} />
           <div className="sidebar-brand-text">
-            <strong>Planlauf</strong>
-            <span>Management</span>
+            <strong>MC Plan</strong>
+            <span>Planlaufmanagement</span>
           </div>
         </div>
 
@@ -123,6 +124,9 @@ export function App() {
           <div className="topbar-title">
             <h1>{kopf.titel}</h1>
             {kopf.sub ? <div className="sub">{kopf.sub}</div> : null}
+          </div>
+          <div className="topbar-logo">
+            <MailaenderLogo height={30} />
           </div>
         </header>
 
@@ -310,6 +314,6 @@ function kopfzeile(route: Route, projektName?: string, laufName?: string): { tit
     case 'planlauf':
       return { titel: laufName ?? 'Planlauf', sub: projektName };
     default:
-      return { titel: 'Planlauf-Management' };
+      return { titel: 'MC Plan' };
   }
 }

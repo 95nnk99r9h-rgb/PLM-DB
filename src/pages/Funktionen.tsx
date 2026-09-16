@@ -23,7 +23,7 @@ import {
 } from '../components/ui';
 import { Icon } from '../components/icons';
 
-const FARBEN = ['#0071e3', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
+const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
 export function Funktionen() {
   const { data, addStandardRolle, deleteStandardRolle } = useStore();
