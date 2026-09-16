@@ -34,12 +34,16 @@ export function useSchrittStatus() {
     toast(ergebnis.meldung);
 
     // Nach einem eigenen erledigten Schritt anbieten, den nächsten
-    // Ansprechpartner gleich per E-Mail zu informieren.
+    // Ansprechpartner zu informieren – aber nur, wenn der nächste Schritt
+    // bei jemand anderem liegt und die Nachfrage gewünscht ist.
     const eigene = (data.bearbeiter?.rolle || EIGENE_ROLLE).trim().toLowerCase();
+    const istEigene = (s: RunStep) => s.roleName.trim().toLowerCase() === eigene;
     if (
+      (data.bearbeiter?.mailNachfrage ?? true) &&
       status === 'erledigt' &&
       ergebnis.naechster &&
-      step.roleName.trim().toLowerCase() === eigene &&
+      istEigene(step) &&
+      !istEigene(ergebnis.naechster) &&
       ergebnis.naechster.contactId
     ) {
       setFrage({ run, step: ergebnis.naechster });

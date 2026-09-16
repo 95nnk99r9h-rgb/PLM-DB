@@ -35,6 +35,11 @@ export interface Bearbeiter {
   /** Rolle, die im Projekt für eigene Schritte steht – standardmäßig „PLM“. */
   rolle: string;
   email: string;
+  /**
+   * Nach dem Erledigen eines eigenen Schritts fragen, ob die für den
+   * nächsten Schritt zuständige Person per E-Mail informiert werden soll.
+   */
+  mailNachfrage: boolean;
 }
 
 /** Die eigene Rolle in allen Projekten (Kürzel: PLM). */

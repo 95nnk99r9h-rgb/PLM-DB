@@ -302,7 +302,7 @@ export function seedData(): AppData {
   const data: AppData = {
     version: DATEN_VERSION,
     stammdatenVersion: STAMMDATEN_VERSION,
-    bearbeiter: { name: 'PLM', rolle: EIGENE_ROLLE, email: 'planlauf@example.de' },
+    bearbeiter: { name: 'PLM', rolle: EIGENE_ROLLE, email: 'planlauf@example.de', mailNachfrage: true },
     standardRollen: STANDARD_ROLLEN.map((r) => ({ ...r })),
     emailVorlagen: standardVorlagen(),
     projects: [

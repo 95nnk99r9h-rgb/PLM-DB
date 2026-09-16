@@ -169,8 +169,12 @@ function migriere(daten: AppData): AppData {
     version: DATEN_VERSION,
     stammdatenVersion: daten.stammdatenVersion ?? 0,
     bearbeiter: daten.bearbeiter
-      ? { ...daten.bearbeiter, rolle: rollenName(daten.bearbeiter.rolle) }
-      : { name: 'PLM', rolle: EIGENE_ROLLE, email: '' },
+      ? {
+          ...daten.bearbeiter,
+          rolle: rollenName(daten.bearbeiter.rolle),
+          mailNachfrage: daten.bearbeiter.mailNachfrage ?? true,
+        }
+      : { name: 'PLM', rolle: EIGENE_ROLLE, email: '', mailNachfrage: true },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
         ? rollenAufteilen(daten.standardRollen)

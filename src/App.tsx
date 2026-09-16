@@ -189,11 +189,12 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState(data.bearbeiter.name);
   const [rolle, setRolle] = useState(data.bearbeiter.rolle);
   const [email, setEmail] = useState(data.bearbeiter.email);
+  const [mailNachfrage, setMailNachfrage] = useState(data.bearbeiter.mailNachfrage ?? true);
 
   return (
     <Modal
       titel="Angemeldet als"
-      sub="Bestimmt, welche Prozessschritte als eigene To-Dos gelten"
+      sub="Eigene Angaben und persönliche Einstellungen"
       onClose={onClose}
       footer={
         <>
@@ -204,7 +205,12 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
             type="button"
             className="btn btn-primary"
             onClick={() => {
-              setBearbeiter({ name: name.trim() || 'PLM', rolle: rolle.trim() || 'PLM', email });
+              setBearbeiter({
+                name: name.trim() || 'PLM',
+                rolle: rolle.trim() || 'PLM',
+                email,
+                mailNachfrage,
+              });
               onClose();
             }}
           >
@@ -222,6 +228,16 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
         </Field>
         <Field label="E-Mail" full>
           <TextInput value={email} onChange={setEmail} type="email" />
+        </Field>
+        <Field label="E-Mail nach Erledigung" full>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={mailNachfrage}
+              onChange={(e) => setMailNachfrage(e.target.checked)}
+            />
+            Nachfragen, ob die nächste zuständige Person per E-Mail informiert werden soll
+          </label>
         </Field>
       </div>
       <p className="small tertiary" style={{ marginTop: 12 }}>
