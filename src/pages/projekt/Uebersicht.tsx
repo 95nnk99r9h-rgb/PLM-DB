@@ -1,7 +1,7 @@
 /** Projektübersicht: Kennzahlen, Fristenlage und letzte Aktivitäten. */
 import { useState } from 'react';
-import { eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
-import { DOCUMENT_KIND_LABEL, type Project } from '../../domain/types';
+import { eigenstaendigeLaeufe, fortschritt, offeneFristen } from '../../domain/engine';
+import { type DocumentKind, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { Card, CardHeader, EmptyState, Progress, Segmented, Stat } from '../../components/ui';
@@ -38,36 +38,36 @@ export function Uebersicht({
     .sort((a, b) => rang(a) - rang(b))
     .filter((r, i, alle) => alle.findIndex((x) => x.documentId === r.documentId) === i);
   const fristen = offeneFristen(data, [project.id]);
-  const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig');
-  const proArt = (['paket', 'plan', 'verzeichnis'] as const).map((k) => ({
-    art: DOCUMENT_KIND_LABEL[k],
-    anzahl: dokumente.filter((d) => d.kind === k).length,
-  }));
+  const faellig = fristen.filter((f) => f.ampel === 'faellig').length;
+  const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig').length;
+  const anzahl = (art: DocumentKind) => dokumente.filter((d) => d.kind === art).length;
+
+  // Gesamtfortschritt: Mittel über alle eigenständigen Läufe ohne abgebrochene
+  const gezaehlt = laeufe.filter((r) => r.status !== 'abgebrochen');
+  const gesamt = gezaehlt.length
+    ? Math.round(gezaehlt.reduce((summe, r) => summe + fortschritt(r), 0) / gezaehlt.length)
+    : 0;
 
   return (
     <div className="stack">
-      <div className="grid grid-3">
-        <Stat wert={dokumente.length} label="Pläne, Pakete & Verzeichnisse" onClick={() => gotoTab('plaene')} />
-        <Stat wert={aktiv.length} label="Laufende Planläufe" ton="blue" onClick={() => gotoTab('plaene')} />
-        <Stat wert={ueberfaellig.length} label="Überfällige Schritte" ton={ueberfaellig.length ? 'red' : 'green'} />
-      </div>
-
-      <div className="grid grid-2">
-        <Card>
-          <CardHeader titel="Planbestand" sub="Verteilung nach Art" />
-          <div className="card-pad stack" style={{ gap: 12 }}>
-            {proArt.map((a) => (
-              <div key={a.art} className="row-between">
-                <span className="small">{a.art}</span>
-                <span className="row" style={{ gap: 10 }}>
-                  <Progress wert={dokumente.length ? (a.anzahl / dokumente.length) * 100 : 0} />
-                  <b style={{ minWidth: 22, textAlign: 'right' }}>{a.anzahl}</b>
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <Card>
+        <div className="kennzahlen">
+          <Stat wert={anzahl('paket')} label="Planpakete" onClick={() => gotoTab('pakete')} />
+          <Stat wert={anzahl('verzeichnis')} label="Planverzeichnisse" onClick={() => gotoTab('plaene')} />
+          <Stat wert={anzahl('plan')} label="Pläne" onClick={() => gotoTab('plaene')} />
+          <Stat wert={faellig} label="Fällige Schritte" ton={faellig ? 'orange' : ''} />
+          <Stat wert={ueberfaellig} label="Überfällige Schritte" ton={ueberfaellig ? 'red' : 'green'} />
+        </div>
+        <div className="card-pad row" style={{ gap: 14 }}>
+          <span className="small muted" style={{ flex: 'none' }}>
+            Gesamtfortschritt der Planläufe
+          </span>
+          <span style={{ flex: 1 }}>
+            <Progress wert={gesamt} ton={gesamt === 100 ? 'green' : ''} />
+          </span>
+          <b className="small" style={{ flex: 'none', minWidth: 38, textAlign: 'right' }}>{gesamt}%</b>
+        </div>
+      </Card>
 
       <Card>
         <CardHeader
