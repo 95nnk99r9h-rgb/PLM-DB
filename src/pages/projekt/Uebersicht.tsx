@@ -23,6 +23,15 @@ export function Uebersicht({
     (r) => r.projectId === project.id,
   );
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
+  const abgeschlossen = laeufe.filter((r) => r.status === 'abgeschlossen');
+
+  // Wie in der Planliste: je Eintrag der maßgebliche Lauf – der laufende,
+  // sonst der abgeschlossene, sonst der abgebrochene.
+  const rang = (r: (typeof laeufe)[number]) =>
+    r.status === 'laufend' ? 0 : r.status === 'abgeschlossen' ? 1 : 2;
+  const massgeblich = [...laeufe]
+    .sort((a, b) => rang(a) - rang(b))
+    .filter((r, i, alle) => alle.findIndex((x) => x.documentId === r.documentId) === i);
   const fristen = offeneFristen(data, [project.id]);
   const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig');
   const proArt = (['paket', 'plan', 'verzeichnis'] as const).map((k) => ({
@@ -57,18 +66,22 @@ export function Uebersicht({
 
       <Card>
         <CardHeader
-          titel="Laufende Planläufe"
-          sub={`${aktiv.length} von ${laeufe.length}`}
+          titel="Planläufe"
+          sub={`${aktiv.length} laufend · ${abgeschlossen.length} abgeschlossen`}
           actions={
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => gotoTab('plaene')}>
               Alle <Icon name="chevron" size={13} />
             </button>
           }
         />
-        {aktiv.length === 0 ? (
-          <EmptyState icon="kette" titel="Kein aktiver Planlauf" text="Starten Sie einen Lauf für einen Plan oder ein Paket." />
+        {massgeblich.length === 0 ? (
+          <EmptyState
+            icon="kette"
+            titel="Noch kein Planlauf"
+            text="Starten Sie einen Lauf für einen Plan oder ein Planverzeichnis."
+          />
         ) : (
-          <PlanlaufListe project={project} runs={aktiv} alleRuns={laeufe} oeffneLauf={oeffneLauf} />
+          <PlanlaufListe project={project} runs={massgeblich} alleRuns={laeufe} oeffneLauf={oeffneLauf} />
         )}
       </Card>
     </div>

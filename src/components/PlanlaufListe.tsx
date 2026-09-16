@@ -6,11 +6,11 @@
  * Paket selbst hat keinen Planlauf und darum auch keinen Erledigt-Haken.
  */
 import { Fragment, useState } from 'react';
-import { aktuellerSchritt, ampelFuerSchritt, fortschritt } from '../domain/engine';
+import { aktuellerSchritt, ampelFuerSchritt, fortschritt, type Ampel } from '../domain/engine';
 import { relativeLabel } from '../lib/dates';
 import { INDEX_LABEL, type PlanDocument, type PlanRun, type Project, type RunStep } from '../domain/types';
 import { useStore } from '../store/store';
-import { AmpelPunkt, DocKindIcon, RunStatusBadge } from './common';
+import { AmpelBadge, DocKindIcon, RunStatusBadge } from './common';
 import { EmailDialog } from './EmailDialog';
 import { ErledigtButton, useSchrittStatus } from './SchrittStatus';
 import { EmptyState, Progress } from './ui';
@@ -71,14 +71,25 @@ export function PlanlaufListe({
   const paketStand = (paketId: string) => {
     const zugehoerig = data.documents.filter((d) => d.kind !== 'paket' && paketVon(d) === paketId);
     const laeufe = (alleRuns ?? runs).filter((r) => zugehoerig.some((d) => d.id === r.documentId));
-    if (laeufe.length === 0) return { pct: 0, status: null as PlanRun['status'] | null, anzahl: 0 };
+    if (laeufe.length === 0) {
+      return { pct: 0, status: null as PlanRun['status'] | null, ampel: null as Ampel | null };
+    }
     const pct = Math.round(laeufe.reduce((sum, r) => sum + fortschritt(r), 0) / laeufe.length);
     const status: PlanRun['status'] = laeufe.some((r) => r.status === 'laufend')
       ? 'laufend'
       : laeufe.every((r) => r.status === 'abgeschlossen')
         ? 'abgeschlossen'
         : 'abgebrochen';
-    return { pct, status, anzahl: laeufe.filter((r) => r.status === 'laufend').length };
+    // Dringlichkeit des Pakets: der kritischste Schritt seiner laufenden Einträge
+    const rang: Ampel[] = ['ueberfaellig', 'faellig', 'geplant', 'neutral'];
+    const ampeln = laeufe
+      .filter((r) => r.status === 'laufend')
+      .map((r) => {
+        const step = aktuellerSchritt(r);
+        return step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
+      });
+    const ampel = rang.find((a) => ampeln.includes(a)) ?? null;
+    return { pct, status, ampel };
   };
 
   if (eintraege.length === 0) {
@@ -135,17 +146,26 @@ export function PlanlaufListe({
         </td>
         <td className="small muted">{doc?.gewerk || '–'}</td>
         <td className="small">
-          <span className="row" style={{ gap: 7 }}>
-            <AmpelPunkt ampel={ampel} />
-            {step?.name ?? 'abgeschlossen'}
-          </span>
-          <span className="tertiary small">{relativeLabel(step?.sollDatum ?? null)}</span>
+          {step ? (
+            <>
+              <div>{step.name}</div>
+              <span className="tertiary small">{relativeLabel(step.sollDatum)}</span>
+            </>
+          ) : (
+            <span className="tertiary">–</span>
+          )}
         </td>
         <td className="small col-optional">
-          {step?.roleName || '–'}
-          <div className="tertiary small">
-            {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person'}
-          </div>
+          {step ? (
+            <>
+              <div>{step.roleName || '–'}</div>
+              <span className="tertiary small">
+                {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person'}
+              </span>
+            </>
+          ) : (
+            <span className="tertiary">–</span>
+          )}
         </td>
         <td className="col-optional">
           <span className="row" style={{ gap: 8 }}>
@@ -154,7 +174,7 @@ export function PlanlaufListe({
           </span>
         </td>
         <td>
-          <RunStatusBadge status={run.status} />
+          {run.status === 'laufend' ? <AmpelBadge ampel={ampel} /> : <RunStatusBadge status={run.status} />}
         </td>
         <td className="actions">
           {step ? (
@@ -260,7 +280,13 @@ export function PlanlaufListe({
                         <span className="small tertiary">{stand.pct}%</span>
                       </span>
                     </td>
-                    <td>{stand.status ? <RunStatusBadge status={stand.status} /> : null}</td>
+                    <td>
+                      {stand.status === 'laufend' && stand.ampel ? (
+                        <AmpelBadge ampel={stand.ampel} />
+                      ) : stand.status ? (
+                        <RunStatusBadge status={stand.status} />
+                      ) : null}
+                    </td>
                     <td className="actions" />
                   </tr>
                   {aufgeklappt ? inhalt.map((e) => zeile(e, true)) : null}
