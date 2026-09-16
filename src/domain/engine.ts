@@ -5,6 +5,7 @@
 import { addDays, diffDays, today } from '../lib/dates';
 import {
   EIGENE_ROLLE,
+  hatEigenenPlanlauf,
   type Antwort,
   type AppData,
   type Contact,
@@ -233,7 +234,7 @@ export interface FristEintrag {
  */
 export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] {
   const eintraege: FristEintrag[] = [];
-  for (const run of data.runs) {
+  for (const run of eigenstaendigeLaeufe(data.documents, data.runs)) {
     if (projectIds && !projectIds.includes(run.projectId)) continue;
     if (!istAktiv(run)) continue;
     const project = data.projects.find((p) => p.id === run.projectId);
@@ -281,6 +282,20 @@ export function kontaktFuerRolleUndGewerk(
   const rolle = passende.find((r) => r.gewerk === gewerk) ?? passende.find((r) => r.gewerk === null);
   if (!rolle) return null;
   return kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id))?.id ?? null;
+}
+
+/**
+ * Eigenständig geführte Planläufe.
+ *
+ * Pläne eines Planverzeichnisses laufen im Lauf des Verzeichnisses mit. Haben
+ * sie – etwa weil sie erst später zugeordnet wurden – noch einen eigenen Lauf,
+ * bleibt dieser erhalten, zählt aber nicht mehr als eigenständiger Planlauf.
+ */
+export function eigenstaendigeLaeufe(documents: PlanDocument[], runs: PlanRun[]): PlanRun[] {
+  return runs.filter((r) => {
+    const doc = documents.find((d) => d.id === r.documentId);
+    return !doc || hatEigenenPlanlauf(doc);
+  });
 }
 
 /**

@@ -93,6 +93,9 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   const [absteigend, setAbsteigend] = useState(false);
   const [dialog, setDialog] = useState<{ doc?: PlanDocument } | null>(null);
   const [importOffen, setImportOffen] = useState(false);
+  /** Eingeklappte Planpakete und Planverzeichnisse (standardmäßig alles offen). */
+  const [zu, setZu] = useState<ID[]>([]);
+  const klappen = (id: ID) => setZu((k) => (k.includes(id) ? k.filter((x) => x !== id) : [...k, id]));
 
   const runs = useMemo(() => data.runs.filter((r) => r.projectId === project.id), [data.runs, project.id]);
   // Planpakete werden auf einer eigenen Seite gepflegt
@@ -230,21 +233,39 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 </tr>
               </thead>
               <tbody>
-                {gruppen.map((gruppe) => (
-                  <Fragment key={gruppe.paket?.id ?? 'ohne-paket'}>
+                {gruppen.map((gruppe) => {
+                  const gruppenId = gruppe.paket?.id ?? 'ohne-paket';
+                  // Zugeklappte Gruppen und Verzeichnisse blenden ihre Einträge aus
+                  const sichtbareZeilen = zu.includes(gruppenId)
+                    ? []
+                    : gruppe.zeilen.filter((z) => !(z.doc.parentId && zu.includes(z.doc.parentId)));
+                  return (
+                  <Fragment key={gruppenId}>
                     <tr className="gruppe-zeile">
                       <td colSpan={6}>
                         <span className="row" style={{ gap: 9 }}>
+                          <button
+                            type="button"
+                            className={`chev-btn ${zu.includes(gruppenId) ? '' : 'offen'}`}
+                            title={zu.includes(gruppenId) ? 'Einträge anzeigen' : 'Einträge ausblenden'}
+                            aria-label="Gruppe auf- oder zuklappen"
+                            onClick={() => klappen(gruppenId)}
+                          >
+                            <Icon name="chevron" size={13} />
+                          </button>
                           {gruppe.paket ? <DocKindIcon kind="paket" /> : null}
                           <span>
                             <strong>{gruppe.paket ? gruppe.paket.titel : 'Ohne Planpaket'}</strong>
-                            <span className="small tertiary"> · {gruppe.zeilen.length} Einträge</span>
+                            <span className="small tertiary">
+                              {' '}
+                              · {gruppe.zeilen.length} {gruppe.zeilen.length === 1 ? 'Eintrag' : 'Einträge'}
+                            </span>
                           </span>
                         </span>
                       </td>
                     </tr>
 
-                    {gruppe.zeilen.map(({ doc, tiefe }) => {
+                    {sichtbareZeilen.map(({ doc, tiefe }) => {
                       const stand = standFuer(doc, runs);
                       const run = stand.run;
                       const step = run && istAktiv(run) ? aktuellerSchritt(run) : undefined;
@@ -257,6 +278,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                         (r) => r.documentId === doc.id && r.status === 'abgebrochen' && r.id !== run?.id,
                       );
                       const einzug = 14 + tiefe * 20;
+                      const kinder = gruppe.zeilen.filter((z) => z.doc.parentId === doc.id).length;
                       return (
                         <Fragment key={doc.id}>
                           <tr
@@ -266,6 +288,20 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                             <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
                             <td style={{ paddingLeft: einzug }}>
                               <span className="row" style={{ gap: 9 }}>
+                                {kinder > 0 ? (
+                                  <button
+                                    type="button"
+                                    className={`chev-btn ${zu.includes(doc.id) ? '' : 'offen'}`}
+                                    title={zu.includes(doc.id) ? 'Pläne anzeigen' : 'Pläne ausblenden'}
+                                    aria-label="Pläne des Verzeichnisses auf- oder zuklappen"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      klappen(doc.id);
+                                    }}
+                                  >
+                                    <Icon name="chevron" size={13} />
+                                  </button>
+                                ) : null}
                                 <DocKindIcon kind={doc.kind} />
                                 <span style={{ minWidth: 0 }}>
                                   <span className="num">
@@ -274,6 +310,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                                   </span>
                                   <div>
                                     <strong>{doc.titel}</strong>
+                                    {kinder > 0 ? (
+                                      <span className="small tertiary">
+                                        {' '}
+                                        · {kinder} {kinder === 1 ? 'Plan' : 'Pläne'}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 </span>
                               </span>
@@ -375,7 +417,8 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       );
                     })}
                   </Fragment>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

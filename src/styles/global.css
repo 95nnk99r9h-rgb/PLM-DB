@@ -557,6 +557,10 @@ a:hover { text-decoration: underline; }
 .gruppe-btn:hover strong { color: var(--blue); }
 .gruppe-btn .chev { color: var(--text-tertiary); display: flex; transition: transform 0.15s ease; }
 .gruppe-btn.offen .chev { transform: rotate(90deg); }
+/* Kleiner Pfeil zum Auf- und Zuklappen einzelner Zeilen */
+.chev-btn { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex: 0 0 20px; padding: 0; margin: 0; border: none; border-radius: 6px; background: none; color: var(--text-tertiary); cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
+.chev-btn:hover { background: rgba(0, 0, 0, 0.05); color: var(--text-primary); }
+.chev-btn.offen { transform: rotate(90deg); }
 .table tr.unterzeile td { background: rgba(0, 0, 0, 0.015); }
 /* Verworfene Fassungen (abgebrochener Lauf) bleiben grau sichtbar */
 .table tr.zeile-verworfen td { color: var(--text-tertiary); }

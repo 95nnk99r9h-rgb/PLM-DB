@@ -1,5 +1,5 @@
 /** Projektübersicht: Kennzahlen, Fristenlage und letzte Aktivitäten. */
-import { offeneFristen } from '../../domain/engine';
+import { eigenstaendigeLaeufe, offeneFristen } from '../../domain/engine';
 import { DOCUMENT_KIND_LABEL, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
@@ -18,7 +18,10 @@ export function Uebersicht({
 }) {
   const { data } = useStore();
   const dokumente = data.documents.filter((d) => d.projectId === project.id);
-  const laeufe = data.runs.filter((r) => r.projectId === project.id);
+  // Ohne die Läufe von Plänen, die in einem Planverzeichnis mitlaufen
+  const laeufe = eigenstaendigeLaeufe(data.documents, data.runs).filter(
+    (r) => r.projectId === project.id,
+  );
   const aktiv = laeufe.filter((r) => r.status === 'laufend');
   const fristen = offeneFristen(data, [project.id]);
   const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig');

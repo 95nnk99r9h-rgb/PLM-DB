@@ -38,7 +38,8 @@ export function PlanlaufListe({
   const { data } = useStore();
   const { setzeStatus, nachweisDialog } = useSchrittStatus();
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
-  const [offen, setOffen] = useState<string[]>([]);
+  /** Zugeklappte Planpakete und Planverzeichnisse (standardmäßig alles offen). */
+  const [zu, setZu] = useState<string[]>([]);
 
   const eintraege: Eintrag[] = runs.map((run) => {
     const doc = data.documents.find((d) => d.id === run.documentId);
@@ -61,7 +62,7 @@ export function PlanlaufListe({
   );
   const ohnePaket = eintraege.filter((e) => !pakete.some((p) => p.id === paketVon(e.doc)));
 
-  const klappen = (id: string) => setOffen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
+  const klappen = (id: string) => setZu((k) => (k.includes(id) ? k.filter((x) => x !== id) : [...k, id]));
 
   /**
    * Stand eines Planpakets: Planpakete laufen selbst nicht, ihr Fortschritt
@@ -90,10 +91,30 @@ export function PlanlaufListe({
     const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
     const pct = fortschritt(run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
+    // Pläne eines Planverzeichnisses laufen in dessen Lauf mit; sie lassen
+    // sich unter dem Verzeichnis aufklappen.
+    const plaene = doc?.kind === 'verzeichnis' ? data.documents.filter((d) => d.parentId === doc.id) : [];
+    const aufgeklappt = doc ? !zu.includes(doc.id) : false;
+    const einzug = eingerueckt ? 46 : 14;
     return (
-      <tr key={run.id} className="clickable" onClick={() => oeffneLauf(run.id)}>
-        <td style={eingerueckt ? { paddingLeft: 46 } : undefined}>
+      <Fragment key={run.id}>
+      <tr className="clickable" onClick={() => oeffneLauf(run.id)}>
+        <td style={{ paddingLeft: einzug }}>
           <span className="row" style={{ gap: 9 }}>
+            {plaene.length > 0 ? (
+              <button
+                type="button"
+                className={`chev-btn ${aufgeklappt ? 'offen' : ''}`}
+                title={aufgeklappt ? 'Pläne ausblenden' : 'Pläne anzeigen'}
+                aria-label="Pläne des Verzeichnisses anzeigen"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  klappen(doc!.id);
+                }}
+              >
+                <Icon name="chevron" size={13} />
+              </button>
+            ) : null}
             {doc ? <DocKindIcon kind={doc.kind} /> : null}
             <span style={{ minWidth: 0 }}>
               <span className="num">
@@ -102,6 +123,12 @@ export function PlanlaufListe({
               </span>
               <div>
                 <strong>{doc?.titel ?? run.name}</strong>
+                {plaene.length > 0 ? (
+                  <span className="small tertiary">
+                    {' '}
+                    · {plaene.length} {plaene.length === 1 ? 'Plan' : 'Pläne'}
+                  </span>
+                ) : null}
               </div>
             </span>
           </span>
@@ -149,6 +176,33 @@ export function PlanlaufListe({
           ) : null}
         </td>
       </tr>
+
+      {aufgeklappt
+        ? plaene.map((plan) => (
+            <tr key={plan.id} className="unterzeile">
+              <td style={{ paddingLeft: einzug + 32 }}>
+                <span className="row" style={{ gap: 9 }}>
+                  <DocKindIcon kind={plan.kind} />
+                  <span style={{ minWidth: 0 }}>
+                    <span className="num">
+                      {plan.nummer}
+                      {plan.index ? ` · ${INDEX_LABEL[plan.kind]} ${plan.index}` : ''}
+                    </span>
+                    <div className="small">{plan.titel}</div>
+                  </span>
+                </span>
+              </td>
+              <td className="small muted">{plan.gewerk || '–'}</td>
+              <td className="small tertiary" colSpan={2}>
+                läuft im Planlauf des Verzeichnisses mit
+              </td>
+              <td className="col-optional" />
+              <td />
+              <td className="actions" />
+            </tr>
+          ))
+        : null}
+      </Fragment>
     );
   };
 
@@ -172,7 +226,7 @@ export function PlanlaufListe({
           <tbody>
             {pakete.map((paket) => {
               const inhalt = eintraege.filter((e) => paketVon(e.doc) === paket.id);
-              const aufgeklappt = offen.includes(paket.id);
+              const aufgeklappt = !zu.includes(paket.id);
               const stand = paketStand(paket.id);
               return (
                 <Fragment key={paket.id}>
@@ -198,7 +252,7 @@ export function PlanlaufListe({
                     </td>
                     <td className="small muted">{paket.gewerk || '–'}</td>
                     <td className="small tertiary" colSpan={2}>
-                      Planpaket · {inhalt.length} laufende Einträge
+                      Planpaket · {inhalt.length} {inhalt.length === 1 ? 'laufender Eintrag' : 'laufende Einträge'}
                     </td>
                     <td className="col-optional">
                       <span className="row" style={{ gap: 8 }}>
@@ -217,7 +271,9 @@ export function PlanlaufListe({
             {ohnePaket.length > 0 && pakete.length > 0 ? (
               <tr className="paket-zeile ohne-paket">
                 <td colSpan={7}>
-                  <span className="small muted">Ohne Planpaket · {ohnePaket.length} Einträge</span>
+                  <span className="small muted">
+                    Ohne Planpaket · {ohnePaket.length} {ohnePaket.length === 1 ? 'Eintrag' : 'Einträge'}
+                  </span>
                 </td>
               </tr>
             ) : null}

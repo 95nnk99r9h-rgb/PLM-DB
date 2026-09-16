@@ -2,7 +2,7 @@
  * Startseite: Kennzahlen, eigene To-Dos und die laufenden Planläufe,
  * nach Projekten gegliedert. Angezeigt werden die markierten Projekte.
  */
-import { eigeneTodos, istAktiv, offeneFristen } from '../domain/engine';
+import { eigeneTodos, eigenstaendigeLaeufe, istAktiv, offeneFristen } from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
 import { useState } from 'react';
 import type { PlanRun, Project, RunStep } from '../domain/types';
@@ -32,7 +32,11 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
   const ueberfaellig = fristen.filter((f) => f.ampel === 'ueberfaellig');
   const faellig = fristen.filter((f) => f.ampel === 'faellig');
   const todos = eigeneTodos(data, ids);
-  const laufend = data.runs.filter((r) => ids.includes(r.projectId) && istAktiv(r));
+  // Pläne eines Planverzeichnisses laufen in dessen Lauf mit und erscheinen
+  // darum nicht als eigener Planlauf.
+  const laufend = eigenstaendigeLaeufe(data.documents, data.runs).filter(
+    (r) => ids.includes(r.projectId) && istAktiv(r),
+  );
 
   const alleMarkiert = data.projects.filter((p) => p.markiert).length;
 
