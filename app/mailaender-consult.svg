@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Wortmarke Mailänder Consult.
+
+  Diese Datei ist eine Nachzeichnung mit der Systemschrift. Um das Original zu
+  verwenden, genügt es, die Datei durch die Originaldatei zu ersetzen – gleicher
+  Dateiname, gleicher Ort. Die Anwendung skaliert sie ausschließlich über die
+  Höhe, das Seitenverhältnis bleibt dadurch erhalten.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 248" width="1000" height="248" role="img" aria-label="Mailänder Consult">
+  <g fill="#24456e" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700" font-size="104" letter-spacing="-2">
+    <text x="0" y="92">Mailänder</text>
+    <text x="695" y="226" text-anchor="end">Consult</text>
+  </g>
+  <g stroke="#24456e" stroke-width="26" fill="none">
+    <path d="M748 13v222h108V128z"/>
+    <path d="M987 13v222H879V128z"/>
+  </g>
+</svg>
