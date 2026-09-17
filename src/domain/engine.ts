@@ -347,6 +347,7 @@ export function stepsAusTemplate(
     typ: s.typ,
     roleName: s.roleName,
     contactId: contactFuerRolle(s.roleName),
+    contactManuell: false,
     fristTage: s.fristTage,
     sollDatum: null,
     sollManuell: false,
@@ -425,7 +426,6 @@ function namensTeile(name: string): { vorname: string; nachname: string } {
 export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) => string): AppData {
   const { vorname, nachname } = namensTeile(daten.bearbeiter?.name || STANDARD_BEARBEITER);
   let contacts = daten.contacts;
-  let runs = daten.runs;
   let geaendert = false;
 
   for (const projekt of daten.projects.filter((p) => p.markiert)) {
@@ -489,27 +489,42 @@ export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) =
       }
     }
 
-    // Schritte des Planlaufmanagements zeigen auf den eigenen Eintrag.
-    // Abgeschlossene und abgebrochene Läufe bleiben unverändert – sie halten
-    // fest, wer den Schritt seinerzeit bearbeitet hat.
-    const laufend = (r: PlanRun) => r.projectId === projekt.id && r.status === 'laufend';
-    const betroffen = runs.some(
-      (r) => laufend(r) && r.steps.some((s) => s.roleName === EIGENE_ROLLE && s.contactId !== eigenerId),
-    );
-    if (betroffen) {
-      runs = runs.map((r) =>
-        !laufend(r)
-          ? r
-          : {
-              ...r,
-              steps: r.steps.map((s) =>
-                s.roleName === EIGENE_ROLLE && s.contactId !== eigenerId ? { ...s, contactId: eigenerId } : s,
-              ),
-            },
-      );
-      geaendert = true;
-    }
   }
 
-  return geaendert ? { ...daten, contacts, runs } : daten;
+  return geaendert ? { ...daten, contacts } : daten;
+}
+
+/**
+ * Zieht die Zuständigkeiten laufender Planläufe aus dem Adressbuch nach.
+ *
+ * Ein Schritt nennt eine Funktion; wer sie ausfüllt, steht im Adressbuch des
+ * Projekts. Wird eine Person erst später eingetragen oder wechselt sie
+ * während des Projekts, gilt die neue Besetzung sofort – auch für bereits
+ * gestartete Planläufe. Von Hand gesetzte Personen (`contactManuell`) und
+ * abgeschlossene Schritte bleiben unangetastet: sie halten fest, wer den
+ * Schritt tatsächlich bearbeitet hat.
+ */
+export function zustaendigkeitenNachziehen(daten: AppData): AppData {
+  let geaendert = false;
+
+  const runs = daten.runs.map((run) => {
+    if (run.status !== 'laufend') return run;
+    const kontakte = daten.contacts.filter((c) => c.projectId === run.projectId);
+    const rollen = daten.roles.filter((r) => r.projectId === run.projectId);
+    const gewerk = daten.documents.find((d) => d.id === run.documentId)?.gewerk ?? '';
+
+    let laufGeaendert = false;
+    const steps = run.steps.map((step) => {
+      if (step.contactManuell || step.status === 'erledigt') return step;
+      const contactId = kontaktFuerRolleUndGewerk(kontakte, rollen, step.roleName, gewerk);
+      if (contactId === step.contactId) return step;
+      laufGeaendert = true;
+      return { ...step, contactId };
+    });
+    if (!laufGeaendert) return run;
+    geaendert = true;
+    return { ...run, steps };
+  });
+
+  return geaendert ? { ...daten, runs } : daten;
 }

@@ -17,7 +17,7 @@ import {
   type StepType,
 } from '../domain/types';
 import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData, standardVorlagen } from '../domain/seed';
-import { eigeneKontakteSichern, recalcRun } from '../domain/engine';
+import { eigeneKontakteSichern, recalcRun, zustaendigkeitenNachziehen } from '../domain/engine';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
@@ -72,7 +72,7 @@ export function ladeDaten(): AppData {
     if (!roh) return durchrechnen(seedData());
     const daten = JSON.parse(roh) as AppData;
     if (!daten || !Array.isArray(daten.projects)) return durchrechnen(seedData());
-    return durchrechnen(eigenerKontakt(stammdatenAktualisieren(migriere(daten))));
+    return durchrechnen(zustaendigkeitenNachziehen(eigenerKontakt(stammdatenAktualisieren(migriere(daten)))));
   } catch {
     return durchrechnen(seedData());
   }
@@ -297,6 +297,8 @@ function migriere(daten: AppData): AppData {
           durchlauf: s.durchlauf ?? 1,
           nachweis: s.nachweis ?? 'keine',
           nachweisNummer: s.nachweisNummer ?? null,
+          // Bisher fest vergebene Zuständigkeiten folgen künftig dem Adressbuch
+          contactManuell: s.contactManuell ?? false,
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,
         };

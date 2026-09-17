@@ -66,7 +66,7 @@ export function Vorlagen() {
             spalten={PLAN_KOPFZEILE}
             hinweise={PLAN_HINWEISE}
             onLaden={planVorlageLaden}
-            text="Planpakete und Planverzeichnisse, die in der Liste genannt, im Projekt aber noch nicht angelegt sind, entstehen beim Import automatisch. Ist ein Workflow benannt, startet der Planlauf gleich mit."
+            text="Planpakete und Planverzeichnisse, die in der Liste genannt, im Projekt aber noch nicht angelegt sind, entstehen beim Import automatisch. Ist ein Workflow benannt, startet der Planlauf gleich mit – es sei denn, die Spalte „Planlauf“ sagt „vormerken“; dann wird der Eintrag nur angelegt."
           />
 
           <ListenKarte

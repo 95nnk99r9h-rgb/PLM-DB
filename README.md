@@ -129,11 +129,24 @@ den Planlauf.
 Die Feldbezeichnungen richten sich nach der Art: **Plancodierung** beim Plan, **Name Planpaket**
 bzw. **Name PlanVZ** beim Paket und Verzeichnis, wo statt *Index* die **Ausgabe** geführt wird.
 
+**Vormerken:** Ein Plan oder Planverzeichnis lässt sich mit **Plan vormerken** anlegen, ohne den
+Planlauf zu starten. Vorgemerkte Einträge stehen gelb hinterlegt in der Planliste und erscheinen
+noch nicht in der Übersicht der Planläufe; der Lauf startet später über **Planlauf starten** im
+selben Dialog.
+
 **Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
 *Art · Plancodierung/Name Planpaket / Name Plan VZ · Index/Ausgabe · Titel · Gewerk ·
-Planungsphase · Eingang Soll · Bemerkung · Workflow*. Ist in *Workflow* ein hinterlegter Workflow
-benannt, startet der Planlauf gleich beim Import. Eine zusätzliche Spalte *Übergeordnet* ordnet
-Pläne einem Paket oder Verzeichnis unter.
+Planungsphase · Planpaket · Planverzeichnis · Eingang Soll · Datum Ausgabe · Workflow · Planlauf ·
+Bemerkung*. Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Planlauf gleich beim
+Import – es sei denn, die Spalte *Planlauf* sagt „vormerken“; dann wird der Eintrag nur angelegt.
+Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
+
+### Zuständigkeiten
+Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht im **Adressbuch** des Projekts. Die
+Zuordnung wird laufend nachgezogen: Wird eine Person erst nach dem Start eines Planlaufs eingetragen
+oder wechselt sie während des Projekts, gilt die neue Besetzung sofort auch in laufenden Planläufen.
+Bereits erledigte Schritte behalten ihre Person, ebenso Schritte, in denen im Planlauf eine Person
+von Hand gewählt wurde.
 
 ### Prozessketten
 Ein Schritt ist eine **Aufgabe**, eine **Entscheidung** oder **Sonstiges**, hat eine Frist in Tagen und

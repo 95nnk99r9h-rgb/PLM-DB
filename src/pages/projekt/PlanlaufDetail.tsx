@@ -6,6 +6,7 @@ import { useState } from 'react';
 import {
   aktuellerSchritt,
   ampelFuerSchritt,
+  kontaktFuerRolleUndGewerk,
   massgeblicheAntwort,
   nichtImPfad,
   verlaufDerKette,
@@ -95,6 +96,7 @@ export function PlanlaufDetail({
       typ: werte.typ,
       roleName: werte.roleName,
       contactId: werte.contactId,
+      contactManuell: werte.contactManuell,
       fristTage: werte.fristTage,
       bemerkung: werte.bemerkung,
       sollManuell: false,
@@ -634,6 +636,8 @@ type SchrittWerte = {
   typ: StepType;
   roleName: string;
   contactId: string | null;
+  /** Person von Hand gewählt – sie bleibt trotz Adressbuchänderung stehen. */
+  contactManuell: boolean;
   fristTage: number;
   bemerkung: string;
   nachweis: Nachweis;
@@ -665,6 +669,7 @@ function SchrittDialog({
     typ: step?.typ ?? ('aufgabe' as StepType),
     roleName: step?.roleName ?? '',
     contactId: step?.contactId ?? null,
+    contactManuell: step?.contactManuell ?? false,
     fristTage: step?.fristTage ?? 5,
     sollManuell: step?.sollManuell ?? false,
     sollDatum: step?.sollDatum ?? today(),
@@ -673,6 +678,14 @@ function SchrittDialog({
     bemerkung: step?.bemerkung ?? '',
     nachweis: step?.nachweis ?? ('keine' as Nachweis),
   });
+
+  // Wer die Funktion laut Adressbuch ausfüllt – Grundlage der automatischen Zuordnung
+  const gewerk = data.documents.find((d) => d.id === run.documentId)?.gewerk ?? '';
+  const automatischId = kontaktFuerRolleUndGewerk(kontakte, rollen, form.roleName, gewerk);
+  const automatischKontakt = kontakte.find((c) => c.id === automatischId);
+  const automatisch = automatischKontakt
+    ? `${automatischKontakt.vorname} ${automatischKontakt.nachname}`
+    : '';
 
   // Einfügeposition: hinter welchem Schritt des Verlaufs der neue Schritt steht
   const [nachStepId, setNachStepId] = useState<string>(() => verlauf?.[verlauf.length - 1]?.id ?? '');
@@ -704,6 +717,7 @@ function SchrittDialog({
         typ: form.typ,
         roleName: form.roleName,
         contactId: form.contactId,
+        contactManuell: form.contactManuell,
         fristTage: Number(form.fristTage) || 0,
         sollManuell: form.sollManuell,
         sollDatum: form.sollManuell ? form.sollDatum : step.sollDatum,
@@ -721,6 +735,7 @@ function SchrittDialog({
           typ: form.typ,
           roleName: form.roleName,
           contactId: form.contactId,
+          contactManuell: form.contactManuell,
           fristTage: Number(form.fristTage) || 0,
           bemerkung: form.bemerkung,
           nachweis: form.nachweis,
@@ -785,11 +800,22 @@ function SchrittDialog({
             />
           </Field>
         ) : null}
-        <Field label="Zuständige Person">
+        <Field
+          label="Zuständige Person"
+          hint={
+            form.contactManuell
+              ? 'Von Hand gewählt – Änderungen im Adressbuch wirken hier nicht.'
+              : automatisch
+                ? `Aus dem Adressbuch: ${automatisch}`
+                : 'Keine Person hat diese Funktion im Adressbuch – sie wird übernommen, sobald jemand eingetragen ist.'
+          }
+        >
           <Select
-            value={form.contactId ?? ''}
-            onChange={(v) => set('contactId', v || null)}
-            placeholder="– offen –"
+            value={form.contactManuell ? (form.contactId ?? '') : ''}
+            onChange={(v) =>
+              setForm((f) => ({ ...f, contactId: v || null, contactManuell: Boolean(v) }))
+            }
+            placeholder="– nach Funktion aus dem Adressbuch –"
             options={kontakte.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname} (${c.firma})` }))}
           />
         </Field>

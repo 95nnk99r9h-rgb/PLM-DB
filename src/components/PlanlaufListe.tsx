@@ -8,7 +8,14 @@
 import { Fragment, useState } from 'react';
 import { aktuellerSchritt, ampelFuerSchritt, fortschritt, type Ampel } from '../domain/engine';
 import { relativeLabel } from '../lib/dates';
-import { INDEX_LABEL, type PlanDocument, type PlanRun, type Project, type RunStep } from '../domain/types';
+import {
+  INDEX_LABEL,
+  hatEigenenPlanlauf,
+  type PlanDocument,
+  type PlanRun,
+  type Project,
+  type RunStep,
+} from '../domain/types';
 import { useStore } from '../store/store';
 import { AmpelBadge, DocKindIcon, RunStatusBadge } from './common';
 import { EmailDialog } from './EmailDialog';
@@ -92,17 +99,30 @@ export function PlanlaufListe({
    * und Status ergeben sich aus den enthaltenen Plänen und Verzeichnissen.
    */
   const paketStand = (paketId: string) => {
-    const zugehoerig = data.documents.filter((d) => d.kind !== 'paket' && paketVon(d) === paketId);
-    const laeufe = (alleRuns ?? runs).filter((r) => zugehoerig.some((d) => d.id === r.documentId));
+    // Nur Einträge mit eigenem Planlauf; Pläne eines Verzeichnisses laufen
+    // in dessen Lauf mit und dürfen nicht doppelt zählen.
+    const zugehoerig = data.documents.filter(
+      (d) => d.kind !== 'paket' && paketVon(d) === paketId && hatEigenenPlanlauf(d),
+    );
+    const basis = alleRuns ?? runs;
+    // Je Eintrag zählt ein Lauf: der laufende, sonst der abgeschlossene.
+    // Abgebrochene Läufe (etwa ein Vorgänger vor einem neuen Index) bleiben
+    // außen vor – sonst zöge ihr Stand den Fortschritt des Pakets herunter.
+    const laufendZuerst = (r: PlanRun) => (r.status === 'laufend' ? 0 : 1);
+    const laeufe = zugehoerig
+      .map((d) =>
+        basis
+          .filter((r) => r.documentId === d.id && r.status !== 'abgebrochen')
+          .sort((a, b) => laufendZuerst(a) - laufendZuerst(b))[0],
+      )
+      .filter((r): r is PlanRun => Boolean(r));
     if (laeufe.length === 0) {
       return { pct: 0, status: null as PlanRun['status'] | null, ampel: null as Ampel | null };
     }
     const pct = Math.round(laeufe.reduce((sum, r) => sum + fortschritt(r), 0) / laeufe.length);
     const status: PlanRun['status'] = laeufe.some((r) => r.status === 'laufend')
       ? 'laufend'
-      : laeufe.every((r) => r.status === 'abgeschlossen')
-        ? 'abgeschlossen'
-        : 'abgebrochen';
+      : 'abgeschlossen';
     // Dringlichkeit des Pakets: der kritischste Schritt seiner laufenden Einträge
     const rang: Ampel[] = ['ueberfaellig', 'faellig', 'geplant', 'neutral'];
     const ampeln = laeufe

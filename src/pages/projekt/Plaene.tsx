@@ -15,6 +15,7 @@ import {
   INDEX_LABEL,
   NUMMER_LABEL,
   PLANUNGSPHASEN,
+  hatEigenenPlanlauf,
   type DocumentKind,
   type ID,
   type PlanDocument,
@@ -126,6 +127,15 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
 
   const anzahl = (art: DocumentKind) => alle.filter((d) => d.kind === art).length;
 
+  /**
+   * Vorgemerkt: ein Eintrag mit eigenem Planlauf, für den noch keiner
+   * gestartet wurde. Er steht nur in dieser Liste, nicht in der Übersicht
+   * der Planläufe.
+   */
+  const vorgemerkt = (d: PlanDocument) =>
+    hatEigenenPlanlauf(d) && !data.runs.some((r) => r.documentId === d.id);
+  const anzahlVorgemerkt = alle.filter(vorgemerkt).length;
+
   return (
     <div className="stack">
       <div className="row-between wrap">
@@ -154,13 +164,15 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
       <Card>
         <CardHeader
           titel="Planliste"
-          sub={`${anzahl('plan')} Pläne · ${anzahl('verzeichnis')} Planverzeichnisse · Spaltenüberschrift klicken zum Sortieren`}
+          sub={`${anzahl('plan')} Pläne · ${anzahl('verzeichnis')} Planverzeichnisse${
+            anzahlVorgemerkt > 0 ? ` · ${anzahlVorgemerkt} vorgemerkt` : ''
+          } · Spaltenüberschrift klicken zum Sortieren`}
         />
         {zeilen.length === 0 ? (
           <EmptyState
             icon="plan"
             titel="Noch keine Einträge"
-            text="Mit einem neuen Eintrag wird zugleich sein Planlauf gestartet."
+            text="Ein neuer Eintrag startet wahlweise gleich seinen Planlauf oder wird zunächst vorgemerkt."
             action={
               <button type="button" className="btn btn-primary" onClick={() => setDialog({})}>
                 <Icon name="plus" size={14} /> Neuer Eintrag
@@ -184,7 +196,12 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
               </thead>
               <tbody>
                 {zeilen.map((doc) => (
-                  <tr key={doc.id} className="clickable" onClick={() => setDialog({ doc })}>
+                  <tr
+                    key={doc.id}
+                    className={`clickable ${vorgemerkt(doc) ? 'zeile-vorgemerkt' : ''}`}
+                    onClick={() => setDialog({ doc })}
+                    title={vorgemerkt(doc) ? 'Vorgemerkt – der Planlauf ist noch nicht gestartet' : undefined}
+                  >
                     <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>
                     <td className="small">
                       <span className="row" style={{ gap: 8 }}>
@@ -199,6 +216,7 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       </span>
                       <div>
                         <strong>{doc.titel}</strong>
+                        {vorgemerkt(doc) ? <span className="badge gelb">vorgemerkt</span> : null}
                       </div>
                     </td>
                     <td className="small muted">{doc.gewerk || '–'}</td>
@@ -355,7 +373,11 @@ function PlanDialog({
   const kontaktFuerRolle = (roleName: string): ID | null =>
     kontaktFuerRolleUndGewerk(kontakte, rollen, roleName, form.gewerk);
 
-  const speichern = () => {
+  /**
+   * Speichert den Eintrag. `mitLauf` entscheidet, ob der Planlauf gleich
+   * startet oder der Eintrag zunächst nur vorgemerkt wird.
+   */
+  const speichern = (mitLauf = true) => {
     if (!form.titel.trim()) {
       toast('Bitte einen Titel angeben.');
       return;
@@ -368,9 +390,9 @@ function PlanDialog({
       paketId: wirksamesPaket,
     };
 
-    // Einträge ohne eigenen Planlauf – etwa Pläne eines Verzeichnisses –
-    // werden nur gespeichert.
-    if (!braucheLauf) {
+    // Ohne eigenen Planlauf – Pläne eines Verzeichnisses – oder wenn der
+    // Eintrag nur vorgemerkt wird, bleibt es bei den Stammdaten.
+    if (!braucheLauf || !mitLauf) {
       if (doc) {
         updateDocument(doc.id, werte);
         toast('Eintrag aktualisiert.');
@@ -379,7 +401,9 @@ function PlanDialog({
         toast(
           untergeordnet
             ? 'Plan angelegt – er läuft im Planlauf des Verzeichnisses mit.'
-            : 'Eintrag angelegt.',
+            : mitLauf
+              ? 'Eintrag angelegt.'
+              : `${DOCUMENT_KIND_LABEL[form.kind]} vorgemerkt – der Planlauf kann später gestartet werden.`,
         );
       }
       onClose();
@@ -448,7 +472,11 @@ function PlanDialog({
     <>
       <Modal
         titel={doc ? `${DOCUMENT_KIND_LABEL[doc.kind]} bearbeiten` : 'Neuer Eintrag'}
-        sub={doc ? doc.nummer : 'Stammdaten und Workflow – der Planlauf startet mit dem Eintrag'}
+        sub={
+          doc
+            ? doc.nummer + (braucheLauf ? ' · vorgemerkt, Planlauf noch nicht gestartet' : '')
+            : 'Stammdaten und Workflow – wahlweise gleich starten oder nur vormerken'
+        }
         wide={braucheLauf}
         onClose={onClose}
         footer={
@@ -462,8 +490,18 @@ function PlanDialog({
             <button type="button" className="btn" onClick={onClose}>
               Abbrechen
             </button>
-            <button type="button" className="btn btn-primary" onClick={speichern}>
-              {braucheLauf ? 'Anlegen und Planlauf starten' : 'Speichern'}
+            {braucheLauf ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => speichern(false)}
+                title="Eintrag anlegen, den Planlauf aber noch nicht starten"
+              >
+                {doc ? 'Nur speichern' : `${DOCUMENT_KIND_LABEL[form.kind]} vormerken`}
+              </button>
+            ) : null}
+            <button type="button" className="btn btn-primary" onClick={() => speichern(true)}>
+              {braucheLauf ? (doc ? 'Planlauf starten' : 'Anlegen und Planlauf starten') : 'Speichern'}
             </button>
           </>
         }

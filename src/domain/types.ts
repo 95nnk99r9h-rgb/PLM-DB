@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 9;
+export const DATEN_VERSION = 10;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -389,8 +389,17 @@ export interface RunStep {
   typ: StepType;
   /** Verantwortliche Rolle. */
   roleName: string;
-  /** Konkret zuständige Person aus dem Adressbuch. */
+  /**
+   * Konkret zuständige Person aus dem Adressbuch. Sie ergibt sich laufend aus
+   * der Besetzung der Funktion im Projekt – ändert sich diese, zieht der
+   * Planlauf nach.
+   */
   contactId: ID | null;
+  /**
+   * Von Hand gesetzte Person. Sie bleibt stehen, auch wenn die Funktion im
+   * Adressbuch anders besetzt ist.
+   */
+  contactManuell: boolean;
   fristTage: number;
   /** Berechnetes Soll-Datum; manuell überschreibbar (dann Ketten-Basis). */
   sollDatum: ISODate | null;

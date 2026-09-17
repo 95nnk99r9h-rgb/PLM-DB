@@ -388,6 +388,7 @@ export function seedData(): AppData {
       typ: s.typ,
       roleName: s.roleName,
       contactId: kontaktFuer(kuerzelFuerRolle[s.roleName] ?? 'PLM', gewerk),
+      contactManuell: false,
       fristTage: s.fristTage,
       sollDatum: null,
       sollManuell: false,

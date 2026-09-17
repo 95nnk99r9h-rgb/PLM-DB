@@ -5,7 +5,6 @@ import { type DocumentKind, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { Card, CardHeader, EmptyState, Progress, Segmented, Stat } from '../../components/ui';
-import { Icon } from '../../components/icons';
 import { PlanlaufListe } from '../../components/PlanlaufListe';
 
 export function Uebersicht({
@@ -91,9 +90,6 @@ export function Uebersicht({
                 />
                 Untergeordnete Pläne anzeigen
               </label>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => gotoTab('plaene')}>
-                Alle <Icon name="chevron" size={13} />
-              </button>
             </span>
           }
         />

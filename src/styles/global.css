@@ -35,6 +35,10 @@
   --purple: #5856d6;
   --purple-soft: rgba(88, 86, 214, 0.12);
   --gray-soft: rgba(120, 120, 128, 0.12);
+  /* Vorgemerkt – gelb hinterlegt */
+  --gelb-soft: rgba(255, 204, 0, 0.16);
+  --gelb-soft-stark: rgba(255, 204, 0, 0.3);
+  --gelb-text: #8a6100;
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -577,6 +581,11 @@ a:hover { text-decoration: underline; }
 .chev-btn.offen { transform: rotate(90deg); }
 .table tr.unterzeile td { background: rgba(0, 0, 0, 0.015); }
 /* Verworfene Fassungen (abgebrochener Lauf) bleiben grau sichtbar */
+/* Vorgemerkte Einträge: angelegt, Planlauf noch nicht gestartet */
+.table tr.zeile-vorgemerkt td { background: var(--gelb-soft); }
+.table tr.zeile-vorgemerkt:hover td { background: var(--gelb-soft-stark); }
+.badge.gelb { background: var(--gelb-soft-stark); color: var(--gelb-text); margin-left: 6px; }
+
 .table tr.zeile-verworfen td { color: var(--text-tertiary); }
 .table tr.zeile-verworfen strong { font-weight: 500; color: var(--text-tertiary); }
 
@@ -780,6 +789,9 @@ a:hover { text-decoration: underline; }
   --accent-soft: rgba(36, 69, 110, 0.16);
   --bg-active: rgba(36, 69, 110, 0.18);
   --gray-soft: rgba(90, 90, 100, 0.18);
+  --gelb-soft: rgba(255, 214, 51, 0.28);
+  --gelb-soft-stark: rgba(255, 214, 51, 0.5);
+  --gelb-text: #5c4100;
 }
 
 /* Status wird zusätzlich durch Rahmen und kräftigere Schrift unterscheidbar */
@@ -789,6 +801,7 @@ a:hover { text-decoration: underline; }
 :root[data-farbmodus='kontrast'] .badge.red { color: #8a0060; }
 :root[data-farbmodus='kontrast'] .badge.blue { color: var(--accent); }
 :root[data-farbmodus='kontrast'] .badge.purple { color: #3a3087; }
+:root[data-farbmodus='kontrast'] .badge.gelb { color: var(--gelb-text); }
 :root[data-farbmodus='kontrast'] .dot { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
 :root[data-farbmodus='kontrast'] .chain-node.late { border-color: var(--red); }
 :root[data-farbmodus='kontrast'] .chain-node.done { border-color: var(--green); }
