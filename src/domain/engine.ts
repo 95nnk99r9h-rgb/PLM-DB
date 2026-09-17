@@ -5,6 +5,7 @@
 import { addDays, diffDays, today } from '../lib/dates';
 import {
   EIGENE_ROLLE,
+  STANDARD_BEARBEITER,
   hatEigenenPlanlauf,
   type Antwort,
   type AppData,
@@ -262,7 +263,7 @@ export function offeneFristen(data: AppData, projectIds?: ID[]): FristEintrag[] 
  * laufende Schritte – nicht dagegen Schritte, die erst später an die Reihe kommen.
  */
 export function eigeneTodos(data: AppData, projectIds?: ID[]): FristEintrag[] {
-  const rolle = (data.bearbeiter?.rolle || EIGENE_ROLLE).toLowerCase();
+  const rolle = EIGENE_ROLLE.toLowerCase();
   return offeneFristen(data, projectIds).filter((f) => f.step.roleName.trim().toLowerCase() === rolle);
 }
 
@@ -398,4 +399,117 @@ export function rueckSprungAnwenden(steps: RunStep[], entscheidungId: ID, zielId
 /** Gesamtdauer einer Vorlage entlang des Standardverlaufs. */
 export function templateDauer(template: ProcessTemplate): number {
   return pfad(template.steps).reduce((sum, s) => sum + s.fristTage, 0);
+}
+
+/* ------------------------------------------------------------------ */
+/* Eigener Kontakt in den markierten Projekten                         */
+/* ------------------------------------------------------------------ */
+
+/** Zerlegt den angezeigten Namen in Vor- und Nachname. */
+function namensTeile(name: string): { vorname: string; nachname: string } {
+  const teile = name.trim().split(/\s+/);
+  if (teile.length < 2) return { vorname: teile[0] ?? '', nachname: '' };
+  return { vorname: teile.slice(0, -1).join(' '), nachname: teile[teile.length - 1] };
+}
+
+/**
+ * Führt die angemeldete Person im Adressbuch jedes markierten Projekts und
+ * besetzt dort das Planlaufmanagement.
+ *
+ * Markiert jemand ein Projekt („meine Projekte“), ist er dort immer der
+ * Zuständige des Planlaufmanagements – auch wenn er im Adressbuch noch nicht
+ * geführt wurde. Der Eintrag wird deshalb bei jeder Änderung angelegt bzw.
+ * nachgezogen, die Funktion bei anderen Kontakten desselben Projekts
+ * entfernt und die zugehörigen Schritte laufender Planläufe umgehängt.
+ */
+export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) => string): AppData {
+  const { vorname, nachname } = namensTeile(daten.bearbeiter?.name || STANDARD_BEARBEITER);
+  let contacts = daten.contacts;
+  let runs = daten.runs;
+  let geaendert = false;
+
+  for (const projekt of daten.projects.filter((p) => p.markiert)) {
+    const rolle = daten.roles.find(
+      (r) => r.projectId === projekt.id && r.name === EIGENE_ROLLE && r.gewerk === null,
+    );
+    const vorhanden = contacts.find((c) => c.projectId === projekt.id && c.eigen);
+
+    // Eintrag anlegen oder Namen und Funktion nachziehen
+    let eigenerId: ID;
+    if (!vorhanden) {
+      eigenerId = neueId('con');
+      contacts = [
+        {
+          id: eigenerId,
+          projectId: projekt.id,
+          anrede: '',
+          vorname,
+          nachname,
+          firma: EIGENE_ROLLE,
+          email: '',
+          telefon: '',
+          anschrift: '',
+          zuordnungen: rolle ? [{ roleId: rolle.id, gewerk: null }] : [],
+          notiz: '',
+          eigen: true,
+        },
+        ...contacts,
+      ];
+      geaendert = true;
+    } else {
+      eigenerId = vorhanden.id;
+      const fehlt = rolle ? !vorhanden.zuordnungen.some((z) => z.roleId === rolle.id) : false;
+      if (vorhanden.vorname !== vorname || vorhanden.nachname !== nachname || fehlt) {
+        contacts = contacts.map((c) =>
+          c.id === eigenerId
+            ? {
+                ...c,
+                vorname,
+                nachname,
+                zuordnungen: fehlt ? [...c.zuordnungen, { roleId: rolle!.id, gewerk: null }] : c.zuordnungen,
+              }
+            : c,
+        );
+        geaendert = true;
+      }
+    }
+
+    // Das Planlaufmanagement ist in diesem Projekt allein Sache der eigenen Person
+    if (rolle) {
+      const doppelt = contacts.some(
+        (c) => c.projectId === projekt.id && c.id !== eigenerId && c.zuordnungen.some((z) => z.roleId === rolle.id),
+      );
+      if (doppelt) {
+        contacts = contacts.map((c) =>
+          c.projectId === projekt.id && c.id !== eigenerId
+            ? { ...c, zuordnungen: c.zuordnungen.filter((z) => z.roleId !== rolle.id) }
+            : c,
+        );
+        geaendert = true;
+      }
+    }
+
+    // Schritte des Planlaufmanagements zeigen auf den eigenen Eintrag.
+    // Abgeschlossene und abgebrochene Läufe bleiben unverändert – sie halten
+    // fest, wer den Schritt seinerzeit bearbeitet hat.
+    const laufend = (r: PlanRun) => r.projectId === projekt.id && r.status === 'laufend';
+    const betroffen = runs.some(
+      (r) => laufend(r) && r.steps.some((s) => s.roleName === EIGENE_ROLLE && s.contactId !== eigenerId),
+    );
+    if (betroffen) {
+      runs = runs.map((r) =>
+        !laufend(r)
+          ? r
+          : {
+              ...r,
+              steps: r.steps.map((s) =>
+                s.roleName === EIGENE_ROLLE && s.contactId !== eigenerId ? { ...s, contactId: eigenerId } : s,
+              ),
+            },
+      );
+      geaendert = true;
+    }
+  }
+
+  return geaendert ? { ...daten, contacts, runs } : daten;
 }

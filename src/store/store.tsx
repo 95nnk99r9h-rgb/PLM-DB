@@ -5,7 +5,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { recalcRun } from '../domain/engine';
+import { eigeneKontakteSichern, recalcRun } from '../domain/engine';
 import { seedData } from '../domain/seed';
 import { ladeDaten, speichereDaten } from './storage';
 import { today } from '../lib/dates';
@@ -90,7 +90,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /** Änderung anwenden und alle Läufe mit aktuellen Projekteinstellungen durchrechnen. */
   const mutate = useCallback((fn: (d: AppData) => AppData) => {
     setData((alt) => {
-      const neu = fn(alt);
+      // Die angemeldete Person wird in ihren Projekten stets als
+      // Planlaufmanagement geführt – auch nach einem neuen Projekt,
+      // einer Markierung oder einer Namensänderung.
+      const neu = eigeneKontakteSichern(fn(alt), newId);
       return {
         ...neu,
         runs: neu.runs.map((r) =>

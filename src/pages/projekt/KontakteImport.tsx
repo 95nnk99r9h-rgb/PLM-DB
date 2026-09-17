@@ -118,6 +118,7 @@ export function KontakteImport({ project, onClose }: { project: Project; onClose
             ),
             zuordnungen,
             notiz: wert(zeile, 'notiz'),
+            eigen: false,
           },
           hinweis: hinweise.join('; '),
         };

@@ -8,6 +8,7 @@ import {
   EIGENE_ROLLE,
   GEWERKE,
   STAMMDATEN_VERSION,
+  STANDARD_BEARBEITER,
   type AppData,
   type EmailTemplate,
   type ProcessTemplate,
@@ -16,10 +17,16 @@ import {
   type StepType,
 } from '../domain/types';
 import { STANDARD_ROLLEN, STANDARD_TEMPLATES, seedData, standardVorlagen } from '../domain/seed';
-import { recalcRun } from '../domain/engine';
+import { eigeneKontakteSichern, recalcRun } from '../domain/engine';
 
 /** Frühere Bezeichnung der eigenen Rolle. */
 const ALTE_EIGENE_ROLLE = 'PLM';
+
+/** Name der angemeldeten Person; frühere Kürzel werden ersetzt. */
+const eigenerName = (b?: { name?: string }) => {
+  const name = (b?.name ?? '').trim();
+  return !name || name === 'PLM' ? STANDARD_BEARBEITER : name;
+};
 
 /** Hebt einen Rollennamen auf die aktuelle Bezeichnung. */
 const rollenName = (name: string) => (name === ALTE_EIGENE_ROLLE ? EIGENE_ROLLE : name);
@@ -65,7 +72,7 @@ export function ladeDaten(): AppData {
     if (!roh) return durchrechnen(seedData());
     const daten = JSON.parse(roh) as AppData;
     if (!daten || !Array.isArray(daten.projects)) return durchrechnen(seedData());
-    return durchrechnen(stammdatenAktualisieren(migriere(daten)));
+    return durchrechnen(eigenerKontakt(stammdatenAktualisieren(migriere(daten))));
   } catch {
     return durchrechnen(seedData());
   }
@@ -90,6 +97,9 @@ function durchrechnen(daten: AppData): AppData {
 }
 
 const neueId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+
+/** Führt die angemeldete Person im Adressbuch ihrer markierten Projekte. */
+const eigenerKontakt = (daten: AppData): AppData => eigeneKontakteSichern(daten, neueId);
 
 /**
  * Übernimmt neue mitgelieferte Stammdaten in einen bestehenden Bestand:
@@ -168,13 +178,13 @@ function migriere(daten: AppData): AppData {
   return {
     version: DATEN_VERSION,
     stammdatenVersion: daten.stammdatenVersion ?? 0,
-    bearbeiter: daten.bearbeiter
-      ? {
-          ...daten.bearbeiter,
-          rolle: rollenName(daten.bearbeiter.rolle),
-          mailNachfrage: daten.bearbeiter.mailNachfrage ?? true,
-        }
-      : { name: 'PLM', rolle: EIGENE_ROLLE, email: '', mailNachfrage: true },
+    // Rolle und E-Mail der angemeldeten Person entfallen: die Funktion ist
+    // immer das Planlaufmanagement, die Kommunikation läuft über Outlook.
+    bearbeiter: {
+      name: eigenerName(daten.bearbeiter),
+      mailNachfrage: daten.bearbeiter?.mailNachfrage ?? true,
+      farbmodus: daten.bearbeiter?.farbmodus === 'kontrast' ? 'kontrast' : 'standard',
+    },
     standardRollen:
       daten.standardRollen && daten.standardRollen.length > 0
         ? rollenAufteilen(daten.standardRollen)
@@ -209,6 +219,7 @@ function migriere(daten: AppData): AppData {
       return {
         ...c,
         anschrift: c.anschrift ?? '',
+        eigen: c.eigen ?? false,
         // Zuordnungen zeigen jetzt auf die Funktion des jeweiligen Gewerks
         zuordnungen: zuordnungen.flatMap((z) => {
           const alteRolle = alteRollen.find((r) => r.id === z.roleId);

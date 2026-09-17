@@ -753,3 +753,44 @@ a:hover { text-decoration: underline; }
   .kv dd { margin-bottom: 8px; }
 }
 @media (min-width: 861px) { .menu-toggle { display: none; } }
+
+/* ------------------------------------------------------------------ */
+/* Farbmodus für Rot-Grün-Sehschwäche                                  */
+/* ------------------------------------------------------------------ */
+/*
+ * Statt Grün/Orange/Rot treten Blaugrün, Bernstein und Magenta – drei
+ * Farbtöne, die sich auch bei einer Rot-Grün-Sehschwäche (Deuteranopie und
+ * Protanopie) in Farbton und Helligkeit unterscheiden. Zusätzlich sind
+ * Texte, Trennlinien und Markierungen kontraststärker.
+ */
+:root[data-farbmodus='kontrast'] {
+  --green: #00786a;
+  --green-soft: rgba(0, 120, 106, 0.16);
+  --orange: #a86800;
+  --orange-soft: rgba(168, 104, 0, 0.18);
+  --red: #b0007a;
+  --red-soft: rgba(176, 0, 122, 0.14);
+  --purple: #4b3ea8;
+  --purple-soft: rgba(75, 62, 168, 0.16);
+
+  --text-secondary: #46464c;
+  --text-tertiary: #56565d;
+  --separator: rgba(0, 0, 0, 0.18);
+  --separator-strong: rgba(0, 0, 0, 0.34);
+  --accent-soft: rgba(36, 69, 110, 0.16);
+  --bg-active: rgba(36, 69, 110, 0.18);
+  --gray-soft: rgba(90, 90, 100, 0.18);
+}
+
+/* Status wird zusätzlich durch Rahmen und kräftigere Schrift unterscheidbar */
+:root[data-farbmodus='kontrast'] .badge { border: 1px solid currentColor; font-weight: 600; }
+:root[data-farbmodus='kontrast'] .badge.green { color: #005a4f; }
+:root[data-farbmodus='kontrast'] .badge.orange { color: #7d4d00; }
+:root[data-farbmodus='kontrast'] .badge.red { color: #8a0060; }
+:root[data-farbmodus='kontrast'] .badge.blue { color: var(--accent); }
+:root[data-farbmodus='kontrast'] .badge.purple { color: #3a3087; }
+:root[data-farbmodus='kontrast'] .dot { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
+:root[data-farbmodus='kontrast'] .chain-node.late { border-color: var(--red); }
+:root[data-farbmodus='kontrast'] .chain-node.done { border-color: var(--green); }
+:root[data-farbmodus='kontrast'] .progress { background: rgba(0, 0, 0, 0.12); }
+:root[data-farbmodus='kontrast'] .stern.aktiv { color: var(--accent); }

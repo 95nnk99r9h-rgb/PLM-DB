@@ -5,7 +5,7 @@
 import { eigeneTodos, eigenstaendigeLaeufe, fortschritt, istAktiv, offeneFristen } from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
 import { useState } from 'react';
-import type { PlanRun, Project, RunStep } from '../domain/types';
+import { EIGENE_ROLLE, type PlanRun, type Project, type RunStep } from '../domain/types';
 import type { Route } from '../lib/router';
 import { useStore } from '../store/store';
 import { AmpelBadge, AmpelPunkt } from '../components/common';
@@ -43,7 +43,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
     <div className="stack">
       <div className="grid grid-4">
         <Stat wert={laufend.length} label="Laufende Planläufe" />
-        <Stat wert={todos.length} label={`To-Dos (${data.bearbeiter.rolle})`} ton="blue" />
+        <Stat wert={todos.length} label={`To-Dos (${EIGENE_ROLLE})`} ton="blue" />
         <Stat
           wert={ueberfaellig.length}
           label="Überfällige Schritte"
@@ -67,7 +67,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
 
       <Card>
         <CardHeader
-          titel={`Meine To-Dos als ${data.bearbeiter.rolle}`}
+          titel={`Meine To-Dos als ${EIGENE_ROLLE}`}
           sub="Laufende Schritte im eigenen Verantwortungsbereich"
         />
         {todos.length === 0 ? (

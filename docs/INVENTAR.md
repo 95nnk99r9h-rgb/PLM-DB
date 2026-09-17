@@ -59,7 +59,8 @@ Erledigen die Freigabe- oder Prüfbericht-Nummer abgefragt (`src/components/Schr
 
 ### Seitenleiste unten
 
-Angemeldete Person (Name, eigene Rolle, E-Mail, Schalter für die Mailnachfrage), **Sicherung**
+Angemeldete Person (Name, Schalter für die Mailnachfrage, Schalter für den Farbmodus bei
+Rot-Grün-Sehschwäche), **Sicherung**
 (Datenbestand als JSON herunterladen, `exportiereDaten` in `src/store/storage.ts`) und
 **Zurücksetzen** (Bestand löschen und Demodaten laden, `zuruecksetzen` in `src/store/store.tsx`).
 
@@ -73,11 +74,12 @@ Bearbeiter sehen alle Projekte“, `src/pages/Projekte.tsx`).
 
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
 
-1. **Bearbeiter** (`Bearbeiter` in `src/domain/types.ts`): Name, eigene Rolle (Vorgabe
-   `EIGENE_ROLLE = 'Planlaufmanagement'`), E-Mail und die Einstellung `mailNachfrage`. Die eigene
-   Rolle steuert allein, welche Prozessschritte als eigene To-Dos gelten (`eigeneTodos` in
-   `src/domain/engine.ts`) und ob nach dem Erledigen eines Schritts eine E-Mail angeboten wird
-   (`src/components/SchrittStatus.tsx`). Sie verleiht keine Rechte.
+1. **Bearbeiter** (`Bearbeiter` in `src/domain/types.ts`): Name (Vorgabe
+   `STANDARD_BEARBEITER = 'Max Mustermann'`), `mailNachfrage` und `farbmodus`. Die Funktion der
+   angemeldeten Person ist stets `EIGENE_ROLLE = 'Planlaufmanagement'`; Schritte dieser Funktion
+   gelten als eigene To-Dos (`eigeneTodos` in `src/domain/engine.ts`). In jedem markierten Projekt
+   wird die Person automatisch im Adressbuch geführt und besetzt dort das Planlaufmanagement
+   (`eigeneKontakteSichern` in `src/domain/engine.ts`). Rechte verleiht das nicht.
 2. **Funktionen** (`StandardRolle` projektübergreifend, `Role` je Projekt): fachliche Zuständigkeiten
    je Gewerk, die Prozessschritten zugeordnet und im Adressbuch mit Personen besetzt werden
    (`kontaktFuerRolleUndGewerk` in `src/domain/engine.ts`). Mitgeliefert werden 15 Funktionen

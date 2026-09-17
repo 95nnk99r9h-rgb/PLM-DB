@@ -224,9 +224,16 @@ Beides jeweils als **Excel** (.xlsx, ohne zusätzliche Programmbibliothek erzeug
 
 ### Übersicht und Markierung von Projekten
 Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in der Übersicht und in der
-Seitenleiste; ohne Markierung werden alle angezeigt. Die Übersicht zeigt Kennzahlen, die eigenen
-**To-Dos** (laufende Schritte in der eigenen Rolle) und die laufenden Planläufe nach Projekt
-gegliedert. Wer man ist, wird unten links in der Seitenleiste eingestellt.
+Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt. Die
+Übersicht zeigt Kennzahlen, die eigenen **To-Dos** (laufende Schritte des Planlaufmanagements) und
+die laufenden Planläufe nach Projekt gegliedert. In einem markierten Projekt ist die angemeldete
+Person automatisch im Adressbuch als **Planlaufmanagement** geführt und damit für dessen Schritte
+zuständig.
+
+### Angemeldet als
+Unten links in der Seitenleiste stehen der eigene Name (bis zur Anmeldung je Person „Max
+Mustermann“), die Nachfrage nach E-Mails und der **Farbmodus für eine Rot-Grün-Sehschwäche**: er
+stellt Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot dar und erhöht die Kontraste.
 
 ### Projekteinstellungen
 Vorlaufzeit für Erinnerungen, Arbeitstage/Feiertage, Absenderangaben sowie die

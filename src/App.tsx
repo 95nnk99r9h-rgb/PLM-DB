@@ -1,5 +1,5 @@
 /** Anwendungsrahmen: Seitenleiste, Kopfzeile und Auswahl der Ansicht. */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { eigeneTodos, offeneFristen } from './domain/engine';
 import { exportiereDaten } from './store/storage';
 import { useStore } from './store/store';
@@ -14,6 +14,7 @@ import { Funktionen } from './pages/Funktionen';
 import { Vorlagen } from './pages/Vorlagen';
 import { PlanlaufDetail } from './pages/projekt/PlanlaufDetail';
 import { Card, ConfirmDialog, EmptyState, Field, Modal, TextInput } from './components/ui';
+import { EIGENE_ROLLE, STANDARD_BEARBEITER } from './domain/types';
 import { Icon } from './components/icons';
 import { AppIcon, MailaenderLogo } from './components/logos';
 import type { IconName } from './components/icons';
@@ -39,6 +40,12 @@ export function App() {
     navigate(r);
     setMenuOffen(false);
   };
+
+  const farbmodus = data.bearbeiter.farbmodus ?? 'standard';
+  useEffect(() => {
+    // Der Farbmodus steuert die Farbtokens der gesamten Oberfläche.
+    document.documentElement.dataset.farbmodus = farbmodus;
+  }, [farbmodus]);
 
   const kopf = kopfzeile(route, projekt?.name, lauf?.name);
 
@@ -80,7 +87,7 @@ export function App() {
             <NavItem
               key={p.id}
               icon="projekt"
-              label={p.name}
+              label={p.nummer ? `${p.nummer} ${p.name}` : p.name}
               aktiv={projekt?.id === p.id}
               badge={offen > 0 ? String(offen) : undefined}
               badgeAlarm
@@ -92,11 +99,10 @@ export function App() {
         <div className="sidebar-footer">
           <button type="button" className="bearbeiter" onClick={() => setBearbeiterDialog(true)}>
             <span className="avatar" style={{ width: 26, height: 26 }}>
-              {data.bearbeiter.rolle.slice(0, 3).toUpperCase()}
+              {initialen(data.bearbeiter.name)}
             </span>
             <span style={{ minWidth: 0 }}>
               <strong className="truncate">{data.bearbeiter.name}</strong>
-              <span className="tertiary small"> · {data.bearbeiter.rolle}</span>
             </span>
           </button>
           <div className="row" style={{ gap: 4, margin: '8px 0' }}>
@@ -188,12 +194,19 @@ export function App() {
   );
 }
 
+/** Kürzel der angemeldeten Person für das Namensfeld. */
+function initialen(name: string): string {
+  const teile = name.trim().split(/\s+/).filter(Boolean);
+  if (teile.length === 0) return '?';
+  if (teile.length === 1) return teile[0].slice(0, 2).toUpperCase();
+  return (teile[0][0] + teile[teile.length - 1][0]).toUpperCase();
+}
+
 function BearbeiterDialog({ onClose }: { onClose: () => void }) {
   const { data, setBearbeiter } = useStore();
   const [name, setName] = useState(data.bearbeiter.name);
-  const [rolle, setRolle] = useState(data.bearbeiter.rolle);
-  const [email, setEmail] = useState(data.bearbeiter.email);
   const [mailNachfrage, setMailNachfrage] = useState(data.bearbeiter.mailNachfrage ?? true);
+  const [kontrast, setKontrast] = useState((data.bearbeiter.farbmodus ?? 'standard') === 'kontrast');
 
   return (
     <Modal
@@ -210,10 +223,9 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
             className="btn btn-primary"
             onClick={() => {
               setBearbeiter({
-                name: name.trim() || 'PLM',
-                rolle: rolle.trim() || 'PLM',
-                email,
+                name: name.trim() || STANDARD_BEARBEITER,
                 mailNachfrage,
+                farbmodus: kontrast ? 'kontrast' : 'standard',
               });
               onClose();
             }}
@@ -224,14 +236,12 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
       }
     >
       <div className="form-grid">
-        <Field label="Name">
+        <Field
+          label="Name"
+          full
+          hint={`In markierten Projekten sind Sie automatisch im Adressbuch als ${EIGENE_ROLLE} geführt.`}
+        >
           <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
-        </Field>
-        <Field label="Eigene Rolle im Projekt" hint="Schritte mit dieser Rolle erscheinen als To-Dos">
-          <TextInput value={rolle} onChange={setRolle} placeholder="PLM" />
-        </Field>
-        <Field label="E-Mail" full>
-          <TextInput value={email} onChange={setEmail} type="email" />
         </Field>
         <Field label="E-Mail nach Erledigung" full>
           <label className="checkbox">
@@ -243,10 +253,21 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
             Nachfragen zulassen, wenn ein Workflow-Schritt eine E-Mail vorsieht
           </label>
         </Field>
+        <Field
+          label="Darstellung"
+          full
+          hint="Farben für eine Rot-Grün-Sehschwäche: Blaugrün, Bernstein und Magenta statt Grün, Orange und Rot – zusätzlich mit stärkeren Kontrasten."
+        >
+          <label className="checkbox">
+            <input type="checkbox" checked={kontrast} onChange={(e) => setKontrast(e.target.checked)} />
+            Farbmodus für Rot-Grün-Sehschwäche (hoher Kontrast)
+          </label>
+        </Field>
       </div>
       <p className="small tertiary" style={{ marginTop: 12 }}>
-        Alle Bearbeiter sehen alle Projekte. Der Datenbestand liegt in dieser Fassung lokal im Browser – ein
-        gemeinsamer Zugriff mehrerer Personen auf denselben Stand setzt die Anbindung einer Datenbank voraus.
+        Eine Anmeldung je Person ist vorgesehen; bis dahin gilt dieser Name für alle Ansichten. Der Datenbestand
+        liegt in dieser Fassung lokal im Browser – ein gemeinsamer Zugriff mehrerer Personen auf denselben Stand
+        setzt die Anbindung einer Datenbank voraus.
       </p>
     </Modal>
   );

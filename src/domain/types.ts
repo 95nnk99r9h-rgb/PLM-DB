@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 8;
+export const DATEN_VERSION = 9;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -26,21 +26,30 @@ export const STAMMDATEN_VERSION = 4;
 /* Bearbeiter                                                          */
 /* ------------------------------------------------------------------ */
 
+/** Farbdarstellung der Oberfläche. */
+export type Farbmodus = 'standard' | 'kontrast';
+
 /**
- * Angemeldete Person. Alle Bearbeiter sehen alle Projekte; die Angabe
- * steuert, welche Prozessschritte als eigene To-Dos gelten.
+ * Angemeldete Person. Alle Bearbeiter sehen alle Projekte; die angemeldete
+ * Person füllt in ihren Projekten stets die Funktion Planlaufmanagement aus –
+ * Schritte dieser Funktion gelten daher als eigene To-Dos.
  */
 export interface Bearbeiter {
   name: string;
-  /** Rolle, die im Projekt für eigene Schritte steht – standardmäßig „PLM“. */
-  rolle: string;
-  email: string;
   /**
    * Nach dem Erledigen eines eigenen Schritts fragen, ob die für den
    * nächsten Schritt zuständige Person per E-Mail informiert werden soll.
    */
   mailNachfrage: boolean;
+  /**
+   * „kontrast“ stellt die Oberfläche mit Farben dar, die auch bei einer
+   * Rot-Grün-Sehschwäche unterscheidbar sind, und erhöht die Kontraste.
+   */
+  farbmodus: Farbmodus;
 }
+
+/** Name der angemeldeten Person, solange es keine Anmeldung gibt. */
+export const STANDARD_BEARBEITER = 'Max Mustermann';
 
 /** Die eigene Rolle in allen Projekten (Kürzel: PLM). */
 export const EIGENE_ROLLE = 'Planlaufmanagement';
@@ -162,6 +171,11 @@ export interface Contact {
   /** Besetzte Rollen, ggf. je Gewerk. */
   zuordnungen: Zuordnung[];
   notiz: string;
+  /**
+   * Kontakt der angemeldeten Person. Er wird in jedem markierten Projekt
+   * automatisch geführt und besetzt dort das Planlaufmanagement.
+   */
+  eigen: boolean;
 }
 
 /* ------------------------------------------------------------------ */

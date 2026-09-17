@@ -109,6 +109,7 @@ export function Adressbuch({ project }: { project: Project }) {
                             <strong>
                               {c.vorname} {c.nachname}
                             </strong>
+                            {c.eigen ? <span className="badge blue" style={{ marginLeft: 6 }}>Ich</span> : null}
                             {c.notiz ? <div className="small tertiary truncate">{c.notiz}</div> : null}
                           </span>
                         </span>
@@ -238,7 +239,7 @@ function KontaktDialog({
       return;
     }
     if (contact) updateContact(contact.id, { ...form, zuordnungen });
-    else addContact({ ...form, projectId: project.id, zuordnungen });
+    else addContact({ ...form, projectId: project.id, zuordnungen, eigen: false });
     toast(contact ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.');
     onClose();
   };
@@ -247,10 +248,11 @@ function KontaktDialog({
     <>
       <Modal
         titel={contact ? 'Kontakt bearbeiten' : 'Neuer Kontakt'}
+        sub={contact?.eigen ? 'Eigener Eintrag – in markierten Projekten immer das Planlaufmanagement' : undefined}
         onClose={onClose}
         footer={
           <>
-            {contact ? (
+            {contact && !contact.eigen ? (
               <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
                 <Icon name="loeschen" size={14} /> Löschen
               </button>
