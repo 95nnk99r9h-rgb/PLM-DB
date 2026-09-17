@@ -141,6 +141,13 @@ Bemerkung*. Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Pla
 Import – es sei denn, die Spalte *Planlauf* sagt „vormerken“; dann wird der Eintrag nur angelegt.
 Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
 
+### Planlaufliste im Projekt
+Die Übersicht im Projekt lässt sich **filtern** (Suche über Nummer, Titel und Schritt sowie Auswahl
+nach Gewerk, Status und zuständiger Person) und über die Spaltenüberschriften **sortieren** – nach
+Bezeichnung, Gewerk, Soll-Termin des aktuellen Schritts, Zuständigkeit, Fortschritt oder Status
+(überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf.
+Sortiert wird innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
+
 ### Zuständigkeiten
 Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht im **Adressbuch** des Projekts. Die
 Zuordnung wird laufend nachgezogen: Wird eine Person erst nach dem Start eines Planlaufs eingetragen

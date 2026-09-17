@@ -29,6 +29,19 @@ interface Eintrag {
   step: RunStep | undefined;
 }
 
+/** Spalten, nach denen sich die Liste sortieren lässt. */
+type SortFeld = 'titel' | 'gewerk' | 'schritt' | 'zustaendig' | 'fortschritt' | 'status';
+
+/** Dringlichkeit als Zahl – überfällige Läufe stehen vorn. */
+const STATUS_RANG: Record<string, number> = {
+  ueberfaellig: 0,
+  faellig: 1,
+  geplant: 2,
+  neutral: 3,
+  abgeschlossen: 4,
+  abgebrochen: 5,
+};
+
 export function PlanlaufListe({
   project,
   runs,
@@ -59,6 +72,9 @@ export function PlanlaufListe({
   const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
   /** Zeilen, die von Hand abweichend auf- bzw. zugeklappt sind. */
   const [abweichend, setAbweichend] = useState<string[]>([]);
+  /** Sortierung; ohne Angabe gilt die vorgegebene Reihenfolge. */
+  const [sortFeld, setSortFeld] = useState<SortFeld | null>(null);
+  const [absteigend, setAbsteigend] = useState(false);
   const [zuletzt, setZuletzt] = useState(`${ebene}-${unterplaene}`);
 
   // Beim Umschalten der Gliederung gilt wieder die einheitliche Darstellung.
@@ -134,6 +150,95 @@ export function PlanlaufListe({
     const ampel = rang.find((a) => ampeln.includes(a)) ?? null;
     return { pct, status, ampel };
   };
+
+  /** Sortierschlüssel eines Eintrags je Spalte. */
+  const schluessel = (e: Eintrag, feld: SortFeld): string | number => {
+    switch (feld) {
+      case 'gewerk':
+        return e.doc?.gewerk?.toLowerCase() ?? '';
+      case 'schritt':
+        // Nach Soll-Termin: was zuerst ansteht, steht oben
+        return e.step?.sollDatum ?? '9999-99-99';
+      case 'zustaendig': {
+        const kontakt = data.contacts.find((c) => c.id === e.step?.contactId);
+        return `${e.step?.roleName ?? ''} ${kontakt ? kontakt.nachname : ''}`.trim().toLowerCase();
+      }
+      case 'fortschritt':
+        return fortschritt(e.run);
+      case 'status': {
+        if (e.run.status !== 'laufend') return STATUS_RANG[e.run.status];
+        const ampel = e.step ? ampelFuerSchritt(e.step, project.settings.erinnerungVorlaufTage) : 'neutral';
+        return STATUS_RANG[ampel] ?? 9;
+      }
+      default:
+        return `${e.doc?.nummer ?? ''} ${e.doc?.titel ?? e.run.name}`.toLowerCase();
+    }
+  };
+
+  const vergleich = (a: string | number, b: string | number) =>
+    (typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(a).localeCompare(String(b), 'de', { numeric: true })) * (absteigend ? -1 : 1);
+
+  /** Sortiert eine Gruppe von Einträgen nach der gewählten Spalte. */
+  const sortieren = (liste: Eintrag[]) =>
+    sortFeld ? [...liste].sort((a, b) => vergleich(schluessel(a, sortFeld), schluessel(b, sortFeld))) : liste;
+
+  const spalteWaehlen = (feld: SortFeld) => {
+    if (feld === sortFeld) {
+      // dritter Klick hebt die Sortierung wieder auf
+      if (absteigend) {
+        setSortFeld(null);
+        setAbsteigend(false);
+      } else setAbsteigend(true);
+    } else {
+      setSortFeld(feld);
+      setAbsteigend(false);
+    }
+  };
+
+  const Kopf = ({
+    feld,
+    children,
+    klasse = '',
+    titel,
+    stil,
+  }: {
+    feld: SortFeld;
+    children: React.ReactNode;
+    klasse?: string;
+    titel?: string;
+    stil?: React.CSSProperties;
+  }) => (
+    <th className={klasse} style={stil}>
+      <button type="button" className="sort-btn" onClick={() => spalteWaehlen(feld)} title={titel}>
+        {children}
+        <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
+          {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
+        </span>
+      </button>
+    </th>
+  );
+
+  /**
+   * Die Paketzeilen folgen derselben Sortierung, soweit sie auf ein Paket
+   * anwendbar ist – Schritt und Zuständigkeit gibt es je Paket nicht.
+   */
+  const paketeSortiert = !sortFeld
+    ? pakete
+    : [...pakete].sort((a, b) => {
+        const wert = (p: PlanDocument): string | number => {
+          if (sortFeld === 'gewerk') return p.gewerk.toLowerCase();
+          if (sortFeld === 'fortschritt') return paketStand(p.id).pct;
+          if (sortFeld === 'status') {
+            const stand = paketStand(p.id);
+            if (stand.status && stand.status !== 'laufend') return STATUS_RANG[stand.status];
+            return STATUS_RANG[stand.ampel ?? 'neutral'] ?? 9;
+          }
+          return `${p.nummer} ${p.titel}`.toLowerCase();
+        };
+        return vergleich(wert(a), wert(b));
+      });
 
   if (eintraege.length === 0) {
     return (
@@ -279,20 +384,26 @@ export function PlanlaufListe({
         <table className="table">
           <thead>
             <tr>
-              <th>Plan / Planverzeichnis</th>
-              <th>Gewerk</th>
-              <th>Aktueller Schritt</th>
-              <th className="col-optional">Zuständig</th>
-              <th className="col-optional" style={{ width: 140 }}>
+              <Kopf feld="titel">Plan / Planverzeichnis</Kopf>
+              <Kopf feld="gewerk">Gewerk</Kopf>
+              <Kopf feld="schritt" titel="Nach Soll-Termin des aktuellen Schritts sortieren">
+                Aktueller Schritt
+              </Kopf>
+              <Kopf feld="zustaendig" klasse="col-optional">
+                Zuständig
+              </Kopf>
+              <Kopf feld="fortschritt" klasse="col-optional" stil={{ width: 140 }}>
                 Fortschritt
-              </th>
-              <th>Status</th>
+              </Kopf>
+              <Kopf feld="status" titel="Überfällige zuerst">
+                Status
+              </Kopf>
               <th className="actions" />
             </tr>
           </thead>
           <tbody>
-            {pakete.map((paket) => {
-              const inhalt = eintraege.filter((e) => paketVon(e.doc) === paket.id);
+            {paketeSortiert.map((paket) => {
+              const inhalt = sortieren(eintraege.filter((e) => paketVon(e.doc) === paket.id));
               const aufgeklappt = istOffen(paket.id);
               const stand = paketStand(paket.id);
               return (
@@ -360,7 +471,7 @@ export function PlanlaufListe({
               </tr>
             ) : null}
             {pakete.length === 0 || istOffen('ohne-paket')
-              ? ohnePaket.map((e) => zeile(e, pakete.length > 0))
+              ? sortieren(ohnePaket).map((e) => zeile(e, pakete.length > 0))
               : null}
           </tbody>
         </table>
