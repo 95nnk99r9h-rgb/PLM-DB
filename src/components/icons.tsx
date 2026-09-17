@@ -23,6 +23,7 @@ const paths: Record<string, string> = {
   importieren: 'M12 4v12M8 12l4 4 4-4M4 16v4h16v-4',
   glocke: 'M12 3a6 6 0 0 0-6 6c0 5-2 6-2 6h16s-2-1-2-6a6 6 0 0 0-6-6zM10.5 21a1.8 1.8 0 0 0 3 0',
   suche: 'M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5 20 20',
+  filter: 'M4 5.5h16l-6.5 7.5V19l-3 1.5v-8z',
   kalender: 'M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4',
   menu: 'M4 7h16M4 12h16M4 17h16',
   person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20c0-3.6 3.3-5.5 7.5-5.5s7.5 1.9 7.5 5.5',

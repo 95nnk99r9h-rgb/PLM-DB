@@ -32,6 +32,19 @@ interface Eintrag {
 /** Spalten, nach denen sich die Liste sortieren lässt. */
 type SortFeld = 'titel' | 'gewerk' | 'schritt' | 'zustaendig' | 'fortschritt' | 'status';
 
+/** Spalten mit Filter in der Überschrift. */
+export type FilterFeld = 'gewerk' | 'zustaendig' | 'status';
+
+/**
+ * Filter, die in den Spaltenüberschriften angeboten werden. Gefiltert wird
+ * außerhalb der Liste – hier steht nur die Bedienung.
+ */
+export interface SpaltenFilter {
+  werte: Record<FilterFeld, string>;
+  setzen: (feld: FilterFeld, wert: string) => void;
+  optionen: Record<FilterFeld, { value: string; label: string }[]>;
+}
+
 /** Dringlichkeit als Zahl – überfällige Läufe stehen vorn. */
 const STATUS_RANG: Record<string, number> = {
   ueberfaellig: 0,
@@ -48,6 +61,7 @@ export function PlanlaufListe({
   alleRuns,
   ebene = 2,
   unterplaene = true,
+  spaltenFilter,
   oeffneLauf,
 }: {
   project: Project;
@@ -65,6 +79,8 @@ export function PlanlaufListe({
    * Ist sie abgeschaltet, bleiben diese Pläne ausgeblendet.
    */
   unterplaene?: boolean;
+  /** Auswahl je Spalte; ohne Angabe bleibt die Überschrift ohne Filter. */
+  spaltenFilter?: SpaltenFilter;
   oeffneLauf: (runId: string) => void;
 }) {
   const { data } = useStore();
@@ -75,6 +91,11 @@ export function PlanlaufListe({
   /** Sortierung; ohne Angabe gilt die vorgegebene Reihenfolge. */
   const [sortFeld, setSortFeld] = useState<SortFeld | null>(null);
   const [absteigend, setAbsteigend] = useState(false);
+  /**
+   * Offene Filterauswahl samt Position. Das Menü liegt fest im Fenster, weil
+   * Karte und Tabelle ihren Inhalt beschneiden.
+   */
+  const [filterOffen, setFilterOffen] = useState<{ feld: FilterFeld; x: number; y: number } | null>(null);
   const [zuletzt, setZuletzt] = useState(`${ebene}-${unterplaene}`);
 
   // Beim Umschalten der Gliederung gilt wieder die einheitliche Darstellung.
@@ -197,28 +218,98 @@ export function PlanlaufListe({
     }
   };
 
+  /**
+   * Spaltenüberschrift: Klick auf die Bezeichnung sortiert, der Trichter
+   * daneben öffnet die Auswahl der Spalte. Der gewählte Wert steht
+   * anschließend in der Überschrift.
+   */
   const Kopf = ({
     feld,
     children,
     klasse = '',
     titel,
     stil,
+    filter,
   }: {
     feld: SortFeld;
     children: React.ReactNode;
     klasse?: string;
     titel?: string;
     stil?: React.CSSProperties;
-  }) => (
-    <th className={klasse} style={stil}>
-      <button type="button" className="sort-btn" onClick={() => spalteWaehlen(feld)} title={titel}>
-        {children}
-        <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
-          {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
+    filter?: FilterFeld;
+  }) => {
+    const optionen = filter && spaltenFilter ? spaltenFilter.optionen[filter] : null;
+    const wert = filter && spaltenFilter ? spaltenFilter.werte[filter] : '';
+    const gewaehlt = optionen?.find((o) => o.value === wert);
+    const offen = filter !== undefined && filterOffen?.feld === filter;
+    return (
+      <th className={`${klasse} ${gewaehlt ? 'gefiltert' : ''}`} style={stil}>
+        <span className="th-inhalt">
+          <button type="button" className="sort-btn" onClick={() => spalteWaehlen(feld)} title={titel}>
+            {children}
+            {gewaehlt ? <span className="th-wert">{gewaehlt.label}</span> : null}
+            <span className={`sort-pfeil ${sortFeld === feld ? 'aktiv' : ''}`}>
+              {sortFeld === feld ? (absteigend ? '▾' : '▴') : '▴'}
+            </span>
+          </button>
+          {optionen && optionen.length > 0 ? (
+            <button
+              type="button"
+              className={`filter-btn ${gewaehlt ? 'aktiv' : ''} ${offen ? 'offen' : ''}`}
+              title={gewaehlt ? `Filter: ${gewaehlt.label}` : 'Filtern'}
+              aria-label="Spalte filtern"
+              onClick={(e) => {
+                if (offen) {
+                  setFilterOffen(null);
+                  return;
+                }
+                const platz = e.currentTarget.getBoundingClientRect();
+                setFilterOffen({
+                  feld: filter!,
+                  // Nach rechts hinaus stehende Menüs klappen nach links auf
+                  x: Math.min(platz.left, window.innerWidth - 200),
+                  y: platz.bottom + 6,
+                });
+              }}
+            >
+              <Icon name="filter" size={11} />
+            </button>
+          ) : null}
         </span>
-      </button>
-    </th>
-  );
+
+        {offen && optionen ? (
+          <>
+            <div className="filter-schatten" onClick={() => setFilterOffen(null)} />
+            <div className="filter-menu" style={{ top: filterOffen!.y, left: filterOffen!.x }}>
+              <button
+                type="button"
+                className={wert === '' ? 'aktiv' : ''}
+                onClick={() => {
+                  spaltenFilter!.setzen(filter!, '');
+                  setFilterOffen(null);
+                }}
+              >
+                Alle
+              </button>
+              {optionen.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  className={wert === o.value ? 'aktiv' : ''}
+                  onClick={() => {
+                    spaltenFilter!.setzen(filter!, o.value);
+                    setFilterOffen(null);
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </th>
+    );
+  };
 
   /**
    * Die Paketzeilen folgen derselben Sortierung, soweit sie auf ein Paket
@@ -385,17 +476,19 @@ export function PlanlaufListe({
           <thead>
             <tr>
               <Kopf feld="titel">Plan / Planverzeichnis</Kopf>
-              <Kopf feld="gewerk">Gewerk</Kopf>
+              <Kopf feld="gewerk" filter="gewerk">
+                Gewerk
+              </Kopf>
               <Kopf feld="schritt" titel="Nach Soll-Termin des aktuellen Schritts sortieren">
                 Aktueller Schritt
               </Kopf>
-              <Kopf feld="zustaendig" klasse="col-optional">
+              <Kopf feld="zustaendig" klasse="col-optional" filter="zustaendig">
                 Zuständig
               </Kopf>
               <Kopf feld="fortschritt" klasse="col-optional" stil={{ width: 140 }}>
                 Fortschritt
               </Kopf>
-              <Kopf feld="status" titel="Überfällige zuerst">
+              <Kopf feld="status" titel="Überfällige zuerst" filter="status">
                 Status
               </Kopf>
               <th className="actions" />

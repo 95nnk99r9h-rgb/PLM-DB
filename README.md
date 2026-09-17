@@ -142,11 +142,15 @@ Import – es sei denn, die Spalte *Planlauf* sagt „vormerken“; dann wird de
 Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
 
 ### Planlaufliste im Projekt
-Die Übersicht im Projekt lässt sich **filtern** (Suche über Nummer, Titel und Schritt sowie Auswahl
-nach Gewerk, Status und zuständiger Person) und über die Spaltenüberschriften **sortieren** – nach
-Bezeichnung, Gewerk, Soll-Termin des aktuellen Schritts, Zuständigkeit, Fortschritt oder Status
-(überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf.
-Sortiert wird innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
+Die Übersicht im Projekt lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung,
+Gewerk, Soll-Termin des aktuellen Schritts, Zuständigkeit, Fortschritt oder Status (überfällige
+zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
+innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
+
+**Filtern** geschieht in derselben Überschrift: Der Trichter neben *Gewerk*, *Zuständig* und *Status*
+öffnet die Auswahl der vorhandenen Werte; der gewählte Wert steht anschließend in der Überschrift.
+Die **Suche** über Nummer, Titel und Schritt steht oben in der Kartenzeile neben der Gliederung,
+daneben erscheint bei gesetzten Filtern *Filter zurücksetzen*.
 
 ### Zuständigkeiten
 Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht im **Adressbuch** des Projekts. Die

@@ -424,19 +424,6 @@ a:hover { text-decoration: underline; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Sortierbare Spaltenüberschriften */
-/* Filterzeile über einer Tabelle (Projektübersicht) */
-.filterleiste {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--separator);
-  background: var(--bg-subtle);
-}
-.filterleiste .select { width: auto; min-width: 150px; max-width: 230px; flex: 0 1 auto; }
-.filterleiste .search { min-width: 200px; flex: 1 1 200px; max-width: 320px; }
-
 .sort-btn {
   display: inline-flex; align-items: center; gap: 4px;
   border: none; background: none; padding: 0;
@@ -447,6 +434,70 @@ a:hover { text-decoration: underline; }
 .sort-pfeil { opacity: 0; font-size: 10px; }
 .sort-btn:hover .sort-pfeil { opacity: 0.5; }
 .sort-pfeil.aktiv { opacity: 1; color: var(--accent); }
+
+/* Filter in der Spaltenüberschrift – gleiche Anmutung wie die Überschrift */
+.table th { position: relative; }
+.th-inhalt { display: inline-flex; align-items: center; gap: 3px; }
+.th-wert {
+  margin-left: 2px;
+  padding: 1px 5px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+.filter-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; padding: 0;
+  border: none; background: none; border-radius: 4px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+.table th:hover .filter-btn, .filter-btn.offen, .filter-btn.aktiv { opacity: 1; }
+.filter-btn:hover { background: var(--bg-hover); color: var(--text); }
+/* Ohne Mauszeiger (Touch) sind Sortier- und Filterzeichen dauerhaft sichtbar */
+@media (hover: none) {
+  .filter-btn { opacity: 0.65; }
+  .sort-pfeil { opacity: 0.4; }
+}
+.filter-btn.aktiv, .filter-btn.offen { color: var(--accent); }
+
+.filter-schatten { position: fixed; inset: 0; z-index: 40; }
+.filter-menu {
+  position: fixed;
+  z-index: 41;
+  min-width: 170px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--bg-elev);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--separator);
+}
+.filter-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.filter-menu button:hover { background: var(--bg-hover); }
+.filter-menu button.aktiv { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
 
 /* Antwortmöglichkeiten einer Entscheidung */
 .antwort-chip {

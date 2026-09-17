@@ -10,8 +10,17 @@ import {
 import { type Contact, type DocumentKind, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
-import { Card, CardHeader, EmptyState, Progress, Search, Segmented, Select, Stat } from '../../components/ui';
+import { Card, CardHeader, EmptyState, Progress, Search, Segmented, Stat } from '../../components/ui';
 import { PlanlaufListe } from '../../components/PlanlaufListe';
+
+/** Auswahl der Statusspalte – laufende Läufe nach ihrer Ampel. */
+const STATUS_FILTER = [
+  { value: 'geplant', label: 'Im Plan' },
+  { value: 'faellig', label: 'Fällig' },
+  { value: 'ueberfaellig', label: 'Überfällig' },
+  { value: 'abgeschlossen', label: 'Abgeschlossen' },
+  { value: 'abgebrochen', label: 'Abgebrochen' },
+];
 
 export function Uebersicht({
   project,
@@ -133,6 +142,7 @@ export function Uebersicht({
           }
           actions={
             <span className="row wrap" style={{ gap: 10 }}>
+              <Search value={suche} onChange={setSuche} placeholder="Nummer, Titel, Schritt …" />
               <Segmented<'1' | '2'>
                 value={ebene}
                 onChange={setEbene}
@@ -149,44 +159,14 @@ export function Uebersicht({
                 />
                 Untergeordnete Pläne anzeigen
               </label>
+              {filterAktiv ? (
+                <button type="button" className="btn btn-sm btn-ghost" onClick={filterLoeschen}>
+                  Filter zurücksetzen
+                </button>
+              ) : null}
             </span>
           }
         />
-        {massgeblich.length > 0 ? (
-          <div className="filterleiste">
-            <Search value={suche} onChange={setSuche} placeholder="Nummer, Titel, Schritt …" />
-            <Select
-              value={gewerkFilter}
-              onChange={setGewerkFilter}
-              placeholder="Alle Gewerke"
-              options={gewerke.map((g) => ({ value: g, label: g }))}
-            />
-            <Select
-              value={statusFilter}
-              onChange={setStatusFilter}
-              placeholder="Alle Status"
-              options={[
-                { value: 'geplant', label: 'Im Plan' },
-                { value: 'faellig', label: 'Fällig' },
-                { value: 'ueberfaellig', label: 'Überfällig' },
-                { value: 'abgeschlossen', label: 'Abgeschlossen' },
-                { value: 'abgebrochen', label: 'Abgebrochen' },
-              ]}
-            />
-            <Select
-              value={personFilter}
-              onChange={setPersonFilter}
-              placeholder="Alle Zuständigen"
-              options={personen.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname}` }))}
-            />
-            {filterAktiv ? (
-              <button type="button" className="btn btn-sm btn-ghost" onClick={filterLoeschen}>
-                Filter zurücksetzen
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
         {massgeblich.length === 0 ? (
           <EmptyState
             icon="kette"
@@ -208,6 +188,19 @@ export function Uebersicht({
           <PlanlaufListe
             project={project}
             runs={gefiltert}
+            spaltenFilter={{
+              werte: { gewerk: gewerkFilter, zustaendig: personFilter, status: statusFilter },
+              setzen: (feld, wert) => {
+                if (feld === 'gewerk') setGewerkFilter(wert);
+                else if (feld === 'zustaendig') setPersonFilter(wert);
+                else setStatusFilter(wert);
+              },
+              optionen: {
+                gewerk: gewerke.map((g) => ({ value: g, label: g })),
+                zustaendig: personen.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname}` })),
+                status: STATUS_FILTER,
+              },
+            }}
             alleRuns={laeufe}
             ebene={Number(ebene) as 1 | 2}
             unterplaene={unterplaene}
