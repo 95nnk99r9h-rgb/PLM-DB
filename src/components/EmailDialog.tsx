@@ -15,11 +15,14 @@ export function EmailDialog({
   project,
   run,
   step,
+  vorlageId,
   onClose,
 }: {
   project: Project;
   run: PlanRun;
   step: RunStep;
+  /** Im Workflow hinterlegte Vorlage; ohne Angabe wird nach Anlass gewählt. */
+  vorlageId?: string | null;
   onClose: () => void;
 }) {
   const { data, updateStep } = useStore();
@@ -29,9 +32,11 @@ export function EmailDialog({
   const ueberfaellig = ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) === 'ueberfaellig';
   const vorlagen = data.emailVorlagen;
 
-  const [templateId, setTemplateId] = useState(
-    () => vorlageVorschlagen(vorlagen, ueberfaellig)?.id ?? vorlagen[0]?.id ?? '',
-  );
+  const [templateId, setTemplateId] = useState(() => {
+    // Die im Workflow hinterlegte Vorlage hat Vorrang
+    const hinterlegt = vorlageId ? vorlagen.find((v) => v.id === vorlageId) : undefined;
+    return hinterlegt?.id ?? vorlageVorschlagen(vorlagen, ueberfaellig)?.id ?? vorlagen[0]?.id ?? '';
+  });
   const template = vorlagen.find((t) => t.id === templateId) ?? vorlagen[0];
 
   const vorbereitet = useMemo(

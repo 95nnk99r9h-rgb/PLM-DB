@@ -2,7 +2,7 @@
  * Fristenübersicht mit Erinnerungsfunktion: offene Prozessschritte über alle
  * Projekte, gefiltert nach Dringlichkeit, mit Button für die vorbereitete E-Mail.
  */
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { offeneFristen, type Ampel } from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
 import type { PlanRun, Project, RunStep } from '../domain/types';
@@ -43,6 +43,16 @@ export function Fristen({
 
   const zaehler = (a: Ampel) => alle.filter((f) => f.ampel === a).length;
 
+  // In der Gesamtansicht nach Projekten gliedern; im Projekt genügt eine Liste.
+  const projekte = projectId
+    ? []
+    : [...new Map(eintraege.map((f) => [f.project.id, f.project])).values()].sort((a, b) =>
+        `${a.nummer} ${a.name}`.localeCompare(`${b.nummer} ${b.name}`, 'de', { numeric: true }),
+      );
+  const gruppen = projectId
+    ? [{ project: null, zeilen: eintraege }]
+    : projekte.map((p) => ({ project: p, zeilen: eintraege.filter((f) => f.project.id === p.id) }));
+
   return (
     <div className="stack">
       <div className="row-between wrap">
@@ -79,7 +89,29 @@ export function Fristen({
               </tr>
             </thead>
             <tbody>
-              {eintraege.map((f) => {
+              {gruppen.map((gruppe) => (
+                <Fragment key={gruppe.project?.id ?? 'alle'}>
+                {gruppe.project ? (
+                  <tr className="gruppe-zeile">
+                    <td colSpan={6}>
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() =>
+                          navigate({ view: 'projekt', projectId: gruppe.project!.id, tab: 'uebersicht' })
+                        }
+                      >
+                        <span className="num tertiary">{gruppe.project.nummer}</span>{' '}
+                        <strong>{gruppe.project.name}</strong>
+                      </button>
+                      <span className="small tertiary">
+                        {' '}
+                        · {gruppe.zeilen.length} {gruppe.zeilen.length === 1 ? 'Schritt' : 'Schritte'}
+                      </span>
+                    </td>
+                  </tr>
+                ) : null}
+                {gruppe.zeilen.map((f) => {
                 const kontakt = data.contacts.find((c) => c.id === f.step.contactId);
                 return (
                   <tr key={`${f.run.id}-${f.step.id}`}>
@@ -96,8 +128,8 @@ export function Fristen({
                         {(() => {
                           const doc = data.documents.find((d) => d.id === f.run.documentId);
                           return doc ? `${doc.nummer} · ${doc.titel}` : f.run.name;
-                        })()}{' '}
-                        · {f.project.nummer} {f.project.name}
+                        })()}
+                        {projectId ? ` · ${f.project.nummer} ${f.project.name}` : ''}
                       </div>
                     </td>
                     <td className="small col-optional">
@@ -135,7 +167,9 @@ export function Fristen({
                     </td>
                   </tr>
                 );
-              })}
+                })}
+                </Fragment>
+              ))}
             </tbody>
           </table></div>
         )}

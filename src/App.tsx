@@ -240,7 +240,7 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
               checked={mailNachfrage}
               onChange={(e) => setMailNachfrage(e.target.checked)}
             />
-            Nachfragen, ob die nächste zuständige Person per E-Mail informiert werden soll
+            Nachfragen zulassen, wenn ein Workflow-Schritt eine E-Mail vorsieht
           </label>
         </Field>
       </div>

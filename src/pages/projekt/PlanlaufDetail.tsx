@@ -109,6 +109,8 @@ export function PlanlaufDetail({
       durchlauf: 1,
       nachweis: werte.nachweis,
       nachweisNummer: null,
+      mailFrage: false,
+      mailVorlageId: null,
     };
 
     if (!nachStepId) {

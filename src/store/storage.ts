@@ -261,6 +261,8 @@ function migriere(daten: AppData): AppData {
           antworten: alsAntworten(typ, s.antworten),
           naechster: s.naechster ?? null,
           nachweis: s.nachweis ?? 'keine',
+          mailFrage: s.mailFrage ?? false,
+          mailVorlageId: s.mailVorlageId ?? null,
         };
       }),
     })),
@@ -284,6 +286,8 @@ function migriere(daten: AppData): AppData {
           durchlauf: s.durchlauf ?? 1,
           nachweis: s.nachweis ?? 'keine',
           nachweisNummer: s.nachweisNummer ?? null,
+          mailFrage: s.mailFrage ?? false,
+          mailVorlageId: s.mailVorlageId ?? null,
         };
       }),
     })),

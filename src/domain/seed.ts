@@ -121,6 +121,9 @@ function kette(id: string, name: string, beschreibung: string, roh: RohSchritt[]
       antworten,
       naechster: r.typ === 'entscheidung' ? null : sid(r.next),
       nachweis: r.nachweis ?? 'keine',
+      // Nachfrage nach einer E-Mail wird je Schritt im Workflow gesetzt
+      mailFrage: false,
+      mailVorlageId: null,
     };
   });
 
@@ -207,10 +210,9 @@ export const STANDARD_TEMPLATES: ProcessTemplate[] = [
 /* ------------------------------------------------------------------ */
 
 export function standardVorlagen(): EmailTemplate[] {
-  const id = () => `mail-${Math.random().toString(36).slice(2, 9)}`;
   return [
     {
-      id: id(),
+      id: 'mail-erinnerung',
       name: 'Freundliche Erinnerung',
       anlass: 'erinnerung',
       betreff: '[{{projekt.nummer}}] Erinnerung: {{schritt}} – {{plan.nummer}} (fällig {{soll}})',
@@ -229,7 +231,7 @@ Vielen Dank und freundliche Grüße
 {{absender}}`,
     },
     {
-      id: id(),
+      id: 'mail-ueberfaellig',
       name: 'Mahnung bei Fristüberschreitung',
       anlass: 'ueberfaellig',
       betreff: '[{{projekt.nummer}}] Überfällig seit {{verzug}} Tagen: {{schritt}} – {{plan.nummer}}',
@@ -248,7 +250,7 @@ Mit freundlichen Grüßen
 {{absender}}`,
     },
     {
-      id: id(),
+      id: 'mail-freigabe',
       name: 'Freigabe erteilt',
       anlass: 'freigabe',
       betreff: '[{{projekt.nummer}}] Freigabe: {{plan.nummer}} – {{plan}}',
@@ -260,7 +262,7 @@ Mit freundlichen Grüßen
 {{absender}}`,
     },
     {
-      id: id(),
+      id: 'mail-uebergabe',
       name: 'Versand / Übergabe',
       anlass: 'uebergabe',
       betreff: '[{{projekt.nummer}}] Planversand: {{plan.nummer}} – {{plan}}',
@@ -411,6 +413,8 @@ export function seedData(): AppData {
       durchlauf: 1,
       nachweis: s.nachweis,
       nachweisNummer: null,
+      mailFrage: s.mailFrage,
+      mailVorlageId: s.mailVorlageId,
     }));
 
     return {

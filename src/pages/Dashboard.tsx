@@ -43,13 +43,13 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
     <div className="stack">
       <div className="grid grid-4">
         <Stat wert={laufend.length} label="Laufende Planläufe" />
+        <Stat wert={todos.length} label={`To-Dos (${data.bearbeiter.rolle})`} ton="blue" />
         <Stat
           wert={ueberfaellig.length}
           label="Überfällige Schritte"
           ton={ueberfaellig.length ? 'red' : 'green'}
           onClick={() => navigate({ view: 'fristen' })}
         />
-        <Stat wert={todos.length} label={`To-Dos (${data.bearbeiter.rolle})`} ton="blue" />
         <Stat
           wert={faellig.length}
           label="Demnächst fällig"

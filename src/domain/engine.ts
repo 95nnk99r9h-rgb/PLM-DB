@@ -364,6 +364,8 @@ export function stepsAusTemplate(
     durchlauf: 1,
     nachweis: s.nachweis,
     nachweisNummer: null,
+    mailFrage: s.mailFrage,
+    mailVorlageId: s.mailVorlageId,
   }));
 }
 

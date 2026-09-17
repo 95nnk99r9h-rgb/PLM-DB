@@ -154,6 +154,8 @@ export function neuerSchritt(typ: StepType = 'aufgabe'): ProcessTemplateStep {
     antworten: typ === 'entscheidung' ? standardAntworten() : [],
     naechster: null,
     nachweis: 'keine',
+    mailFrage: false,
+    mailVorlageId: null,
   };
 }
 
@@ -261,6 +263,9 @@ export function SchrittListe({
   setSteps: (s: ProcessTemplateStep[]) => void;
   rollen: string[];
 }) {
+  const { data } = useStore();
+  const mailVorlagen = data.emailVorlagen;
+
   const setStep = (id: string, patch: Partial<ProcessTemplateStep>) =>
     setSteps(steps.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 
@@ -373,6 +378,38 @@ export function SchrittListe({
                       </select>
                     </Field>
                   ) : null}
+
+                  <Field
+                    label="E-Mail nach Abschluss"
+                    full
+                    hint="Fragt nach dem Erledigen, ob die für den nächsten Schritt zuständige Person informiert werden soll."
+                  >
+                    <div className="row wrap" style={{ gap: 10 }}>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={step.mailFrage}
+                          onChange={(e) => setStep(step.id, { mailFrage: e.target.checked })}
+                        />
+                        Nach einer E-Mail fragen
+                      </label>
+                      {step.mailFrage ? (
+                        <select
+                          className="select"
+                          style={{ flex: '1 1 220px' }}
+                          value={step.mailVorlageId ?? ''}
+                          onChange={(e) => setStep(step.id, { mailVorlageId: e.target.value || null })}
+                        >
+                          <option value="">Vorlage automatisch wählen</option>
+                          {mailVorlagen.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                    </div>
+                  </Field>
                 </div>
 
                 {step.typ === 'entscheidung' ? (

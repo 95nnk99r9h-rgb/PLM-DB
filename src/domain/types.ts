@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 7;
+export const DATEN_VERSION = 8;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -308,6 +308,13 @@ export interface ProcessTemplateStep {
   naechster: ID | 'ende' | null;
   /** Bei erfolgreichem Abschluss zu erfassender Nachweis. */
   nachweis: Nachweis;
+  /**
+   * Nach dem Erledigen fragen, ob die für den nächsten Schritt zuständige
+   * Person per E-Mail informiert werden soll.
+   */
+  mailFrage: boolean;
+  /** Vorzuschlagende E-Mail-Vorlage; null = die zum Anlass passende. */
+  mailVorlageId: ID | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -394,6 +401,10 @@ export interface RunStep {
   nachweis: Nachweis;
   /** Erfasste Freigabe- bzw. Prüfbericht-Nummer. */
   nachweisNummer: string | null;
+  /** Nach dem Erledigen nach einer E-Mail an den nächsten Schritt fragen. */
+  mailFrage: boolean;
+  /** Vorzuschlagende E-Mail-Vorlage. */
+  mailVorlageId: ID | null;
 }
 
 /* ------------------------------------------------------------------ */

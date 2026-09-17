@@ -8,7 +8,7 @@
  */
 import { useState } from 'react';
 import { schrittStatusSetzen } from '../domain/abschluss';
-import { EIGENE_ROLLE, NACHWEIS_LABEL, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
+import { NACHWEIS_LABEL, type PlanRun, type RunStep, type StepStatus } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from './toast';
 import { ConfirmDialog, Field, Modal, TextInput } from './ui';
@@ -19,8 +19,12 @@ export function useSchrittStatus() {
   const { data, updateRun, updateStep } = useStore();
   const toast = useToast();
   const [nachweisFuer, setNachweisFuer] = useState<{ run: PlanRun; step: RunStep } | null>(null);
-  const [frage, setFrage] = useState<{ run: PlanRun; step: RunStep } | null>(null);
-  const [mail, setMail] = useState<{ run: PlanRun; step: RunStep } | null>(null);
+  const [frage, setFrage] = useState<{ run: PlanRun; step: RunStep; vorlageId: string | null } | null>(
+    null,
+  );
+  const [mail, setMail] = useState<{ run: PlanRun; step: RunStep; vorlageId: string | null } | null>(
+    null,
+  );
 
   const setzeStatus = (run: PlanRun, step: RunStep, status: StepStatus, nachweisNummer?: string) => {
     const ergebnis = schrittStatusSetzen(run, step, status, nachweisNummer);
@@ -33,20 +37,16 @@ export function useSchrittStatus() {
     );
     toast(ergebnis.meldung);
 
-    // Nach einem eigenen erledigten Schritt anbieten, den nächsten
-    // Ansprechpartner zu informieren – aber nur, wenn der nächste Schritt
-    // bei jemand anderem liegt und die Nachfrage gewünscht ist.
-    const eigene = (data.bearbeiter?.rolle || EIGENE_ROLLE).trim().toLowerCase();
-    const istEigene = (s: RunStep) => s.roleName.trim().toLowerCase() === eigene;
+    // Sieht der Workflow es für diesen Schritt vor, anbieten, die für den
+    // nächsten Schritt zuständige Person per E-Mail zu informieren.
     if (
       (data.bearbeiter?.mailNachfrage ?? true) &&
       status === 'erledigt' &&
+      step.mailFrage &&
       ergebnis.naechster &&
-      istEigene(step) &&
-      !istEigene(ergebnis.naechster) &&
       ergebnis.naechster.contactId
     ) {
-      setFrage({ run, step: ergebnis.naechster });
+      setFrage({ run, step: ergebnis.naechster, vorlageId: step.mailVorlageId });
     }
   };
 
@@ -84,6 +84,7 @@ export function useSchrittStatus() {
           project={project(mail.run)!}
           run={mail.run}
           step={mail.step}
+          vorlageId={mail.vorlageId}
           onClose={() => setMail(null)}
         />
       ) : null}
