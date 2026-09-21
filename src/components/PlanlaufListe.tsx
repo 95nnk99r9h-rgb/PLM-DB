@@ -10,7 +10,9 @@ import { abbruchHinweis, aktuellerSchritt, ampelFuerSchritt, fortschritt, type A
 import { formatDate, relativeLabel } from '../lib/dates';
 import {
   INDEX_LABEL,
+  SCHRITT_EINGANG,
   hatEigenenPlanlauf,
+  istEingangPLM,
   type PlanDocument,
   type PlanRun,
   type Project,
@@ -342,6 +344,9 @@ export function PlanlaufListe({
     // Schritt, kein Fortschritt und nichts mehr zu erledigen.
     const abgebrochen = run.status === 'abgebrochen';
     const step = abgebrochen ? undefined : offenerSchritt;
+    // Farbe der Zeile: angekündigt (gelb) bzw. abgeschlossen (grün)
+    const wartetAufEingang = Boolean(step && istEingangPLM(step.name));
+    const fertig = run.status === 'abgeschlossen';
     const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
     const pct = fortschritt(run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
@@ -357,9 +362,17 @@ export function PlanlaufListe({
     return (
       <Fragment key={run.id}>
       <tr
-        className={`clickable ${abgebrochen ? 'zeile-verworfen' : ''}`}
+        className={`clickable ${abgebrochen ? 'zeile-verworfen' : ''} ${
+          fertig ? 'zeile-fertig' : wartetAufEingang ? 'zeile-eingang' : ''
+        }`}
         onClick={() => oeffneLauf(run.id)}
-        title={abgebrochen ? 'Abgebrochener Planlauf – nur noch zum Nachschlagen' : undefined}
+        title={
+          abgebrochen
+            ? 'Abgebrochener Planlauf – nur noch zum Nachschlagen'
+            : wartetAufEingang
+              ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
+              : undefined
+        }
       >
         <td style={{ paddingLeft: einzug }}>
           <span className="row" style={{ gap: 9 }}>

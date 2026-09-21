@@ -155,6 +155,9 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
   };
   const anzahlEingang = alle.filter(wartetAufEingang).length;
 
+  /** Der maßgebliche Planlauf ist abgeschlossen – die Zeile wird grün hinterlegt. */
+  const abgeschlossen = (d: PlanDocument) => laufVon(d)?.status === 'abgeschlossen';
+
   /**
    * Abgebrochene Läufe eines Eintrags. Wurde ein Lauf durch einen neuen Index
    * ersetzt, steht das als Zusatz in der Liste – ebenso ein ersatzloser
@@ -249,12 +252,16 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                 {zeilen.map((doc) => (
                   <tr
                     key={doc.id}
-                    className={`clickable ${wartetAufEingang(doc) ? 'zeile-eingang' : ''}`}
+                    className={`clickable ${
+                      abgeschlossen(doc) ? 'zeile-fertig' : wartetAufEingang(doc) ? 'zeile-eingang' : ''
+                    }`}
                     onClick={() => setDialog({ doc })}
                     title={
-                      wartetAufEingang(doc)
-                        ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
-                        : undefined
+                      abgeschlossen(doc)
+                        ? 'Planlauf abgeschlossen'
+                        : wartetAufEingang(doc)
+                          ? `Angekündigt – „${SCHRITT_EINGANG}“ steht noch aus`
+                          : undefined
                     }
                   >
                     <td className="num tertiary">{nummern.get(doc.id) ?? '–'}</td>

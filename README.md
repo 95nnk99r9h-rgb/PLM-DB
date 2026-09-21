@@ -147,10 +147,10 @@ den Planlauf.
 Die Feldbezeichnungen richten sich nach der Art: **Plancodierung** beim Plan, **Name Planpaket**
 bzw. **Name PlanVZ** beim Paket und Verzeichnis, wo statt *Index* die **Ausgabe** geführt wird.
 
-**Angekündigte Pläne:** Steht in einem Planlauf noch der Schritt **Eingang PLM** aus, ist der Plan
-angekündigt, aber noch nicht eingegangen. Solche Einträge stehen in der Planliste **gelb
-hinterlegt** und tragen das Kennzeichen *Eingang PLM*; mit dem Erledigen des Schritts verschwindet
-die Markierung.
+**Farbige Zeilen:** Steht in einem Planlauf noch der Schritt **Eingang PLM** aus, ist der Plan
+angekündigt, aber noch nicht eingegangen – solche Zeilen sind in Planliste und Projektübersicht
+**gelb hinterlegt** (in der Planliste zusätzlich mit dem Kennzeichen *Eingang PLM*). Abgeschlossene
+Planläufe sind **leicht grün** hinterlegt, abgebrochene grau.
 
 **Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
 *Art · Plancodierung/Name Planpaket / Name Plan VZ · Index/Ausgabe · Titel · Gewerk ·
