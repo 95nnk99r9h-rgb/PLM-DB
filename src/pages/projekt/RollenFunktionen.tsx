@@ -48,6 +48,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
   const [importOffen, setImportOffen] = useState(false);
   const [loeschen, setLoeschen] = useState<Role | null>(null);
   const [person, setPerson] = useState<Contact | null>(null);
+  const [neuePerson, setNeuePerson] = useState(false);
 
   const rollen = data.roles.filter((r) => r.projectId === project.id);
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
@@ -105,6 +106,9 @@ export function RollenFunktionen({ project }: { project: Project }) {
         <div className="row">
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
+          </button>
+          <button type="button" className="btn btn-outline" onClick={() => setNeuePerson(true)}>
+            <Icon name="person" size={14} /> Person hinzufügen
           </button>
           <button type="button" className="btn btn-primary" onClick={() => setFunktionDialog({})}>
             <Icon name="plus" size={14} /> Neue Funktion
@@ -265,6 +269,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
         <BesetzungsDialog
           project={project}
           rolle={besetzen}
+          rollen={rollen}
           kontakte={kontakte}
           onClose={() => setBesetzen(null)}
         />
@@ -274,9 +279,21 @@ export function RollenFunktionen({ project }: { project: Project }) {
         <BesetzungsDialog
           project={project}
           rolle={null}
+          rollen={rollen}
           kontakt={person}
           kontakte={kontakte}
           onClose={() => setPerson(null)}
+        />
+      ) : null}
+
+      {neuePerson ? (
+        <BesetzungsDialog
+          project={project}
+          rolle={null}
+          rollen={rollen}
+          vorauswahlRolle={uebergreifend ? null : seite}
+          kontakte={kontakte}
+          onClose={() => setNeuePerson(false)}
         />
       ) : null}
 
@@ -314,18 +331,27 @@ export function RollenFunktionen({ project }: { project: Project }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Besetzung einer Funktion: Person auswählen oder neu erfassen. Ohne Funktion
- * (`rolle = null`) dient der Dialog dem Pflegen einer vorhandenen Person.
+ * Zwei Wege zum selben Ziel:
+ *
+ * – von der Funktion aus (`rolle` gesetzt): Person auswählen oder neu erfassen;
+ * – von der Person aus (`rolle = null`): Angaben erfassen bzw. pflegen und die
+ *   Funktion wahlweise gleich dabei zuweisen.
  */
 function BesetzungsDialog({
   project,
   rolle,
+  rollen,
+  vorauswahlRolle,
   kontakt,
   kontakte,
   onClose,
 }: {
   project: Project;
   rolle: Role | null;
+  /** Alle Funktionen des Projekts – Auswahl, wenn von der Person aus besetzt wird. */
+  rollen: Role[];
+  /** Gewerk, dessen Funktionen zuerst angeboten werden. */
+  vorauswahlRolle?: string | null;
   kontakt?: Contact;
   kontakte: Contact[];
   onClose: () => void;
@@ -334,6 +360,8 @@ function BesetzungsDialog({
   const toast = useToast();
   const bisher = kontakt ?? (rolle ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === rolle.id)) : undefined);
   const [personId, setPersonId] = useState<ID | ''>(bisher?.id ?? '');
+  // Von der Person aus gewählte Funktion; leer = (noch) ohne Funktion
+  const [rolleId, setRolleId] = useState<ID | ''>('');
   const [loeschen, setLoeschen] = useState(false);
   const leer = {
     anrede: '',
@@ -362,6 +390,16 @@ function BesetzungsDialog({
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Funktionen zur Auswahl: das Gewerk der geöffneten Seite zuerst
+  const auswahlRollen = [...rollen].sort((a, b) => {
+    const rang = (r: Role) => (r.gewerk === (vorauswahlRolle ?? null) ? 0 : 1);
+    return rang(a) - rang(b) || `${a.gewerk ?? ''} ${a.name}`.localeCompare(`${b.gewerk ?? ''} ${b.name}`, 'de');
+  });
+  const gewaehlteRolle = rollen.find((r) => r.id === rolleId);
+  const vorherigerInhaber = gewaehlteRolle
+    ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === gewaehlteRolle.id))
+    : undefined;
+
   /** Andere Person übernehmen – ihre Angaben füllen das Formular. */
   const personWechseln = (id: string) => {
     setPersonId(id);
@@ -373,21 +411,26 @@ function BesetzungsDialog({
       toast('Bitte einen Nachnamen angeben.');
       return;
     }
-    const ziel = personId ? kontakte.find((c) => c.id === personId) : undefined;
-    const zuordnung = rolle ? [{ roleId: rolle.id, gewerk: rolle.gewerk }] : [];
+    // Funktion: entweder die Zeile, aus der der Dialog kommt, oder die Auswahl
+    const zielRolle = rolle ?? rollen.find((r) => r.id === rolleId);
+    const ziel = personId ? kontakte.find((c) => c.id === personId) : kontakt;
+    const zuordnung = zielRolle ? [{ roleId: zielRolle.id, gewerk: zielRolle.gewerk }] : [];
+    const vorher = zielRolle
+      ? kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === zielRolle.id))
+      : undefined;
 
     if (ziel) {
-      const vorhanden = ziel.zuordnungen.filter((z) => !rolle || z.roleId !== rolle.id);
+      const vorhanden = ziel.zuordnungen.filter((z) => !zielRolle || z.roleId !== zielRolle.id);
       updateContact(ziel.id, { ...form, zuordnungen: [...vorhanden, ...zuordnung] });
     } else {
       addContact({ ...form, projectId: project.id, zuordnungen: zuordnung, eigen: false });
     }
 
     // Bisherige Besetzung der Funktion aufheben, wenn jemand anderes übernimmt
-    if (rolle && bisher && bisher.id !== ziel?.id) {
-      updateContact(bisher.id, { zuordnungen: bisher.zuordnungen.filter((z) => z.roleId !== rolle.id) });
+    if (zielRolle && vorher && vorher.id !== ziel?.id) {
+      updateContact(vorher.id, { zuordnungen: vorher.zuordnungen.filter((z) => z.roleId !== zielRolle.id) });
     }
-    toast(rolle ? `${funktionsName(rolle)} besetzt.` : 'Person gespeichert.');
+    toast(zielRolle ? `${funktionsName(zielRolle)} besetzt.` : 'Person gespeichert.');
     onClose();
   };
 
@@ -401,8 +444,12 @@ function BesetzungsDialog({
   return (
     <>
       <Modal
-        titel={rolle ? funktionsName(rolle) : `${bisher?.vorname} ${bisher?.nachname}`}
-        sub={rolle ? 'Funktion besetzen – eine Person mit ihren Adressdaten' : 'Person ohne Funktion'}
+        titel={rolle ? funktionsName(rolle) : kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'Neue Person'}
+        sub={
+          rolle
+            ? 'Funktion besetzen – eine Person mit ihren Adressdaten'
+            : 'Person erfassen und wahlweise gleich einer Funktion zuweisen'
+        }
         onClose={onClose}
         footer={
           <>
@@ -443,7 +490,32 @@ function BesetzungsDialog({
                 }))}
               />
             </Field>
-          ) : null}
+          ) : (
+            <Field
+              label="Funktion"
+              full
+              hint={
+                gewaehlteRolle && vorherigerInhaber
+                  ? `Bisher besetzt durch ${vorherigerInhaber.vorname} ${vorherigerInhaber.nachname} – die Besetzung wechselt.`
+                  : 'Kann auch offen bleiben; die Person lässt sich später einer Funktion zuweisen.'
+              }
+            >
+              <Select
+                value={rolleId}
+                onChange={setRolleId}
+                placeholder="– ohne Funktion –"
+                options={auswahlRollen.map((r) => {
+                  const inhaber = kontakte.find((c) => c.zuordnungen.some((z) => z.roleId === r.id));
+                  return {
+                    value: r.id,
+                    label: `${r.gewerk ?? UEBERGREIFEND} · ${r.name}${
+                      inhaber ? ` (besetzt: ${inhaber.vorname} ${inhaber.nachname})` : ''
+                    }`,
+                  };
+                })}
+              />
+            </Field>
+          )}
           <Field label="Anrede">
             <Select
               value={form.anrede}

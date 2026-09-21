@@ -113,8 +113,11 @@ wird. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann me
 haben.
 
 Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Neue Funktion* eine weitere
-Funktion im gewählten Gewerk. Personen ohne Funktion – etwa aus einem Import – stehen in einer
-eigenen Liste darunter.
+Funktion im gewählten Gewerk. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
+eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
+zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
+aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in einer eigenen Liste
+darunter; ein Klick weist ihnen eine Funktion zu.
 
 **Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
 Email · Straße · Nr. · PLZ · Ort · Notiz*. Gewerke und Funktionen, die es noch nicht gibt, werden
