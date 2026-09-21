@@ -78,16 +78,6 @@ export function Funktionen() {
               } ${seite}“ ist eine andere Funktion als dieselbe Bezeichnung in einem anderen Gewerk.`}
         </p>
         <div className="row">
-          {!uebergreifend ? (
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost"
-              title={`Gewerk „${seite}“ löschen`}
-              onClick={() => setGewerkLoeschen(seite)}
-            >
-              <Icon name="loeschen" size={13} /> Gewerk löschen
-            </button>
-          ) : null}
           {!uebergreifend && ergaenzbar.length > 0 ? (
             <button type="button" className="btn btn-outline" onClick={() => setErgaenzen(true)}>
               <Icon name="plus" size={14} /> Vorhandene Funktion
@@ -165,6 +155,19 @@ export function Funktionen() {
           </div>
         )}
       </Card>
+
+      {!uebergreifend ? (
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            title={`Gewerk „${seite}“ mit seinen Funktionen löschen`}
+            onClick={() => setGewerkLoeschen(seite)}
+          >
+            <Icon name="loeschen" size={13} /> Gewerk „{seite}“ löschen
+          </button>
+        </div>
+      ) : null}
 
       {ergaenzen ? (
         <Modal

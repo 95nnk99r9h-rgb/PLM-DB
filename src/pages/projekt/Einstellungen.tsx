@@ -4,6 +4,7 @@ import { type Project } from '../../domain/types';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { ProjektDialog } from '../Projekte';
+import { ExportDialog } from './ExportDialog';
 import {
   Callout,
   Card,
@@ -20,6 +21,7 @@ export function Einstellungen({ project }: { project: Project }) {
   const [projektDialog, setProjektDialog] = useState(false);
   const [loeschen, setLoeschen] = useState(false);
   const [neuerFeiertag, setNeuerFeiertag] = useState('');
+  const [exportOffen, setExportOffen] = useState(false);
 
   const s = project.settings;
   const setSettings = (patch: Partial<typeof s>) => updateProject(project.id, { settings: { ...s, ...patch } });
@@ -111,6 +113,23 @@ export function Einstellungen({ project }: { project: Project }) {
       </Card>
 
       <Card>
+        <CardHeader
+          titel="Export"
+          sub="Planbestand als Excel-Datei oder PDF ausgeben"
+          actions={
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setExportOffen(true)}>
+              <Icon name="export" size={13} /> Export
+            </button>
+          }
+        />
+        <div className="card-pad">
+          <p className="small muted">
+            Auswahl der Pläne, Planpakete und Planverzeichnisse, wahlweise als Kurz- oder Langfassung.
+          </p>
+        </div>
+      </Card>
+
+      <Card>
         <CardHeader titel="E-Mail-Texte" sub="Projektübergreifend im Reiter „Vorlagen“ gepflegt" />
         <div className="card-pad">
           <Callout icon="i">
@@ -129,6 +148,7 @@ export function Einstellungen({ project }: { project: Project }) {
         </div>
       </Card>
 
+      {exportOffen ? <ExportDialog project={project} onClose={() => setExportOffen(false)} /> : null}
       {projektDialog ? <ProjektDialog project={project} onClose={() => setProjektDialog(false)} /> : null}
       {loeschen ? (
         <ConfirmDialog

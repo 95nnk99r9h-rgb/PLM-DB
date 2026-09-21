@@ -95,25 +95,8 @@ export function RollenFunktionen({ project }: { project: Project }) {
       </div>
 
       <div className="row-between wrap">
-        <div className="row wrap">
-          <Search value={suche} onChange={setSuche} placeholder="Funktion, Person, Firma …" />
-          <span className="small tertiary" style={{ maxWidth: 520 }}>
-            {uebergreifend
-              ? 'Übergreifende Funktionen gelten für alle Gewerke und werden einmal besetzt.'
-              : `Funktionen des Gewerks ${seite}. Jede Funktion wird hier mit genau einer Person besetzt.`}
-          </span>
-        </div>
+        <Search value={suche} onChange={setSuche} placeholder="Funktion, Person, Firma …" />
         <div className="row">
-          {!uebergreifend ? (
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost"
-              title={`Gewerk „${seite}“ löschen`}
-              onClick={() => setGewerkLoeschen(seite)}
-            >
-              <Icon name="loeschen" size={13} /> Gewerk löschen
-            </button>
-          ) : null}
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
           </button>
@@ -129,7 +112,11 @@ export function RollenFunktionen({ project }: { project: Project }) {
       <Card>
         <CardHeader
           titel={uebergreifend ? 'Übergreifende Funktionen' : `Funktionen ${seite}`}
-          sub={`${sichtbar.length} Funktionen · ${besetzt} besetzt`}
+          sub={`${sichtbar.length} Funktionen · ${besetzt} besetzt · ${
+            uebergreifend
+              ? 'gelten für alle Gewerke und werden einmal besetzt'
+              : 'je Funktion genau eine Person'
+          }`}
         />
         {sichtbar.length === 0 ? (
           <EmptyState
@@ -273,6 +260,19 @@ export function RollenFunktionen({ project }: { project: Project }) {
             </table>
           </div>
         </Card>
+      ) : null}
+
+      {!uebergreifend ? (
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            title={`Gewerk „${seite}“ mit seinen Funktionen löschen`}
+            onClick={() => setGewerkLoeschen(seite)}
+          >
+            <Icon name="loeschen" size={13} /> Gewerk „{seite}“ löschen
+          </button>
+        </div>
       ) : null}
 
       {besetzen ? (

@@ -112,8 +112,8 @@ bekannte Person übernommen oder eine neue mit Anrede, Firma, E-Mail, Telefon un
 wird. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
 haben.
 
-Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Gewerk löschen* verschwindet
-das gerade geöffnete wieder – der Dialog nennt vorher, welche Funktionen und Besetzungen damit
+Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Gewerk löschen* am Ende der
+Seite verschwindet das gerade geöffnete wieder – der Dialog nennt vorher, welche Funktionen und Besetzungen damit
 entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
 Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in **Planliste** und
 **Planpaketen** zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
@@ -263,8 +263,8 @@ Schritt, Frist und Empfänger ersetzt. Von dort lässt sich die Nachricht in **O
 Zwischenablage kopieren; der Zeitpunkt wird am Schritt vermerkt.
 
 ### Export je Projekt
-Über **Export** im Projekt lassen sich Planpakete, Pläne und Planverzeichnisse auswählen und in zwei
-Umfängen ausgeben:
+Über **Export** in den Projekteinstellungen lassen sich Planpakete, Pläne und Planverzeichnisse
+auswählen und in zwei Umfängen ausgeben:
 
 * **Kurzfassung** – je Eintrag der aktuelle Stand, der nächste Schritt und die Verantwortlichen.
 * **Langfassung** – zusätzlich alle bereits durchlaufenen und alle ausstehenden Schritte.
