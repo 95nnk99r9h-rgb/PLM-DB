@@ -52,3 +52,73 @@ export function GewerkDialog({ onClose, onAngelegt }: { onClose: () => void; onA
     </Modal>
   );
 }
+
+/**
+ * Löschen eines Gewerks. Der Dialog nennt vorab, was damit entfällt: die
+ * Funktionen dieses Gewerks – in den Stammdaten wie in den Projekten – und
+ * deren Besetzung. Pläne behalten ihre Angabe, verlieren aber den Bezug.
+ */
+export function GewerkLoeschenDialog({
+  gewerk,
+  onClose,
+  onGeloescht,
+}: {
+  gewerk: string;
+  onClose: () => void;
+  onGeloescht?: () => void;
+}) {
+  const { data, deleteGewerk } = useStore();
+  const toast = useToast();
+
+  const gleich = (g: string | null) => (g ?? '').trim().toLowerCase() === gewerk.trim().toLowerCase();
+  const standard = data.standardRollen.filter((r) => gleich(r.gewerk));
+  const projektRollen = data.roles.filter((r) => gleich(r.gewerk));
+  const rollenIds = new Set(projektRollen.map((r) => r.id));
+  const besetzungen = data.contacts.filter((c) => c.zuordnungen.some((z) => rollenIds.has(z.roleId))).length;
+  const plaene = data.documents.filter((d) => gleich(d.gewerk)).length;
+  const projekte = new Set(projektRollen.map((r) => r.projectId)).size;
+
+  const folgen = [
+    standard.length > 0 ? `${standard.length} projektübergreifende Funktion(en)` : null,
+    projektRollen.length > 0 ? `${projektRollen.length} Projektfunktion(en) in ${projekte} Projekt(en)` : null,
+    besetzungen > 0 ? `${besetzungen} Besetzung(en)` : null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <Modal
+      titel={`Gewerk „${gewerk}“ löschen?`}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={() => {
+              deleteGewerk(gewerk);
+              toast(`Gewerk „${gewerk}“ gelöscht.`);
+              onGeloescht?.();
+              onClose();
+            }}
+          >
+            Löschen
+          </button>
+        </>
+      }
+    >
+      <p className="small">
+        {folgen.length > 0
+          ? `Damit entfallen ${folgen.join(', ')}.`
+          : 'Dem Gewerk ist keine Funktion zugeordnet – es wird nur aus der Auswahl entfernt.'}
+      </p>
+      {plaene > 0 ? (
+        <p className="small tertiary" style={{ marginTop: 10 }}>
+          {plaene} Plan/Pläne führen „{gewerk}“ weiterhin als Angabe. Sie bleiben erhalten, finden danach aber
+          keine Verantwortlichen dieses Gewerks mehr.
+        </p>
+      ) : null}
+    </Modal>
+  );
+}

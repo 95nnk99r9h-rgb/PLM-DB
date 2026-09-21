@@ -415,6 +415,22 @@ export function templateDauer(template: ProcessTemplate): number {
   return pfad(template.steps).reduce((sum, s) => sum + s.fristTage, 0);
 }
 
+/**
+ * Gewerke, die in einem Projekt zur Auswahl stehen: die gepflegten Stammdaten
+ * und zusätzlich jedes Gewerk, für das das Projekt eine Funktion führt. So
+ * passen Planliste, Planläufe und „Rollen & Funktionen“ immer zusammen.
+ */
+export function gewerkeFuerProjekt(
+  data: Pick<AppData, 'gewerke' | 'roles'>,
+  projectId: ID,
+): string[] {
+  const ausRollen = data.roles
+    .filter((r) => r.projectId === projectId)
+    .map((r) => r.gewerk)
+    .filter((g): g is string => Boolean(g));
+  return [...new Set([...data.gewerke, ...ausRollen])].sort((a, b) => a.localeCompare(b, 'de'));
+}
+
 /* ------------------------------------------------------------------ */
 /* Eigener Kontakt in den markierten Projekten                         */
 /* ------------------------------------------------------------------ */

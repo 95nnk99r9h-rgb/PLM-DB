@@ -175,16 +175,17 @@ function migriere(daten: AppData): AppData {
     ] as never;
   };
 
-  // Gewerke werden jetzt gepflegt: mitgelieferte und alle, die in Funktionen,
-  // Projektrollen oder Plänen vorkommen.
+  // Gewerke sind gepflegte Stammdaten. Ein vorhandener Bestand bleibt
+  // maßgeblich – gelöschte Gewerke kommen also nicht zurück; ergänzt wird nur,
+  // was Funktionen tatsächlich führen. Beim ersten Mal entsteht die Liste aus
+  // den mitgelieferten Gewerken und allem, was im Bestand vorkommt.
+  const ausFunktionen = [...(daten.standardRollen ?? []), ...(daten.roles ?? [])].map((r) => r.gewerk);
+  const quellen =
+    daten.gewerke && daten.gewerke.length > 0
+      ? [...daten.gewerke, ...ausFunktionen]
+      : [...GEWERKE, ...ausFunktionen, ...(daten.documents ?? []).map((d) => d.gewerk)];
   const gewerkeBestand = [
-    ...new Set([
-      ...GEWERKE,
-      ...(daten.gewerke ?? []),
-      ...(daten.standardRollen ?? []).map((r) => r.gewerk),
-      ...(daten.roles ?? []).map((r) => r.gewerk),
-      ...(daten.documents ?? []).map((d) => d.gewerk),
-    ].filter((g): g is string => Boolean(g && g.trim()))),
+    ...new Set(quellen.filter((g): g is string => Boolean(g && g.trim()))),
   ].sort((a, b) => a.localeCompare(b, 'de'));
 
   return {

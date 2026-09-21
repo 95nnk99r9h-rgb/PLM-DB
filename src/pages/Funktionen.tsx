@@ -22,7 +22,7 @@ import {
   TextInput,
 } from '../components/ui';
 import { Icon } from '../components/icons';
-import { GewerkDialog } from '../components/GewerkDialog';
+import { GewerkDialog, GewerkLoeschenDialog } from '../components/GewerkDialog';
 
 const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
@@ -34,6 +34,7 @@ export function Funktionen() {
   const [ergaenzen, setErgaenzen] = useState(false);
   const [loeschen, setLoeschen] = useState<StandardRolle | null>(null);
   const [gewerkDialog, setGewerkDialog] = useState(false);
+  const [gewerkLoeschen, setGewerkLoeschen] = useState<string | null>(null);
 
   // Alle vorkommenden Gewerke – gepflegte Stammdaten und die der Funktionen
   const gewerke = [
@@ -77,6 +78,16 @@ export function Funktionen() {
               } ${seite}“ ist eine andere Funktion als dieselbe Bezeichnung in einem anderen Gewerk.`}
         </p>
         <div className="row">
+          {!uebergreifend ? (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              title={`Gewerk „${seite}“ löschen`}
+              onClick={() => setGewerkLoeschen(seite)}
+            >
+              <Icon name="loeschen" size={13} /> Gewerk löschen
+            </button>
+          ) : null}
           {!uebergreifend && ergaenzbar.length > 0 ? (
             <button type="button" className="btn btn-outline" onClick={() => setErgaenzen(true)}>
               <Icon name="plus" size={14} /> Vorhandene Funktion
@@ -187,6 +198,14 @@ export function Funktionen() {
       ) : null}
 
       {gewerkDialog ? <GewerkDialog onClose={() => setGewerkDialog(false)} onAngelegt={setSeite} /> : null}
+
+      {gewerkLoeschen ? (
+        <GewerkLoeschenDialog
+          gewerk={gewerkLoeschen}
+          onClose={() => setGewerkLoeschen(null)}
+          onGeloescht={() => setSeite(UEBERGREIFEND)}
+        />
+      ) : null}
 
       {dialog ? (
         <FunktionsDialog

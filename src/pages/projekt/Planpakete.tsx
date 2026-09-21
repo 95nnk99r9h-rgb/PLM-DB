@@ -7,6 +7,7 @@
  */
 import { Fragment, useState } from 'react';
 import { DOCUMENT_KIND_LABEL, INDEX_LABEL, type PlanDocument, type Project } from '../../domain/types';
+import { gewerkeFuerProjekt } from '../../domain/engine';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { DocKindIcon } from '../../components/common';
@@ -302,7 +303,7 @@ function PaketDialog({
               placeholder="KIB, VA, OLA …"
             />
             <datalist id="paket-gewerke">
-              {data.gewerke.map((g) => (
+              {gewerkeFuerProjekt(data, project.id).map((g) => (
                 <option key={g} value={g} />
               ))}
             </datalist>

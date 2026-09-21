@@ -35,6 +35,8 @@ interface StoreValue {
   setBearbeiter: (b: Partial<Bearbeiter>) => void;
   /* Gewerke */
   addGewerk: (name: string) => void;
+  /** Löscht ein Gewerk samt seiner Funktionen (Stammdaten und Projekte). */
+  deleteGewerk: (name: string) => void;
   /* Projekte */
   addProject: (p: Omit<Project, 'id'>) => ID;
   toggleMarkiert: (id: ID) => void;
@@ -122,6 +124,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         mutate((d) => ({ ...d, bearbeiter: { ...d.bearbeiter, ...b } })),
 
       // Gewerke sind Stammdaten: einmal ergänzt, stehen sie überall zur Auswahl
+      deleteGewerk: (name) =>
+        mutate((d) => {
+          const gleich = (g: string | null) => (g ?? '').trim().toLowerCase() === name.trim().toLowerCase();
+          // Funktionen dieses Gewerks entfallen – samt ihrer Besetzung
+          const rollenIds = new Set(d.roles.filter((r) => gleich(r.gewerk)).map((r) => r.id));
+          return {
+            ...d,
+            gewerke: d.gewerke.filter((g) => !gleich(g)),
+            standardRollen: d.standardRollen.filter((r) => !gleich(r.gewerk)),
+            roles: d.roles.filter((r) => !rollenIds.has(r.id)),
+            contacts: d.contacts.map((c) =>
+              c.zuordnungen.some((z) => rollenIds.has(z.roleId))
+                ? { ...c, zuordnungen: c.zuordnungen.filter((z) => !rollenIds.has(z.roleId)) }
+                : c,
+            ),
+          };
+        }),
+
       addGewerk: (name) =>
         mutate((d) =>
           d.gewerke.some((g) => g.trim().toLowerCase() === name.trim().toLowerCase())

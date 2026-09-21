@@ -7,7 +7,7 @@
  * Projektübersicht, Planpakete werden auf einer eigenen Seite gepflegt.
  */
 import { useState } from 'react';
-import { lfdNummern, kontaktFuerRolleUndGewerk, stepsAusTemplate } from '../../domain/engine';
+import { gewerkeFuerProjekt, lfdNummern, kontaktFuerRolleUndGewerk, stepsAusTemplate } from '../../domain/engine';
 import { formatDate, tageLabel, today } from '../../lib/dates';
 import {
   DOCUMENT_KIND_LABEL,
@@ -624,7 +624,7 @@ function PlanDialog({
                 placeholder="KIB, VA, OLA …"
               />
               <datalist id="gewerke-liste">
-                {data.gewerke.map((g) => (
+                {gewerkeFuerProjekt(data, project.id).map((g) => (
                   <option key={g} value={g} />
                 ))}
               </datalist>

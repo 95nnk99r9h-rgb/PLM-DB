@@ -112,8 +112,12 @@ bekannte Person übernommen oder eine neue mit Anrede, Firma, E-Mail, Telefon un
 wird. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
 haben.
 
-Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Neue Funktion* eine weitere
-Funktion im gewählten Gewerk. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
+Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Gewerk löschen* verschwindet
+das gerade geöffnete wieder – der Dialog nennt vorher, welche Funktionen und Besetzungen damit
+entfallen. Gewerke gelten projektübergreifend: angelegt oder gelöscht wird überall, also auch im
+Reiter *Funktionen* im Hauptmenü, und jedes Gewerk des Projekts steht in **Planliste** und
+**Planpaketen** zur Auswahl – darüber findet ein Planlauf die Verantwortlichen seines Gewerks.
+Über *Neue Funktion* entsteht eine weitere Funktion im gewählten Gewerk. Beide Wege führen zum Ziel: **Funktion anlegen und dort die Person
 eintragen** oder mit *Person hinzufügen* die **Person erfassen und die Funktion gleich dabei
 zuweisen** – die Zuweisung kann offen bleiben und später nachgeholt werden. Personen ohne Funktion –
 aus einem Import, nach einem Wechsel oder bewusst ohne Zuordnung – stehen in einer eigenen Liste

@@ -16,9 +16,10 @@ import {
   type Project,
   type Role,
 } from '../../domain/types';
+import { gewerkeFuerProjekt } from '../../domain/engine';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
-import { GewerkDialog } from '../../components/GewerkDialog';
+import { GewerkDialog, GewerkLoeschenDialog } from '../../components/GewerkDialog';
 import { RollenImport } from './RollenImport';
 import {
   Avatar,
@@ -45,6 +46,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
   const [besetzen, setBesetzen] = useState<Role | null>(null);
   const [funktionDialog, setFunktionDialog] = useState<{ rolle?: Role } | null>(null);
   const [gewerkDialog, setGewerkDialog] = useState(false);
+  const [gewerkLoeschen, setGewerkLoeschen] = useState<string | null>(null);
   const [importOffen, setImportOffen] = useState(false);
   const [loeschen, setLoeschen] = useState<Role | null>(null);
   const [person, setPerson] = useState<Contact | null>(null);
@@ -54,9 +56,7 @@ export function RollenFunktionen({ project }: { project: Project }) {
   const kontakte = data.contacts.filter((c) => c.projectId === project.id);
 
   /** Gewerke aus den Stammdaten, ergänzt um die im Projekt vorkommenden. */
-  const gewerke = [
-    ...new Set([...data.gewerke, ...rollen.map((r) => r.gewerk).filter((g): g is string => Boolean(g))]),
-  ].sort((a, b) => a.localeCompare(b, 'de'));
+  const gewerke = gewerkeFuerProjekt(data, project.id);
 
   const uebergreifend = seite === UEBERGREIFEND;
   /** Person, die eine Funktion ausfüllt. */
@@ -104,6 +104,16 @@ export function RollenFunktionen({ project }: { project: Project }) {
           </span>
         </div>
         <div className="row">
+          {!uebergreifend ? (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              title={`Gewerk „${seite}“ löschen`}
+              onClick={() => setGewerkLoeschen(seite)}
+            >
+              <Icon name="loeschen" size={13} /> Gewerk löschen
+            </button>
+          ) : null}
           <button type="button" className="btn btn-outline" onClick={() => setImportOffen(true)}>
             <Icon name="importieren" size={14} /> Excel-Import
           </button>
@@ -310,6 +320,14 @@ export function RollenFunktionen({ project }: { project: Project }) {
       ) : null}
 
       {gewerkDialog ? <GewerkDialog onClose={() => setGewerkDialog(false)} onAngelegt={setSeite} /> : null}
+
+      {gewerkLoeschen ? (
+        <GewerkLoeschenDialog
+          gewerk={gewerkLoeschen}
+          onClose={() => setGewerkLoeschen(null)}
+          onGeloescht={() => setSeite(UEBERGREIFEND)}
+        />
+      ) : null}
 
       {importOffen ? <RollenImport project={project} onClose={() => setImportOffen(false)} /> : null}
 
