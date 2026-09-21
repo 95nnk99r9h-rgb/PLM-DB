@@ -147,6 +147,9 @@ Gewerk, Soll-Termin des aktuellen Schritts, Zuständigkeit, Fortschritt oder Sta
 zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
 innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
 
+Die **Kopfzeile der Tabellen bleibt beim Scrollen stehen**, sodass die Spaltenbezeichnungen auch in
+langen Listen sichtbar sind.
+
 **Filtern** geschieht in derselben Überschrift: Der Trichter neben *Gewerk*, *Zuständig* und *Status*
 öffnet die Auswahl der vorhandenen Werte; der gewählte Wert steht anschließend in der Überschrift.
 Die **Suche** über Nummer, Titel und Schritt steht oben in der Kartenzeile neben der Gliederung,
@@ -221,8 +224,13 @@ jeweiligen Lauf und sind als solche gekennzeichnet.
   Stiftsymbol rechts an jeder Zeile.
 * Ein Lauf kann mit Begründung **abgebrochen** werden – wahlweise **ersatzlos** oder mit **neuem
   Index bzw. neuer Ausgabe**. Im zweiten Fall erhält der Eintrag den angegebenen Index, und der
-  Planlauf beginnt mit denselben Schritten von vorn. Der abgebrochene Lauf bleibt ausgegraut samt
-  Grund in der Projektansicht sichtbar und erscheint nicht mehr in Übersicht und Fristenliste.
+  Planlauf beginnt mit denselben Schritten von vorn.
+* Ein abgebrochener Lauf ist **nicht mehr zu bearbeiten**: In der Projektübersicht steht seine Zeile
+  ausgegraut, ohne aktuellen Schritt, Fortschritt und Schaltflächen – stattdessen in Grau
+  „Abgebrochen am …“ mit dem Zusatz *ersatzlos abgebrochen* bzw. *ersetzt durch Index C*. Er lässt
+  sich weiterhin zum Nachschlagen öffnen, bietet dort aber keine Aktionen mehr und erscheint nicht
+  in der Fristenliste. In der **Planliste** trägt der Eintrag den entsprechenden Zusatz
+  (`Index B → C` bzw. `abgebrochen`).
 
 ### Fristen & Erinnerungen
 Fristenübersicht über alle Projekte, sortiert nach Dringlichkeit und gefiltert nach

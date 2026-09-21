@@ -5,8 +5,10 @@
 import { addDays, diffDays, today } from '../lib/dates';
 import {
   EIGENE_ROLLE,
+  INDEX_LABEL,
   STANDARD_BEARBEITER,
   hatEigenenPlanlauf,
+  type DocumentKind,
   type Antwort,
   type AppData,
   type Contact,
@@ -210,6 +212,17 @@ export function verzugTage(run: PlanRun): number {
   if (!step?.sollDatum) return 0;
   const delta = diffDays(today(), step.sollDatum);
   return delta < 0 ? Math.abs(delta) : 0;
+}
+
+/**
+ * Hinweis zu einem abgebrochenen Lauf: ersatzlos beendet oder durch einen
+ * neuen Index bzw. eine neue Ausgabe ersetzt.
+ */
+export function abbruchHinweis(run: PlanRun, kind: DocumentKind = 'plan'): string {
+  if (run.status !== 'abgebrochen') return '';
+  if (run.abbruchArt !== 'neuer_index') return 'ersatzlos abgebrochen';
+  const label = INDEX_LABEL[kind];
+  return run.abbruchNeuerIndex ? `ersetzt durch ${label} ${run.abbruchNeuerIndex}` : `ersetzt durch neuen ${label}`;
 }
 
 /** Läuft noch und ist nicht abgebrochen. */

@@ -33,7 +33,8 @@ export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
 const RUN_STATUS_TON: Record<RunStatus, '' | 'green' | 'orange' | 'red' | 'blue'> = {
   laufend: 'blue',
   abgeschlossen: 'green',
-  abgebrochen: 'red',
+  // Ein Abbruch ist kein Fehler, sondern erledigte Vergangenheit – daher grau
+  abgebrochen: '',
 };
 
 export function RunStatusBadge({ status }: { status: RunStatus }) {

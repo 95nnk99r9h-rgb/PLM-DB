@@ -183,9 +183,11 @@ a:hover { text-decoration: underline; }
 /* Hauslogo in der Kopfzeile – passt sich der Höhe des weißen Balkens an */
 .topbar-logo { flex: none; display: flex; align-items: center; padding-left: 12px; }
 
-.content { flex: 1; overflow-y: auto; padding: 24px 32px 64px; }
+/* Der obere Abstand sitzt im Inneren, damit die fixierte Tabellenkopfzeile
+   unmittelbar unter der Kopfleiste stehen bleibt. */
+.content { flex: 1; overflow-y: auto; padding: 0 32px 64px; }
 /* Breite Arbeitsfläche – auf großen Bildschirmen bleibt ein Rand für die Lesbarkeit */
-.content-inner { max-width: 1560px; margin: 0 auto; }
+.content-inner { max-width: 1560px; margin: 0 auto; padding-top: 24px; }
 
 .stack { display: flex; flex-direction: column; gap: 18px; }
 .row { display: flex; align-items: center; gap: 10px; }
@@ -217,7 +219,9 @@ a:hover { text-decoration: underline; }
   background: var(--bg-elev);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  /* clip statt hidden: beschneidet die Ecken, ohne einen eigenen Scrollbereich
+     aufzuspannen – nur so bleibt die Tabellenkopfzeile beim Scrollen stehen. */
+  overflow: clip;
 }
 .card-pad { padding: 18px 20px; }
 .card-header {
@@ -383,8 +387,20 @@ a:hover { text-decoration: underline; }
 /* ------------------------------------------------------------------ */
 /* Tabellen scrollen bei schmalen Fenstern quer, statt abgeschnitten zu werden. */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Ab Tabletbreite passen die Tabellen; ohne eigenen Scrollbereich bleibt die
+   Kopfzeile beim Blättern der Seite stehen. */
+@media (min-width: 861px) {
+  .table-scroll { overflow-x: clip; }
+}
 .table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .table th {
+  /* Bleibt beim Scrollen unter der Kopfzeile stehen. Der untere Strich liegt
+     als Innenschatten an, weil Rahmen zusammengefasster Tabellen mitscrollen. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg-elev);
+  box-shadow: inset 0 -1px 0 var(--separator);
   text-align: left;
   font-size: 11.5px;
   font-weight: 600;
@@ -436,7 +452,6 @@ a:hover { text-decoration: underline; }
 .sort-pfeil.aktiv { opacity: 1; color: var(--accent); }
 
 /* Filter in der Spaltenüberschrift – gleiche Anmutung wie die Überschrift */
-.table th { position: relative; }
 .th-inhalt { display: inline-flex; align-items: center; gap: 3px; }
 .th-wert {
   margin-left: 2px;
@@ -650,6 +665,8 @@ a:hover { text-decoration: underline; }
 .table tr.zeile-vorgemerkt td { background: var(--gelb-soft); }
 .table tr.zeile-vorgemerkt:hover td { background: var(--gelb-soft-stark); }
 .badge.gelb { background: var(--gelb-soft-stark); color: var(--gelb-text); margin-left: 6px; }
+/* Grauer Zusatz hinter einem Titel, z.B. „Index B → C“ */
+.badge.zusatz { margin-left: 6px; font-weight: 400; }
 
 .table tr.zeile-verworfen td { color: var(--text-tertiary); }
 .table tr.zeile-verworfen strong { font-weight: 500; color: var(--text-tertiary); }
@@ -818,7 +835,8 @@ a:hover { text-decoration: underline; }
     transition: transform 0.2s ease;
   }
   .sidebar.open { transform: none; box-shadow: var(--shadow-lg); }
-  .content { padding: 18px 16px 60px; }
+  .content { padding: 0 16px 60px; }
+  .content-inner { padding-top: 18px; }
   .topbar { padding: 12px 16px; }
   .topbar-logo { display: none; }
   /* Auf dem Telefon bleibt die Seitenauswahl eine scrollbare Zeile */

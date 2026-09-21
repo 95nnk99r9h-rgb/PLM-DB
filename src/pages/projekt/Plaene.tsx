@@ -136,6 +136,38 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
     hatEigenenPlanlauf(d) && !data.runs.some((r) => r.documentId === d.id);
   const anzahlVorgemerkt = alle.filter(vorgemerkt).length;
 
+  /**
+   * Abgebrochene Läufe eines Eintrags. Wurde ein Lauf durch einen neuen Index
+   * ersetzt, steht das als Zusatz in der Liste – ebenso ein ersatzloser
+   * Abbruch, solange kein weiterer Lauf gestartet wurde.
+   */
+  const abbruchZusatz = (d: PlanDocument) => {
+    const laeufe = data.runs.filter((r) => r.documentId === d.id);
+    const ersetzt = [...laeufe]
+      .reverse()
+      .find((r) => r.status === 'abgebrochen' && r.abbruchArt === 'neuer_index');
+    if (ersetzt) {
+      const label = INDEX_LABEL[d.kind];
+      return {
+        text: `${label} ${ersetzt.index || '–'} → ${ersetzt.abbruchNeuerIndex || d.index}`,
+        titel: `Planlauf zu ${label} ${ersetzt.index || '–'} abgebrochen${
+          ersetzt.abbruchDatum ? ` am ${formatDate(ersetzt.abbruchDatum)}` : ''
+        } und durch ${label} ${ersetzt.abbruchNeuerIndex || d.index} ersetzt.`,
+      };
+    }
+    // Nur noch abgebrochene Läufe: der Eintrag wird nicht weiterverfolgt
+    if (laeufe.length > 0 && laeufe.every((r) => r.status === 'abgebrochen')) {
+      const letzter = laeufe[laeufe.length - 1];
+      return {
+        text: 'abgebrochen',
+        titel: `Planlauf ersatzlos abgebrochen${
+          letzter.abbruchDatum ? ` am ${formatDate(letzter.abbruchDatum)}` : ''
+        }.${letzter.abbruchGrund ? ` ${letzter.abbruchGrund}` : ''}`,
+      };
+    }
+    return null;
+  };
+
   return (
     <div className="stack">
       <div className="row-between wrap">
@@ -217,6 +249,14 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       <div>
                         <strong>{doc.titel}</strong>
                         {vorgemerkt(doc) ? <span className="badge gelb">vorgemerkt</span> : null}
+                        {(() => {
+                          const zusatz = abbruchZusatz(doc);
+                          return zusatz ? (
+                            <span className="badge zusatz" title={zusatz.titel}>
+                              {zusatz.text}
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                     </td>
                     <td className="small muted">{doc.gewerk || '–'}</td>

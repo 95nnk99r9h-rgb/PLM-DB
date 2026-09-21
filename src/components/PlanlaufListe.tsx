@@ -6,8 +6,8 @@
  * Paket selbst hat keinen Planlauf und darum auch keinen Erledigt-Haken.
  */
 import { Fragment, useState } from 'react';
-import { aktuellerSchritt, ampelFuerSchritt, fortschritt, type Ampel } from '../domain/engine';
-import { relativeLabel } from '../lib/dates';
+import { abbruchHinweis, aktuellerSchritt, ampelFuerSchritt, fortschritt, type Ampel } from '../domain/engine';
+import { formatDate, relativeLabel } from '../lib/dates';
 import {
   INDEX_LABEL,
   hatEigenenPlanlauf,
@@ -337,7 +337,11 @@ export function PlanlaufListe({
     );
   }
 
-  const zeile = ({ run, doc, step }: Eintrag, eingerueckt = false) => {
+  const zeile = ({ run, doc, step: offenerSchritt }: Eintrag, eingerueckt = false) => {
+    // Ein abgebrochener Lauf ist abgeschlossene Vergangenheit: kein aktueller
+    // Schritt, kein Fortschritt und nichts mehr zu erledigen.
+    const abgebrochen = run.status === 'abgebrochen';
+    const step = abgebrochen ? undefined : offenerSchritt;
     const ampel = step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'erledigt';
     const pct = fortschritt(run);
     const kontakt = data.contacts.find((c) => c.id === step?.contactId);
@@ -352,7 +356,11 @@ export function PlanlaufListe({
     const einzug = eingerueckt ? 46 : 14;
     return (
       <Fragment key={run.id}>
-      <tr className="clickable" onClick={() => oeffneLauf(run.id)}>
+      <tr
+        className={`clickable ${abgebrochen ? 'zeile-verworfen' : ''}`}
+        onClick={() => oeffneLauf(run.id)}
+        title={abgebrochen ? 'Abgebrochener Planlauf – nur noch zum Nachschlagen' : undefined}
+      >
         <td style={{ paddingLeft: einzug }}>
           <span className="row" style={{ gap: 9 }}>
             {plaene.length > 0 ? (
@@ -388,34 +396,43 @@ export function PlanlaufListe({
           </span>
         </td>
         <td className="small muted">{doc?.gewerk || '–'}</td>
-        <td className="small">
-          {step ? (
-            <>
-              <div>{step.name}</div>
-              <span className="tertiary small">{relativeLabel(step.sollDatum)}</span>
-            </>
-          ) : (
-            <span className="tertiary">–</span>
-          )}
-        </td>
-        <td className="small col-optional">
-          {step ? (
-            <>
-              <div>{step.roleName || '–'}</div>
-              <span className="tertiary small">
-                {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person'}
+        {abgebrochen ? (
+          <td className="small tertiary" colSpan={3}>
+            <div>Abgebrochen{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}</div>
+            <span className="small">{abbruchHinweis(run, doc?.kind ?? 'plan')}</span>
+          </td>
+        ) : (
+          <>
+            <td className="small">
+              {step ? (
+                <>
+                  <div>{step.name}</div>
+                  <span className="tertiary small">{relativeLabel(step.sollDatum)}</span>
+                </>
+              ) : (
+                <span className="tertiary">–</span>
+              )}
+            </td>
+            <td className="small col-optional">
+              {step ? (
+                <>
+                  <div>{step.roleName || '–'}</div>
+                  <span className="tertiary small">
+                    {kontakt ? `${kontakt.vorname} ${kontakt.nachname}` : 'keine Person'}
+                  </span>
+                </>
+              ) : (
+                <span className="tertiary">–</span>
+              )}
+            </td>
+            <td className="col-optional">
+              <span className="row" style={{ gap: 8 }}>
+                <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : ''} />
+                <span className="small tertiary">{pct}%</span>
               </span>
-            </>
-          ) : (
-            <span className="tertiary">–</span>
-          )}
-        </td>
-        <td className="col-optional">
-          <span className="row" style={{ gap: 8 }}>
-            <Progress wert={pct} ton={ampel === 'ueberfaellig' ? 'red' : ''} />
-            <span className="small tertiary">{pct}%</span>
-          </span>
-        </td>
+            </td>
+          </>
+        )}
         <td>
           {run.status === 'laufend' ? <AmpelBadge ampel={ampel} /> : <RunStatusBadge status={run.status} />}
         </td>
