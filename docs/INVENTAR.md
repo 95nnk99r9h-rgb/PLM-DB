@@ -1,182 +1,196 @@
 # Inventar der Anwendung
 
-Stand: Quellcode dieses Repositorys (Branch `claude/planlauf-management-app-5jn9sa`).
-Alle Angaben sind aus dem Code abgeleitet; Dateipfade in Klammern verweisen auf die Fundstelle.
+Stand: Analyse des Quellcodes in diesem Repository (Zweig
+`claude/planlauf-management-app-5jn9sa`). Es sind ausschließlich Sachverhalte
+aufgeführt, die sich im Code belegen lassen; Dateipfade verweisen auf die
+jeweilige Fundstelle.
 
 ## 1. Zweck der Anwendung
 
-MC Plan ist eine Verwaltungssoftware für das Planlaufmanagement im Bau- und Bahnumfeld: Zu jedem
-Projekt werden Pläne, Planverzeichnisse und Planpakete geführt, die vordefinierte Workflows
-(Prozessketten) mit Soll- und Ist-Terminen durchlaufen (`src/domain/types.ts`, `src/domain/seed.ts`).
-Die Anwendung überwacht die Fristen dieser Prozessschritte, weist jeden Schritt über Funktionen je
-Gewerk einer Person aus dem Projektadressbuch zu und bereitet Erinnerungs-E-Mails aus Vorlagen vor
-(`src/domain/engine.ts`, `src/domain/email.ts`).
-Sie läuft als reine Browseranwendung ohne Server: Der gesamte Datenbestand liegt im `localStorage`
-des Browsers, wobei die Schnittstelle in `src/store/storage.ts` bewusst schmal gehalten ist, um
-später gegen eine Datenbank getauscht zu werden.
+**MC Plan – Planlaufmanagement** verwaltet die Planläufe von Bauprojekten: Zu
+jedem Plan bzw. Planverzeichnis wird ein Workflow (Prozesskette) gestartet,
+dessen Schritte Soll-Termine, eine zuständige Funktion und eine Person tragen
+(`src/domain/engine.ts`, `src/domain/types.ts`). Die Anwendung rechnet aus den
+Fristen je Schritt die Soll-Termine, überwacht sie mit einer Ampel (im Plan /
+fällig / überfällig) und bereitet Erinnerungen als E-Mail für Outlook vor
+(`ampelFuerSchritt`, `src/components/EmailDialog.tsx`). Sie läuft vollständig im
+Browser: Der gesamte Bestand liegt in `localStorage`, ein Server wird nicht
+angesprochen (`src/store/storage.ts`).
 
 ## 2. Routen und Seiten
 
-Die Adressierung läuft über einen Hash-Router (`src/lib/router.ts`). Unbekannte Adressen führen auf
-die Übersicht; die frühere Adresse `…/planlaeufe` wird auf die Planliste umgeleitet.
+Adressiert wird über einen Hash-Router ohne Bibliothek
+(`src/lib/router.ts`). Unbekannte Adressen führen auf die Übersicht.
 
-### Hauptbereiche (Seitenleiste)
+### 2.1 Hauptrouten
 
-| Route | Seite | Inhalt und mögliche Aktionen |
+| Route | Seite | Aktionen |
 | --- | --- | --- |
-| `#/dashboard` (auch leerer Hash) | Übersicht (`src/pages/Dashboard.tsx`) | Kacheln (laufende Planläufe, überfällige Schritte, eigene To-Dos, demnächst fällig), Liste der eigenen To-Dos mit Schaltflächen „Erinnerung vorbereiten“ und „Erledigt“, Tabelle aller (markierten) Projekte mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, fälligen und überfälligen Schritten, Fortschrittsbalken und Verweis „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle. |
-| `#/projekte` | Projekte (`src/pages/Projekte.tsx`) | Projektliste; neues Projekt anlegen, Projekt bearbeiten, Projekt mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. |
-| `#/ketten` | Workflows (`src/pages/Workflows.tsx`) | Standard-Workflows und Projektvarianten ansehen; neue Kette anlegen, Kette duplizieren, bearbeiten, löschen; Schritte hinzufügen/ändern/entfernen (Art Aufgabe/Entscheidung/Sonstiges, Verantwortliche Funktion, Frist in Tagen, Nachweis, Nachfolger bzw. Antwortziele bei Entscheidungen). |
-| `#/rollen` | Funktionen (`src/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk; neue Funktion anlegen, vorhandene Funktion in ein weiteres Gewerk übernehmen, bearbeiten, löschen; Gewerk über das **+** an den Reitern anlegen und über *Gewerk löschen* wieder entfernen (Gewerke sind Stammdaten und gelten in allen Projekten). |
-| `#/vorlagen` | Vorlagen (`src/pages/Vorlagen.tsx`) | Zwei Bereiche: **E-Mail-Texte** (Vorlagen anlegen, bearbeiten, löschen; Editor mit Bausteinen aus `PLATZHALTER` und Vorschau mit Beispielwerten) und **Excel-Vorlagen** (Planliste sowie Rollen & Funktionen als `.xlsx` herunterladen, Spaltenerläuterung). |
-| `#/fristen` | Fristen & Erinnerungen (`src/pages/Fristen.tsx`) | Nicht in der Seitenleiste verlinkt, aber über die Kacheln der Übersicht erreichbar: je Planlauf der aktuell anstehende Schritt, filterbar nach Überfällig/Fällig/Im Plan, durchsuchbar; Schaltflächen „Erinnern“ (E-Mail-Dialog) und „Erledigt“. |
+| `#/` bzw. `#/dashboard` | Übersicht (`src/pages/Dashboard.tsx`) | Vier Kacheln: Laufende Planläufe, To-Dos (Planlaufmanagement), Überfällige Schritte, Demnächst fällig – die beiden letzten führen per Klick auf `#/fristen`. Tabelle „Meine To-Dos“ mit Schritt, Gewerk, Projekt, Soll-Termin, Status, Erinnerungs-Mail und Erledigt-Haken. Tabelle „Projekte“ mit Anzahl Pläne/Verzeichnisse, laufenden Planläufen, demnächst fällig, überfällig, Fortschrittsbalken und „Projekt öffnen“. Angezeigt werden markierte Projekte; ohne Markierung alle (`sichtbareProjekte`). |
+| `#/fristen` | Fristen & Erinnerungen (`src/pages/Fristen.tsx`) | Alle offenen Schritte über alle Projekte, gegliedert nach Projekt. Filter Alle / Überfällig / Fällig / Im Plan mit Zählern, Suche über Schritt, Planlauf, Projekt, Funktion, Nachname und Firma. Je Zeile: Planlauf öffnen, Erinnerungs-Mail vorbereiten, Schritt als erledigt setzen. Kein Eintrag in der Seitenleiste – erreichbar über die Kacheln der Übersicht. |
+| `#/projekte` | Projekte (`src/pages/Projekte.tsx`) | Projektliste mit Suche über Name, Nummer und Beschreibung; Projekt anlegen (übernimmt alle projektübergreifenden Funktionen als Projektfunktionen), bearbeiten, mit ★ markieren bzw. Markierung aufheben, Projekt öffnen. |
+| `#/ketten` | Workflows (`src/pages/Workflows.tsx`) | Standard-Workflows und projektspezifische Ketten: neue Kette anlegen, Kette bearbeiten, duplizieren (wird zur manuellen Kette), löschen. Je Schritt: Bezeichnung, Art (Aufgabe / Entscheidung / Sonstiges), Verantwortlicher, Frist in Tagen, Nachweis bei Abschluss, „Weiter mit“, Antworten einer Entscheidung und die Option „E-Mail nach Abschluss“ samt Vorlage. |
+| `#/rollen` | Funktionen (`src/pages/Funktionen.tsx`) | Projektübergreifende Funktionen, gegliedert in „Übergreifend“ und je Gewerk. Neue Funktion anlegen (Bezeichnung, Kürzel, Farbe, Gewerk, Beschreibung), vorhandene Funktion eines anderen Gewerks übernehmen, bearbeiten, löschen. Über das **+** an den Reitern entsteht ein Gewerk, über „Gewerk … löschen“ am Seitenende entfällt es. |
+| `#/vorlagen` | Vorlagen (`src/pages/Vorlagen.tsx`) | Reiter **E-Mail-Texte**: Vorlagen anlegen, bearbeiten, löschen; Editor mit Bausteinen aus `PLATZHALTER` (`src/domain/email.ts`) und Vorschau mit Beispielwerten; Anlass je Vorlage (Erinnerung, Mahnung, Freigabe, Übergabe, Allgemein). Reiter **Excel-Vorlagen**: Vorlagen „Planliste“ und „Rollen & Funktionen“ als `.xlsx` herunterladen, mit Spaltenerläuterung. |
+| `#/projekt/<id>/<reiter>` | Projektarbeitsbereich (`src/pages/ProjektDetail.tsx`) | Reiter siehe 2.2. Frühere Adressen werden umgeleitet: `planlaeufe` → `plaene`, `adressbuch` → `rollen`. |
+| `#/projekt/<id>/planlauf/<runId>` | Planlauf (`src/pages/projekt/PlanlaufDetail.tsx`) | Siehe 2.3. |
 
-### Projektbereich `#/projekt/<projectId>/<tab>`
+### 2.2 Reiter im Projekt
 
-| Reiter | Seite | Inhalt und mögliche Aktionen |
+| Reiter | Seite | Aktionen |
 | --- | --- | --- |
-| `uebersicht` | Projektübersicht (`src/pages/projekt/Uebersicht.tsx`) | Kennzahlenleiste (Planpakete, Planverzeichnisse, Pläne, fällige und überfällige Schritte) mit Gesamtfortschrittsbalken; Liste der Planläufe (laufend, abgeschlossen, abgebrochen) gegliedert nach Planpaketen. Umschalten der Gliederung („Planpakete“ / „+ Pläne & Verzeichnisse“), Schalter „Untergeordnete Pläne anzeigen“, Auf- und Zuklappen einzelner Pakete und Verzeichnisse, Suche in der Kartenzeile, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status) und Sortierung je Spalte (Kopfzeile bleibt beim Scrollen stehen); abgebrochene Läufe stehen ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit dem Hinweis „Abgebrochen am …“ samt Zusatz (ersatzlos oder ersetzt durch Index), „Erinnern“, „Erledigt“, Planlauf öffnen. |
-| `plaene` | Planliste (`src/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis, Planpaket und Eingang Soll. Filter (Alle/Pläne/Verzeichnisse), Suche, Sortierung je Spalte; Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz. Eintrag anlegen – wahlweise mit Start des Planlaufs aus einem Workflow oder als „vorgemerkt“ (gelb hinterlegt, ohne Planlauf; der Lauf lässt sich später starten) –, bearbeiten, löschen; Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen; Excel-Import (`PlaeneImport.tsx`). |
-| `pakete` | Planpakete (`src/pages/projekt/Planpakete.tsx`) | Planpakete anlegen, bearbeiten, löschen; Inhalt aufklappen, Pläne und Planverzeichnisse zuordnen und wieder entfernen. Ordnungsmerkmal ohne Einfluss auf Planläufe. |
-| `rollen` (früher `adressbuch`, wird umgeleitet) | Rollen & Funktionen (`src/pages/projekt/RollenFunktionen.tsx`) | Nach Gewerken gegliederte Seiten („Übergreifend“ + je Gewerk, dazu **+** für ein weiteres Gewerk und *Gewerk löschen* am Seitenende für das geöffnete – mit Angabe der entfallenden Funktionen und Besetzungen). Je Funktion die Besetzung mit einer Person samt Adressdaten: Funktion anlegen, bearbeiten, löschen; Besetzung setzen, wechseln, aufheben – wahlweise von der Funktion aus (Person auswählen oder neu erfassen) oder über **Person hinzufügen** von der Person aus (Funktion optional gleich mitwählen); Suche über Funktion, Person und Firma; Personen ohne Funktion in eigener Liste; Excel-Import (`RollenImport.tsx`), der fehlende Gewerke und Funktionen anlegt. Änderungen wirken sofort auf laufende Planläufe (`zustaendigkeitenNachziehen` in `src/domain/engine.ts`). |
-| `ketten` | Workflows im Projekt (`src/pages/Workflows.tsx` mit `projectId`) | Wie der globale Workflow-Bereich, zusätzlich beschränkt auf Standardketten und Varianten dieses Projekts. |
-| `einstellungen` | Einstellungen (`src/pages/projekt/Einstellungen.tsx`) | Projektdaten bearbeiten; Vorlaufzeit für Erinnerungen, Fristenrechnung in Arbeitstagen, Feiertage, Absendername und Absender-E-Mail pflegen; Hinweis auf die projektübergreifenden E-Mail-Texte; **Export** des Planbestands als Excel oder PDF (`ExportDialog.tsx`); Projekt löschen. |
+| `uebersicht` | Projektübersicht (`src/pages/projekt/Uebersicht.tsx`) | Kennzahlen (Planpakete, Planverzeichnisse, Pläne, fällige und überfällige Schritte) und Gesamtfortschritt. Liste der Planläufe, gegliedert nach Planpaketen: Gliederung umschalten („Planpakete“ / „+ Pläne & Verzeichnisse“), Schalter „Untergeordnete Pläne anzeigen“, einzelne Pakete und Verzeichnisse auf- und zuklappen, Suche, Filter in den Spaltenüberschriften (Gewerk, Zuständig, Status), Sortierung je Spalte, Erinnerungs-Mail, Erledigt-Haken, Planlauf öffnen. Abgebrochene Läufe stehen ausgegraut ohne Schritt, Fortschritt und Schaltflächen, mit „Abgebrochen am …“ und dem Zusatz *ersatzlos* bzw. *ersetzt durch Index …*. |
+| `plaene` | Planliste (`src/pages/projekt/Plaene.tsx`) | Alle Pläne und Planverzeichnisse mit laufender Nummer, Art, Bezeichnung/Titel, Gewerk, zugehörigem Planverzeichnis, Planpaket und Eingang Soll. Filter (Alle / Pläne / Verzeichnisse), Suche, Sortierung je Spalte. Eintrag anlegen – wahlweise „Anlegen und Planlauf starten“ oder „vormerken“ (gelb hinterlegt, ohne Planlauf; der Lauf lässt sich später starten) –, bearbeiten, löschen; Planverzeichnis oder Planpaket direkt aus den Auswahlfeldern neu anlegen; Excel-Import (`PlaeneImport.tsx`). Einträge, deren Lauf durch einen neuen Index ersetzt oder ersatzlos abgebrochen wurde, tragen einen grauen Zusatz. |
+| `pakete` | Planpakete (`src/pages/projekt/Planpakete.tsx`) | Planpakete anlegen, bearbeiten, löschen; Inhalt aufklappen, Pläne und Planverzeichnisse zuordnen und wieder entfernen. Reines Ordnungsmerkmal ohne Einfluss auf Planläufe. |
+| `rollen` | Rollen & Funktionen (`src/pages/projekt/RollenFunktionen.tsx`) | Nach Gewerken gegliedert („Übergreifend“ + je Gewerk, **+** für ein weiteres Gewerk, „Gewerk … löschen“ am Seitenende). Je Funktion die Besetzung mit einer Person samt Adressdaten: Funktion anlegen, bearbeiten, löschen; Besetzung setzen, wechseln, aufheben – von der Funktion aus (Person übernehmen oder neu erfassen) oder über „Person hinzufügen“ von der Person aus (Funktion optional gleich mitwählen). Suche über Funktion, Person und Firma; Personen ohne Funktion in einer eigenen Liste; Excel-Import (`RollenImport.tsx`), der fehlende Gewerke und Funktionen anlegt. |
+| `ketten` | Workflows im Projekt (`src/pages/Workflows.tsx` mit `projectId`) | Wie der globale Bereich, zusätzlich mit den Projektvarianten dieses Projekts. |
+| `einstellungen` | Einstellungen (`src/pages/projekt/Einstellungen.tsx`) | Projektdaten bearbeiten; Vorlaufzeit für Erinnerungen, Fristenrechnung in Arbeitstagen, Feiertage, Absendername und Absender-E-Mail pflegen; Hinweis auf die projektübergreifenden E-Mail-Texte; **Export** (`ExportDialog.tsx`): Auswahl der Einträge, Kurz- oder Langfassung, Ausgabe als Excel-Datei (`src/lib/xlsx.ts`) oder als PDF über den Druckdialog (`src/lib/print.ts`); Projekt löschen. |
 
-Der **Export** (`ExportDialog.tsx`) sitzt im Reiter *Einstellungen*: Auswahl der Einträge,
-Kurz- oder Langfassung, Ausgabe als Excel-Datei (`src/lib/xlsx.ts`) oder als PDF über den
-Druckdialog des Browsers (`src/lib/print.ts`).
+### 2.3 Planlauf
 
-### Planlaufdetail `#/projekt/<projectId>/planlauf/<runId>`
+`src/pages/projekt/PlanlaufDetail.tsx`: Kopf mit Stammdaten, Status und
+Fortschritt, Verlaufskette und Schrittliste. Aktionen am jeweils anstehenden
+Schritt: **Erledigt**, **Überspringen**, **Erinnern** (E-Mail vorbereiten);
+abgeschlossene Schritte bieten **Wieder öffnen**, jede Zeile **Anpassen**
+(Bezeichnung, Art, Funktion, zuständige Person, Frist, Soll-Termin, Status,
+Bemerkung, Nachweis). Weiter: **Schritt einfügen**, Antwort einer Entscheidung
+wählen, **Planlauf abbrechen** (ersatzlos oder mit neuem Index bzw. neuer
+Ausgabe – dann startet ein Nachfolgelauf) und **Lauf löschen**. Ein
+abgebrochener Lauf ist schreibgeschützt: `beendet = run.status !== 'laufend'`
+blendet alle Schaltflächen aus. Verlangt ein Schritt einen Nachweis
+(`Freigabe-Nr.` oder `Prüfbericht-Nr.`), wird die Nummer beim Erledigen
+abgefragt (`src/components/SchrittStatus.tsx`).
 
-`src/pages/projekt/PlanlaufDetail.tsx`: Kopf mit Eintrag, Index/Ausgabe, Start und Vorlage; darunter
-die Prozessschritte. Der aktuelle Schritt zeigt Verantwortliche Funktion, Person, Frist, Soll- und
-Ist-Termin sowie die Schaltflächen **Erledigt**, **Überspringen** und **Erinnern**; erledigte und
-künftige Schritte sind auf Nummer und Titel reduziert und lassen sich aufklappen (dort **Wieder
-öffnen**). Weitere Aktionen: Schritt anpassen (Stift), **Schritt einfügen**, Antwort einer
-Entscheidung wählen, **Planlauf abbrechen** (ersatzlos oder mit neuem Index bzw. neuer Ausgabe – dann
-startet ein Nachfolgelauf) und **Lauf löschen**. Verlangt ein Schritt einen Nachweis, wird beim
-Erledigen die Freigabe- oder Prüfbericht-Nummer abgefragt (`src/components/SchrittStatus.tsx`).
+### 2.4 Übergreifende Bedienelemente
 
-### Seitenleiste unten
-
-Angemeldete Person (Name, Schalter für die Mailnachfrage, Schalter für den Farbmodus bei
-Rot-Grün-Sehschwäche), **Sicherung**
-(Datenbestand als JSON herunterladen, `exportiereDaten` in `src/store/storage.ts`) und
-**Zurücksetzen** (Bestand löschen und Demodaten laden, `zuruecksetzen` in `src/store/store.tsx`).
+* **Seitenleiste** (`src/App.tsx`): Navigation (Übersicht, Projekte, Workflows,
+  Funktionen, Vorlagen), darunter die markierten Projekte mit vorangestellter
+  Projektnummer und der Anzahl überfälliger Schritte.
+* **Angemeldet als** (unten links): Name (Vorgabe `STANDARD_BEARBEITER =
+  'Max Mustermann'`), Schalter „Nachfragen zulassen, wenn ein Workflow-Schritt
+  eine E-Mail vorsieht“ und Schalter „Farbmodus für Rot-Grün-Sehschwäche
+  (hoher Kontrast)“.
+* **Sicherung**: lädt den gesamten Bestand als JSON herunter
+  (`exportiereDaten`). **Zurücksetzen**: verwirft den Bestand und lädt die
+  Demodaten (`zuruecksetzen` in `src/store/store.tsx`).
+* **E-Mail-Dialog** (`src/components/EmailDialog.tsx`): Vorlage wählen, Betreff
+  und Text bearbeiten, „In Outlook öffnen“ (mailto), „Outlook im Web“ oder „In
+  die Zwischenablage“.
 
 ## 3. Nutzerrollen und Rechte
 
-**Es gibt keine Anmeldung, keine Benutzerverwaltung und keine Rechteprüfung im Code.** Weder in
-`src/App.tsx` noch im Store (`src/store/store.tsx`) existiert eine Prüfung, die eine Aktion abhängig
-von einer Rolle zulässt oder verweigert. Jede Person, die die Anwendung im Browser öffnet, kann
-alles lesen und ändern; die Hinweise in der Oberfläche formulieren das ausdrücklich („Alle
-Bearbeiter sehen alle Projekte“, `src/pages/Projekte.tsx`).
+**Es gibt keine Anmeldung, keine Benutzerverwaltung und keine Rechteprüfung.**
+Weder `src/App.tsx` noch der Store (`src/store/store.tsx`) prüfen irgendeine
+Berechtigung; jede Person, die die Anwendung im Browser öffnet, kann alles
+lesen und ändern. Der Bestand liegt ausschließlich im `localStorage` des
+jeweiligen Browsers, wird also ohnehin nicht geteilt.
 
 Der Begriff „Rolle“ hat im Code zwei rein fachliche Bedeutungen:
 
-1. **Bearbeiter** (`Bearbeiter` in `src/domain/types.ts`): Name (Vorgabe
-   `STANDARD_BEARBEITER = 'Max Mustermann'`), `mailNachfrage` und `farbmodus`. Die Funktion der
-   angemeldeten Person ist stets `EIGENE_ROLLE = 'Planlaufmanagement'`; Schritte dieser Funktion
-   gelten als eigene To-Dos (`eigeneTodos` in `src/domain/engine.ts`). In jedem markierten Projekt
-   wird die Person automatisch unter „Rollen & Funktionen“ geführt und besetzt dort das Planlaufmanagement
-   (`eigeneKontakteSichern` in `src/domain/engine.ts`). Rechte verleiht das nicht.
-2. **Funktionen** (`StandardRolle` projektübergreifend, `Role` je Projekt): fachliche Zuständigkeiten
-   je Gewerk, die Prozessschritten zugeordnet und im Projekt unter „Rollen & Funktionen“ mit Personen besetzt werden
-   (`kontaktFuerRolleUndGewerk` in `src/domain/engine.ts`). Mitgeliefert werden 15 Funktionen
-   (`src/domain/seed.ts`), davon zwei übergreifend (Planlaufmanagement, Projektleitung) und
-   dreizehn je Gewerk (Fachplaner, Fachspezialist, Bauvorlageberechtiger, Bau AN, Bauüberwachung,
-   Fachtechnischer Prüfer, Prüfstatiker, Vermessungsprüfer, Erdungsprüfer, Schweißtechnischer
-   Prüfer, Korrosionsschutzprüfer, Gleisgeometrie Prüfer, Geotechnischer Prüfer) für die Gewerke
-   EEA, KIB, LST, OLA, OSE, TK und VA.
+1. **Bearbeiter** (`Bearbeiter` in `src/domain/types.ts`): Name,
+   `mailNachfrage` und `farbmodus`. Die Funktion der angemeldeten Person ist
+   stets `EIGENE_ROLLE = 'Planlaufmanagement'`; Schritte dieser Funktion gelten
+   als eigene To-Dos (`eigeneTodos` in `src/domain/engine.ts`). In jedem
+   markierten Projekt wird die Person automatisch unter „Rollen & Funktionen“
+   geführt und besetzt dort das Planlaufmanagement (`eigeneKontakteSichern`).
+   Rechte verleiht das nicht.
+2. **Funktionen** (`StandardRolle` projektübergreifend, `Role` je Projekt):
+   fachliche Zuständigkeiten, die Prozessschritten zugeordnet und im Projekt mit
+   Personen besetzt werden (`kontaktFuerRolleUndGewerk`). Mitgeliefert werden 15
+   Funktionen (`src/domain/seed.ts`), davon zwei übergreifend
+   (Planlaufmanagement, Projektleitung) und dreizehn je Gewerk (Fachplaner,
+   Fachspezialist, Bauvorlageberechtiger, Bau AN, Bauüberwachung,
+   Fachtechnischer Prüfer, Prüfstatiker, Vermessungsprüfer, Erdungsprüfer,
+   Schweißtechnischer Prüfer, Korrosionsschutzprüfer, Gleisgeometrie Prüfer,
+   Geotechnischer Prüfer) für die mitgelieferten Gewerke EEA, KIB, LST, OLA,
+   OSE, TK und VA. Gewerke und Funktionen lassen sich ergänzen und löschen.
+
+Die Besetzung wirkt sofort: `zustaendigkeitenNachziehen` (`src/domain/engine.ts`)
+setzt in laufenden Planläufen die zuständige Person aus der aktuellen Besetzung
+– außer bei erledigten Schritten und bei von Hand gewählten Personen
+(`contactManuell`).
 
 ## 4. Umgebungsvariablen
 
-**Eine Datei `.env.example` existiert in diesem Repository nicht; es gibt auch keine `.env`-Datei und
-keine eigenen Umgebungsvariablen.** Weder `vite.config.ts` noch der Quellcode lesen projekteigene
-Variablen aus `import.meta.env` oder `process.env`.
+**Eine `.env.example` existiert in diesem Repository nicht**, ebenso wenig eine
+`.env`-Datei oder ein Zugriff auf `process.env` im Anwendungscode. Die
+Anwendung benötigt keine Umgebungsvariablen – es gibt keinen Server, keine
+Datenbank und keine API-Schlüssel.
 
-Genutzt werden ausschließlich zwei von Vite bereitgestellte Werte, die keine Konfiguration
-erfordern:
+Verwendet werden ausschließlich die von Vite bereitgestellten Werte:
 
-| Wert | Verwendung | Pflicht |
+| Variable | Bedeutung | Pflicht |
 | --- | --- | --- |
-| `import.meta.env.BASE_URL` | Pfad zur Wortmarke `public/mailaender-consult.svg` (`src/components/logos.tsx`). Wird von Vite aus `base: './'` in `vite.config.ts` gesetzt. | entfällt – von Vite gesetzt |
-| `import.meta.env.PROD` | Registriert den Service Worker nur im gebauten Stand (`src/lib/pwa.ts`). | entfällt – von Vite gesetzt |
+| `import.meta.env.BASE_URL` | Basispfad der Auslieferung; wird für den Pfad des Hauslogos verwendet (`src/components/logos.tsx`). Vite setzt ihn aus `base: './'` in `vite.config.ts`. | von Vite gesetzt, keine eigene Pflege |
+| `import.meta.env.PROD` | Nur im Produktionsbuild wird der Service Worker registriert (`src/lib/pwa.ts`). | von Vite gesetzt, keine eigene Pflege |
 
-## 5. Setup von Null bis laufender Anwendung
+## 5. Setup von Null bis zur laufenden Anwendung
 
-Voraussetzung ist Node.js; die Veröffentlichung nutzt Node 22 (`.github/workflows/pages.yml`).
-Laufzeitabhängigkeiten sind allein `react` und `react-dom`; Excel- und PDF-Ausgabe sind ohne weitere
-Bibliotheken umgesetzt (`package.json`).
+1. **Voraussetzungen**: Node.js (die Veröffentlichung nutzt Node 22, siehe
+   `.github/workflows/pages.yml`) und npm. Weitere Werkzeuge sind nicht nötig.
+2. **Abhängigkeiten installieren**: `npm install` (bzw. `npm ci` bei
+   vorhandener `package-lock.json`). Laufzeitabhängigkeiten sind nur `react`
+   und `react-dom`; Vite, TypeScript und die Typpakete sind Entwicklungs-
+   abhängigkeiten (`package.json`).
+3. **Datenbank**: entfällt. Es gibt keine Datenbank, keinen Server und keine
+   Migrationsskripte. Der Bestand liegt unter dem Schlüssel
+   `planlauf-management.data.v1` im `localStorage`
+   (`src/store/storage.ts`).
+4. **Migrationen**: laufen automatisch beim Laden. `DATEN_VERSION = 11` und
+   `STAMMDATEN_VERSION = 4` (`src/domain/types.ts`) steuern, ob `migriere()`
+   einen älteren Bestand auf die aktuelle Struktur hebt und ob neue Stammdaten
+   (Funktionen, Standard-Workflows) übernommen werden. Ohne gespeicherten
+   Bestand werden die Demodaten aus `src/domain/seed.ts` geladen.
+5. **Entwicklung starten**: `npm run dev` – Vite startet auf Port 5173 und ist
+   im Netz erreichbar (`server: { port: 5173, host: true }`).
+6. **Prüfen und bauen**: `npm run typecheck` (`tsc --noEmit`) und `npm run
+   build` (`tsc -b && vite build`, Ergebnis in `dist/`). `npm run preview`
+   liefert den Build lokal aus.
+7. **Veröffentlichen**: Der Workflow `.github/workflows/pages.yml` baut bei
+   jedem Push auf `main` bzw. den Entwicklungszweig und stellt `dist/` über
+   GitHub Pages bereit; zusätzlich wird die gebaute Fassung im Zweig unter
+   `app/` abgelegt. Wegen `base: './'` funktioniert die Anwendung auch in
+   einem Unterverzeichnis.
 
-```bash
-git clone <Repository-URL>
-cd PLM-DB
-npm ci            # Abhängigkeiten installieren (alternativ: npm install)
-npm run dev       # Entwicklungsserver von Vite, Ausgabe nennt die Adresse
-```
+## 6. Bekannte Meldungen und ihre Ursachen
 
-Für einen produktiven Stand:
+### Eingabeprüfungen (als Hinweis eingeblendet)
 
-```bash
-npm run build     # prüft die Typen (tsc -b) und baut nach dist/
-npm run preview   # liefert dist/ lokal aus
-```
+| Meldung | Fundstelle | Ursache |
+| --- | --- | --- |
+| „Bitte einen Projektnamen angeben.“ | `src/pages/Projekte.tsx` | Projektname leer. |
+| „Bitte einen Titel angeben.“ | `src/pages/projekt/Plaene.tsx` | Titel eines Plans / Planverzeichnisses leer. |
+| „Bitte einen Namen für das Planpaket angeben.“ | `src/pages/projekt/Planpakete.tsx` | Name des Planpakets leer. |
+| „Bitte die … angeben.“ / „Bitte … angeben.“ | `src/pages/projekt/Plaene.tsx`, `PlanlaufDetail.tsx` | Pflichtfeld einer Schnellanlage bzw. der neue Index beim Abbruch fehlt. |
+| „Bitte einen Nachnamen angeben.“ | `src/pages/projekt/RollenFunktionen.tsx` | Besetzung ohne Nachname gespeichert. |
+| „Bitte eine Bezeichnung angeben.“ | `Funktionen.tsx`, `RollenFunktionen.tsx`, `GewerkDialog.tsx` | Funktion oder Gewerk ohne Bezeichnung. |
+| „„…“ ist bereits angelegt.“ | `src/components/GewerkDialog.tsx` | Gewerk mit diesem Namen existiert schon. |
+| „Bitte einen Namen angeben.“ / „Bitte jeden Schritt benennen.“ | `src/pages/Workflows.tsx` | Workflow ohne Namen bzw. Schritt ohne Bezeichnung. |
+| „Bitte jeden Schritt der Workflow benennen.“ | `src/pages/projekt/Plaene.tsx` | Beim Start eines Planlaufs ist ein Schritt unbenannt. |
+| „Bitte einen Grund angeben.“ | `src/pages/projekt/PlanlaufDetail.tsx` | Abbruch ohne Begründung. |
+| „Bitte mindestens einen Eintrag auswählen.“ | `src/pages/projekt/ExportDialog.tsx` | Export ohne Auswahl. |
 
-Weitere Skripte: `npm run typecheck` (`tsc --noEmit`).
-
-**Datenbank und Migrationen:** Es gibt keine Datenbank, keinen Server und keine
-Datenbank-Migrationen. Der Bestand liegt im `localStorage` unter dem Schlüssel
-`planlauf-management.data.v1` (`src/store/storage.ts`). Beim ersten Start wird ein Demodatenbestand
-erzeugt (`seedData` in `src/domain/seed.ts`). Für ältere Bestände enthält `storage.ts` eine
-Migration auf die aktuelle Fassung: `DATEN_VERSION = 7` für den Datenbestand und
-`STAMMDATEN_VERSION = 4` für die mitgelieferten Funktionen und Standard-Workflows
-(`src/domain/types.ts`). Diese Migration läuft automatisch beim Laden; es ist kein Befehl
-aufzurufen.
-
-**Veröffentlichung auf GitHub Pages:** Der Workflow `.github/workflows/pages.yml` baut bei jedem
-Push auf `main` oder den Entwicklungsbranch, lädt `dist/` als Pages-Artefakt hoch, legt den Build
-zusätzlich im Ordner `app/` des Branches ab und aktualisiert den Branch `gh-pages`.
-
-## 6. Bekannte Fehlermeldungen und ihre Ursachen
-
-### Beim Start
-
-| Meldung | Ursache |
-| --- | --- |
-| „MC Plan wird geladen …“ bleibt stehen | Der Quellcode wird statisch ausgeliefert statt der gebauten Anwendung. `index.html` wechselt nach 1,5 Sekunden automatisch auf `./app/`; fehlt auch diese Fassung, bleibt der Hinweis stehen. Abhilfe laut Text: auf GitHub Pages **Settings → Pages → Build and deployment → Source: GitHub Actions**, lokal `npm run dev` oder `npm run build`. |
-| `useStore muss innerhalb des StoreProvider verwendet werden.` | Eine Komponente nutzt `useStore()` außerhalb von `<StoreProvider>` (`src/store/store.tsx`). Nur bei Programmierfehlern. |
-
-### Beim Speichern und beim Service Worker (Browserkonsole)
-
-| Meldung | Ursache |
-| --- | --- |
-| `Daten konnten nicht lokal gespeichert werden: …` | `localStorage.setItem` schlug fehl, etwa weil der Speicher voll ist oder der Browser ihn sperrt (privates Fenster, blockierte Website-Daten) – `src/store/storage.ts`. |
-| `Service Worker konnte nicht registriert werden: …` | Registrierung von `sw.js` fehlgeschlagen, etwa ohne HTTPS oder bei fehlender Datei – `src/lib/pwa.ts`. |
-
-### Beim Excel-Import (`src/lib/xlsxLesen.ts`, `PlaeneImport.tsx`, `KontakteImport.tsx`)
+### Import aus Excel/CSV
 
 | Meldung | Ursache |
 | --- | --- |
-| `Die Datei ist keine gültige Excel-Datei (ZIP-Ende fehlt).` | Die Datei ist kein ZIP-Container, also keine `.xlsx`-Datei (z. B. altes `.xls` oder umbenannte Datei). |
-| `Die Datei verwendet ein nicht unterstütztes Packverfahren.` | Der Eintrag im ZIP ist weder unkomprimiert noch mit „deflate“ gepackt. |
-| `Dieser Browser kann keine Excel-Dateien entpacken – bitte die Liste als CSV speichern.` | Der Browser kennt `DecompressionStream('deflate-raw')` nicht. |
-| `Die Datei enthält keine Datenzeilen.` | Die Tabelle hat nur eine Kopfzeile oder ist leer. |
-| `Die Spalte „Nachname“ wurde nicht gefunden. Gelesene Überschriften: …` | Im Kontaktimport fehlt die Pflichtspalte „Name“ bzw. „Nachname“. |
-| `Weder „Plancodierung“ noch „Titel“ gefunden. Gelesene Überschriften: …` | Im Planimport fehlen beide Spalten, aus denen die Bezeichnung gebildet wird. |
-| `Die Datei konnte nicht gelesen werden.` | Auffangmeldung für alle übrigen Lesefehler. |
+| „Die Datei enthält keine Datenzeilen.“ | Die Tabelle hat nur eine Kopfzeile oder ist leer (`PlaeneImport.tsx`, `RollenImport.tsx`). |
+| „Weder ‚Plancodierung‘ noch ‚Titel‘ gefunden. Gelesene Überschriften: …“ | Die Kopfzeile der Planliste enthält keine der erkannten Schreibweisen (`PLAN_SPALTEN` in `src/domain/importVorlagen.ts`). |
+| „Die Spalte ‚Name‘ wurde nicht gefunden. Gelesene Überschriften: …“ | Dasselbe für die Rollenliste (`ROLLEN_SPALTEN`). |
+| „Die Datei ist keine gültige Excel-Datei (ZIP-Ende fehlt).“ | `src/lib/xlsxLesen.ts`: Die Datei ist kein ZIP – etwa eine alte `.xls`-Datei. |
+| „Die Datei verwendet ein nicht unterstütztes Packverfahren.“ | Der ZIP-Eintrag ist nicht „deflate“ (`methode !== 8`). |
+| „Dieser Browser kann keine Excel-Dateien entpacken – bitte die Liste als CSV speichern.“ | `DecompressionStream` fehlt im Browser. |
+| „Die Datei konnte nicht gelesen werden.“ | Auffangmeldung für alle übrigen Lesefehler. |
+| Hinweise je Zeile: „Eintrag mit dieser Bezeichnung ist bereits vorhanden“, „Planpaket ‚…‘ wird angelegt“, „Workflow ‚…‘ ist nicht hinterlegt“, „wird nur vorgemerkt – kein Planlauf“, „Gewerk ‚…‘ wird angelegt“, „Funktion ‚…‘ wird angelegt“, „ersetzt … in dieser Funktion“ | Kein Fehler: Die Vorschau nennt, was beim Übernehmen geschieht. |
 
-Hinweise in der Vorschau des Imports (kein Abbruch, die Zeile wird trotzdem übernommen):
-„Kontakt ist bereits im Projekt vorhanden“, „Eintrag mit dieser Bezeichnung ist bereits vorhanden“,
-„nur Pläne können einem Planverzeichnis zugeordnet werden“, „Planpaket „…“ wird angelegt“,
-„Planverzeichnis „…“ wird angelegt“, „Workflow „…“ ist nicht hinterlegt“, „Übergreifende Funktion
-„…“ ist im Projekt nicht hinterlegt“ bzw. „„…“ ist für <Gewerk> nicht hinterlegt“.
+### Laufzeit und Technik
 
-### Pflichtangaben in Dialogen (Kurzmeldung, Speichern wird abgelehnt)
-
-„Bitte einen Projektnamen angeben.“ · „Bitte einen Titel angeben.“ · „Bitte eine Bezeichnung
-angeben.“ · „Bitte einen Namen angeben.“ · „Bitte einen Namen für das Planpaket angeben.“ · „Bitte
-einen Nachnamen angeben.“ · „Bitte jeden Schritt benennen.“ bzw. „Bitte jeden Schritt der Workflow
-benennen.“ · „Bitte einen Grund angeben.“ und „Bitte <Index bzw. Ausgabe> angeben.“ beim Abbruch eines
-Planlaufs · „Bitte die <Freigabe-Nr. bzw. Prüfbericht-Nr.> angeben.“ beim Erfassen eines Nachweises ·
-„Bitte mindestens einen Eintrag auswählen.“ im Export.
+| Meldung | Ursache |
+| --- | --- |
+| „Kopieren nicht möglich – bitte Text manuell markieren.“ | `navigator.clipboard.writeText` wurde abgelehnt (fehlende Berechtigung oder unsicherer Kontext), `src/components/EmailDialog.tsx`. |
+| „Druckdialog geöffnet – dort ‚Als PDF sichern‘ wählen.“ | Kein Fehler: Der PDF-Export läuft über den Druckdialog des Browsers (`src/lib/print.ts`). |
+| Konsole: „Daten konnten nicht lokal gespeichert werden: …“ | `localStorage.setItem` schlug fehl – Speicher voll oder gesperrt (privates Fenster), `src/store/storage.ts`. |
+| Konsole: „Service Worker konnte nicht registriert werden: …“ | Registrierung abgelehnt, etwa ohne HTTPS (`src/lib/pwa.ts`). Die Anwendung läuft weiter, nur der Offline-Betrieb entfällt. |
+| Ausnahme: „useStore muss innerhalb des StoreProvider verwendet werden.“ | Entwicklungsfehler: Eine Komponente nutzt `useStore` außerhalb von `StoreProvider` (`src/store/store.tsx`). |
+| Seite „Nicht gefunden – Der aufgerufene Eintrag existiert nicht (mehr).“ | Die Adresse nennt ein Projekt oder einen Planlauf, den es nicht (mehr) gibt (`src/App.tsx`). |
+| Ein alter Stand erscheint nach einer Aktualisierung | Der Service Worker liefert aus dem Cache `mc-plan-v2` (`public/sw.js`); erst ein neuer Cache-Name bzw. das Abmelden des Service Workers zeigt die neue Fassung. |
