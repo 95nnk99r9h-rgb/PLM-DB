@@ -159,13 +159,10 @@ Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Planlauf gleich
 Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
 
 ### Planlaufliste im Projekt
-Je Eintrag stehen zwei Schritte nebeneinander: **Aktueller Schritt** nennt den zuletzt
-abgeschlossenen Schritt – solange der Eingang beim Planlaufmanagement aussteht, heißt er *Plan
-angekündigt* –, **Nächster Schritt** den offenen Schritt mit seiner Frist.
+Je Eintrag steht in der Spalte **Nächster Schritt** der offene Schritt mit seiner Frist.
 
 Die Übersicht lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung, Gewerk,
-aktuellem Schritt, Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status
-(überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
+Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status (überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
 innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
 
 Die **Kopfzeile der Tabellen bleibt beim Scrollen stehen**, sodass die Spaltenbezeichnungen auch in

@@ -57,9 +57,6 @@ export const EIGENE_ROLLE = 'Planlaufmanagement';
 /** Erster Schritt der mitgelieferten Workflows: der Plan geht beim PLM ein. */
 export const SCHRITT_EINGANG = 'Eingang PLM';
 
-/** Stand eines Laufs, solange der Eingang beim PLM noch aussteht. */
-export const STAND_ANGEKUENDIGT = 'Plan angekündigt';
-
 /** Prüft, ob ein Schritt der Eingang beim Planlaufmanagement ist. */
 export function istEingangPLM(schrittName: string): boolean {
   return schrittName.trim().toLowerCase() === SCHRITT_EINGANG.toLowerCase();
