@@ -7,6 +7,8 @@ import {
   EIGENE_ROLLE,
   INDEX_LABEL,
   STANDARD_BEARBEITER,
+  STAND_ANGEKUENDIGT,
+  istEingangPLM,
   hatEigenenPlanlauf,
   type DocumentKind,
   type Antwort,
@@ -197,6 +199,27 @@ const offenerSchritt = (s: RunStep) => s.status !== 'erledigt' && s.status !== '
 /** Der erste nicht erledigte Schritt im aktuellen Verlauf. */
 export function aktuellerSchritt(run: PlanRun): RunStep | undefined {
   return pfad(run.steps).find(offenerSchritt);
+}
+
+/**
+ * Zuletzt abgeschlossener Schritt – der Stand, an dem der Lauf gerade steht.
+ * Ist noch nichts erledigt, gibt es keinen.
+ */
+export function vorherigerSchritt(run: PlanRun): RunStep | undefined {
+  const reihenfolge = pfad(run.steps);
+  const offen = reihenfolge.findIndex(offenerSchritt);
+  const bisher = offen < 0 ? reihenfolge : reihenfolge.slice(0, offen);
+  return [...bisher].reverse().find((s) => !offenerSchritt(s));
+}
+
+/**
+ * Aktueller Stand eines Laufs als Text: der zuletzt erledigte Schritt. Steht
+ * der Eingang beim Planlaufmanagement noch aus, ist der Plan erst angekündigt.
+ */
+export function aktuellerStand(run: PlanRun): string {
+  const offen = aktuellerSchritt(run);
+  if (offen && istEingangPLM(offen.name)) return STAND_ANGEKUENDIGT;
+  return vorherigerSchritt(run)?.name ?? STAND_ANGEKUENDIGT;
 }
 
 export function fortschritt(run: PlanRun): number {

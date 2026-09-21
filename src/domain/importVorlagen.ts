@@ -26,7 +26,6 @@ export const PLAN_KOPFZEILE = [
   'Eingang Soll',
   'Datum Ausgabe',
   'Workflow',
-  'Planlauf',
   'Bemerkung',
 ];
 
@@ -52,16 +51,14 @@ export const PLAN_SPALTEN: Record<string, string[]> = {
   eingangSoll: ['Eingang Soll', 'Eingang', 'Soll'],
   datum: ['Datum Ausgabe', 'Ausgabedatum', 'Datum'],
   workflow: ['Workflow', 'Prozesskette', 'Kette'],
-  start: ['Planlauf', 'Start', 'Planlauf starten', 'Status'],
   bemerkung: ['Bemerkung', 'Notiz'],
 };
 
 export const PLAN_BEISPIELE: string[][] = [
-  ['Planpaket', 'PP-Nordkanal', 'Eisenbahnüberführung Nordkanal', '', 'KIB', '', '', '', '', '', '', '', 'Bündelt die Unterlagen zum Bauwerk'],
-  ['Planverzeichnis', 'NK-KIB-PV-001', 'Planverzeichnis Überbau', 'C', 'KIB', 'Ausführungsplanung', 'Eisenbahnüberführung Nordkanal', '', '14.10.2026', '01.10.2026', 'VVBau mit Prüfstatik', 'starten', ''],
-  ['Plan', 'NK-KIB-EÜ-001-GR', 'Grundriss Überbau', 'C', 'KIB', 'Ausführungsplanung', '', 'NK-KIB-PV-001', '14.10.2026', '', '', '', 'läuft im Verzeichnis mit'],
-  ['Plan', 'NK-LST-SP-102', 'Signallageplan Bereich Nord', 'B', 'LST', 'Ausführungsplanung', 'Bahnübergang Süd', '', '30.10.2026', '', 'VVBau STE', 'starten', 'Einzelplan mit eigenem Planlauf'],
-  ['Plan', 'NK-OLA-FL-210', 'Fahrleitungsplan km 12,4 – 13,8', '', 'OLA', 'Entwurfsplanung', 'Bahnübergang Süd', '', '20.11.2026', '', 'VVBau STE', 'vormerken', 'nur vorgemerkt – Planlauf startet später'],
+  ['Planpaket', 'PP-Nordkanal', 'Eisenbahnüberführung Nordkanal', '', 'KIB', '', '', '', '', '', '', 'Bündelt die Unterlagen zum Bauwerk'],
+  ['Planverzeichnis', 'NK-KIB-PV-001', 'Planverzeichnis Überbau', 'C', 'KIB', 'Ausführungsplanung', 'Eisenbahnüberführung Nordkanal', '', '14.10.2026', '01.10.2026', 'VVBau mit Prüfstatik', ''],
+  ['Plan', 'NK-KIB-EÜ-001-GR', 'Grundriss Überbau', 'C', 'KIB', 'Ausführungsplanung', '', 'NK-KIB-PV-001', '14.10.2026', '', '', 'läuft im Verzeichnis mit'],
+  ['Plan', 'NK-LST-SP-102', 'Signallageplan Bereich Nord', 'B', 'LST', 'Ausführungsplanung', 'Bahnübergang Süd', '', '30.10.2026', '', 'VVBau STE', 'Einzelplan mit eigenem Planlauf'],
 ];
 
 /** Erläuterung der Spalten – auf der Seite „Vorlagen“ und im Import. */
@@ -73,11 +70,7 @@ export const PLAN_HINWEISE: [string, string][] = [
   ['Planverzeichnis', 'Name oder Codierung des Verzeichnisses, in dem der Plan mitläuft; fehlt es, wird es angelegt'],
   ['Eingang Soll', 'Soll-Termin des ersten Prozessschritts'],
   ['Datum Ausgabe', 'nur bei Planverzeichnissen'],
-  ['Workflow', 'Name eines hinterlegten Workflows – er bestimmt die Schritte des Planlaufs'],
-  [
-    'Planlauf',
-    '„starten“ (Vorgabe) startet den Planlauf gleich mit; „vormerken“ legt den Eintrag nur an – er steht dann gelb hinterlegt in der Planliste',
-  ],
+  ['Workflow', 'Name eines hinterlegten Workflows – dann startet der Planlauf gleich mit'],
 ];
 
 export function planVorlageLaden(): void {

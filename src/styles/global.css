@@ -35,7 +35,7 @@
   --purple: #5856d6;
   --purple-soft: rgba(88, 86, 214, 0.12);
   --gray-soft: rgba(120, 120, 128, 0.12);
-  /* Vorgemerkt – gelb hinterlegt */
+  /* Angekündigt – gelb hinterlegt */
   --gelb-soft: rgba(255, 204, 0, 0.16);
   --gelb-soft-stark: rgba(255, 204, 0, 0.3);
   --gelb-text: #8a6100;
@@ -661,9 +661,9 @@ a:hover { text-decoration: underline; }
 .chev-btn.offen { transform: rotate(90deg); }
 .table tr.unterzeile td { background: rgba(0, 0, 0, 0.015); }
 /* Verworfene Fassungen (abgebrochener Lauf) bleiben grau sichtbar */
-/* Vorgemerkte Einträge: angelegt, Planlauf noch nicht gestartet */
-.table tr.zeile-vorgemerkt td { background: var(--gelb-soft); }
-.table tr.zeile-vorgemerkt:hover td { background: var(--gelb-soft-stark); }
+/* Angekündigte Pläne: der Eingang beim Planlaufmanagement steht noch aus */
+.table tr.zeile-eingang td { background: var(--gelb-soft); }
+.table tr.zeile-eingang:hover td { background: var(--gelb-soft-stark); }
 .badge.gelb { background: var(--gelb-soft-stark); color: var(--gelb-text); margin-left: 6px; }
 /* Grauer Zusatz hinter einem Titel, z.B. „Index B → C“ */
 .badge.zusatz { margin-left: 6px; font-weight: 400; }

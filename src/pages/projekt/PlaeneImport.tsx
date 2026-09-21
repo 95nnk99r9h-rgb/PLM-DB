@@ -27,16 +27,6 @@ import { useToast } from '../../components/toast';
 import { Callout, Modal } from '../../components/ui';
 import { Icon } from '../../components/icons';
 
-/**
- * Liest die Spalte „Planlauf“: „vormerken“ legt den Eintrag nur an, alles
- * andere (auch eine leere Angabe) startet den Planlauf, sofern ein Workflow
- * benannt ist.
- */
-function vormerkenLesen(wert: string): boolean {
-  const t = wert.trim().toLowerCase();
-  return t.startsWith('vormerk') || t === 'nein' || t === 'nicht starten' || t === 'offen';
-}
-
 /** Erkennt die Art aus der Spaltenangabe. */
 function artLesen(wert: string): DocumentKind {
   const t = wert.trim().toLowerCase();
@@ -53,8 +43,6 @@ interface Zeile {
   /** Name des Workflows aus der Liste; leer = kein Planlauf starten. */
   workflow: string;
   workflowId: string | null;
-  /** „vormerken“: Eintrag anlegen, den Planlauf aber noch nicht starten. */
-  vormerken: boolean;
   hinweis: string;
 }
 
@@ -111,7 +99,6 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
         const parentNummer = wert(zeile, 'parent');
         const paketName = wert(zeile, 'paket');
         const workflow = wert(zeile, 'workflow');
-        const vormerken = vormerkenLesen(wert(zeile, 'start'));
         const hinweise: string[] = [];
 
         if (vorhandene.some((d) => d.nummer && d.nummer === nummer)) {
@@ -127,7 +114,6 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           ? vorlagen.find((t) => t.name.trim().toLowerCase() === workflow.toLowerCase())
           : undefined;
         if (workflow && !vorlage) hinweise.push(`Workflow „${workflow}“ ist nicht hinterlegt`);
-        if (vormerken && art !== 'paket') hinweise.push('wird nur vorgemerkt – kein Planlauf');
 
         return {
           doc: {
@@ -146,7 +132,6 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
           paketName: art === 'paket' ? '' : paketName,
           workflow,
           workflowId: vorlage?.id ?? null,
-          vormerken,
           hinweis: hinweise.join('; '),
         };
       });
@@ -207,10 +192,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       const paketId = z.paketName ? findenOderAnlegen(z.paketName, 'paket', z.doc.gewerk) : null;
       if (parentId || paketId) updateDocument(eigeneId, { parentId, paketId });
 
-      // Planlauf starten, sofern ein Workflow benannt ist, der Eintrag einen
-      // eigenen Lauf hat und er nicht nur vorgemerkt werden soll
+      // Planlauf starten, sofern ein Workflow benannt ist und der Eintrag einen eigenen Lauf hat
       const vorlage = vorlagen.find((t) => t.id === z.workflowId);
-      if (z.vormerken || !vorlage || !hatEigenenPlanlauf({ kind: z.doc.kind, parentId })) continue;
+      if (!vorlage || !hatEigenenPlanlauf({ kind: z.doc.kind, parentId })) continue;
 
       const steps = stepsAusTemplate(
         vorlage,
@@ -236,11 +220,9 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
       laeufe += 1;
     }
 
-    const vorgemerkt = vorschau.filter((z) => z.vormerken && z.doc.kind !== 'paket').length;
     const teile = [`${vorschau.length} Einträge übernommen`];
     if (ergaenzt > 0) teile.push(`${ergaenzt} Paket(e)/Verzeichnis(se) ergänzt`);
     if (laeufe > 0) teile.push(`${laeufe} Planläufe gestartet`);
-    if (vorgemerkt > 0) teile.push(`${vorgemerkt} vorgemerkt`);
     toast(`${teile.join(', ')}.`);
     onClose();
   };
@@ -361,7 +343,7 @@ export function PlaeneImport({ project, onClose }: { project: Project; onClose: 
                       <td className="small muted">{z.doc.gewerk || '–'}</td>
                       <td className="small">{z.doc.eingangSoll ? formatDate(z.doc.eingangSoll) : '–'}</td>
                       <td className="small muted">
-                        {z.vormerken ? <span className="badge gelb">vormerken</span> : (z.workflow || '–')}
+                        {z.workflow || '–'}
                         {z.parentNummer ? (
                           <div className="tertiary small">untergeordnet: {z.parentNummer}</div>
                         ) : null}

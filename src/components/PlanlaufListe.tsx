@@ -6,7 +6,14 @@
  * Paket selbst hat keinen Planlauf und darum auch keinen Erledigt-Haken.
  */
 import { Fragment, useState } from 'react';
-import { abbruchHinweis, aktuellerSchritt, ampelFuerSchritt, fortschritt, type Ampel } from '../domain/engine';
+import {
+  abbruchHinweis,
+  aktuellerSchritt,
+  aktuellerStand,
+  ampelFuerSchritt,
+  fortschritt,
+  type Ampel,
+} from '../domain/engine';
 import { formatDate, relativeLabel } from '../lib/dates';
 import {
   INDEX_LABEL,
@@ -30,7 +37,7 @@ interface Eintrag {
 }
 
 /** Spalten, nach denen sich die Liste sortieren lässt. */
-type SortFeld = 'titel' | 'gewerk' | 'schritt' | 'zustaendig' | 'fortschritt' | 'status';
+type SortFeld = 'titel' | 'gewerk' | 'stand' | 'schritt' | 'zustaendig' | 'fortschritt' | 'status';
 
 /** Spalten mit Filter in der Überschrift. */
 export type FilterFeld = 'gewerk' | 'zustaendig' | 'status';
@@ -177,6 +184,8 @@ export function PlanlaufListe({
     switch (feld) {
       case 'gewerk':
         return e.doc?.gewerk?.toLowerCase() ?? '';
+      case 'stand':
+        return aktuellerStand(e.run).toLowerCase();
       case 'schritt':
         // Nach Soll-Termin: was zuerst ansteht, steht oben
         return e.step?.sollDatum ?? '9999-99-99';
@@ -397,12 +406,13 @@ export function PlanlaufListe({
         </td>
         <td className="small muted">{doc?.gewerk || '–'}</td>
         {abgebrochen ? (
-          <td className="small tertiary" colSpan={3}>
+          <td className="small tertiary" colSpan={4}>
             <div>Abgebrochen{run.abbruchDatum ? ` am ${formatDate(run.abbruchDatum)}` : ''}</div>
             <span className="small">{abbruchHinweis(run, doc?.kind ?? 'plan')}</span>
           </td>
         ) : (
           <>
+            <td className="small">{aktuellerStand(run)}</td>
             <td className="small">
               {step ? (
                 <>
@@ -473,7 +483,7 @@ export function PlanlaufListe({
                 </span>
               </td>
               <td className="small muted">{plan.gewerk || '–'}</td>
-              <td className="small tertiary" colSpan={2}>
+              <td className="small tertiary" colSpan={3}>
                 läuft im Planlauf des Verzeichnisses mit
               </td>
               <td className="col-optional" />
@@ -496,8 +506,11 @@ export function PlanlaufListe({
               <Kopf feld="gewerk" filter="gewerk">
                 Gewerk
               </Kopf>
-              <Kopf feld="schritt" titel="Nach Soll-Termin des aktuellen Schritts sortieren">
+              <Kopf feld="stand" titel="Zuletzt abgeschlossener Schritt">
                 Aktueller Schritt
+              </Kopf>
+              <Kopf feld="schritt" titel="Nach Soll-Termin des nächsten Schritts sortieren">
+                Nächster Schritt
               </Kopf>
               <Kopf feld="zustaendig" klasse="col-optional" filter="zustaendig">
                 Zuständig
@@ -539,7 +552,7 @@ export function PlanlaufListe({
                       </button>
                     </td>
                     <td className="small muted">{paket.gewerk || '–'}</td>
-                    <td className="small tertiary" colSpan={2}>
+                    <td className="small tertiary" colSpan={3}>
                       Planpaket · {inhalt.length} {inhalt.length === 1 ? 'laufender Eintrag' : 'laufende Einträge'}
                     </td>
                     <td className="col-optional">
@@ -564,7 +577,7 @@ export function PlanlaufListe({
 
             {ohnePaket.length > 0 && pakete.length > 0 ? (
               <tr className="paket-zeile ohne-paket">
-                <td colSpan={7}>
+                <td colSpan={8}>
                   <button
                     type="button"
                     className={`gruppe-btn ${istOffen('ohne-paket') ? 'offen' : ''}`}

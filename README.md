@@ -147,22 +147,25 @@ den Planlauf.
 Die Feldbezeichnungen richten sich nach der Art: **Plancodierung** beim Plan, **Name Planpaket**
 bzw. **Name PlanVZ** beim Paket und Verzeichnis, wo statt *Index* die **Ausgabe** geführt wird.
 
-**Vormerken:** Ein Plan oder Planverzeichnis lässt sich mit **Plan vormerken** anlegen, ohne den
-Planlauf zu starten. Vorgemerkte Einträge stehen gelb hinterlegt in der Planliste und erscheinen
-noch nicht in der Übersicht der Planläufe; der Lauf startet später über **Planlauf starten** im
-selben Dialog.
+**Angekündigte Pläne:** Steht in einem Planlauf noch der Schritt **Eingang PLM** aus, ist der Plan
+angekündigt, aber noch nicht eingegangen. Solche Einträge stehen in der Planliste **gelb
+hinterlegt** und tragen das Kennzeichen *Eingang PLM*; mit dem Erledigen des Schritts verschwindet
+die Markierung.
 
 **Excel-Import:** Planlisten lassen sich als `.xlsx` oder `.csv` einlesen. Erwartete Spalten:
 *Art · Plancodierung/Name Planpaket / Name Plan VZ · Index/Ausgabe · Titel · Gewerk ·
-Planungsphase · Planpaket · Planverzeichnis · Eingang Soll · Datum Ausgabe · Workflow · Planlauf ·
-Bemerkung*. Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Planlauf gleich beim
-Import – es sei denn, die Spalte *Planlauf* sagt „vormerken“; dann wird der Eintrag nur angelegt.
+Planungsphase · Planpaket · Planverzeichnis · Eingang Soll · Datum Ausgabe · Workflow · Bemerkung*.
+Ist in *Workflow* ein hinterlegter Workflow benannt, startet der Planlauf gleich beim Import.
 Genannte, aber noch nicht vorhandene Planpakete und Planverzeichnisse entstehen beim Import.
 
 ### Planlaufliste im Projekt
-Die Übersicht im Projekt lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung,
-Gewerk, Soll-Termin des aktuellen Schritts, Zuständigkeit, Fortschritt oder Status (überfällige
-zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
+Je Eintrag stehen zwei Schritte nebeneinander: **Aktueller Schritt** nennt den zuletzt
+abgeschlossenen Schritt – solange der Eingang beim Planlaufmanagement aussteht, heißt er *Plan
+angekündigt* –, **Nächster Schritt** den offenen Schritt mit seiner Frist.
+
+Die Übersicht lässt sich über die Spaltenüberschriften **sortieren** – nach Bezeichnung, Gewerk,
+aktuellem Schritt, Soll-Termin des nächsten Schritts, Zuständigkeit, Fortschritt oder Status
+(überfällige zuerst). Ein zweiter Klick kehrt die Richtung um, ein dritter hebt die Sortierung auf. Sortiert wird
 innerhalb der Planpakete, die Paketzeilen folgen derselben Spalte.
 
 Die **Kopfzeile der Tabellen bleibt beim Scrollen stehen**, sodass die Spaltenbezeichnungen auch in
