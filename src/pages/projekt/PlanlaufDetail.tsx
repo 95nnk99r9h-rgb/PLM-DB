@@ -636,7 +636,7 @@ type SchrittWerte = {
   typ: StepType;
   roleName: string;
   contactId: string | null;
-  /** Person von Hand gewählt – sie bleibt trotz Adressbuchänderung stehen. */
+  /** Person von Hand gewählt – sie bleibt trotz neuer Besetzung stehen. */
   contactManuell: boolean;
   fristTage: number;
   bemerkung: string;
@@ -679,7 +679,7 @@ function SchrittDialog({
     nachweis: step?.nachweis ?? ('keine' as Nachweis),
   });
 
-  // Wer die Funktion laut Adressbuch ausfüllt – Grundlage der automatischen Zuordnung
+  // Wer die Funktion im Projekt ausfüllt – Grundlage der automatischen Zuordnung
   const gewerk = data.documents.find((d) => d.id === run.documentId)?.gewerk ?? '';
   const automatischId = kontaktFuerRolleUndGewerk(kontakte, rollen, form.roleName, gewerk);
   const automatischKontakt = kontakte.find((c) => c.id === automatischId);
@@ -804,10 +804,10 @@ function SchrittDialog({
           label="Zuständige Person"
           hint={
             form.contactManuell
-              ? 'Von Hand gewählt – Änderungen im Adressbuch wirken hier nicht.'
+              ? 'Von Hand gewählt – eine andere Besetzung der Funktion wirkt hier nicht.'
               : automatisch
-                ? `Aus dem Adressbuch: ${automatisch}`
-                : 'Keine Person hat diese Funktion im Adressbuch – sie wird übernommen, sobald jemand eingetragen ist.'
+                ? `Laut Rollen & Funktionen: ${automatisch}`
+                : 'Diese Funktion ist im Projekt nicht besetzt – die Person wird übernommen, sobald sie eingetragen ist.'
           }
         >
           <Select
@@ -815,7 +815,7 @@ function SchrittDialog({
             onChange={(v) =>
               setForm((f) => ({ ...f, contactId: v || null, contactManuell: Boolean(v) }))
             }
-            placeholder="– nach Funktion aus dem Adressbuch –"
+            placeholder="– nach Besetzung der Funktion –"
             options={kontakte.map((c) => ({ value: c.id, label: `${c.vorname} ${c.nachname} (${c.firma})` }))}
           />
         </Field>

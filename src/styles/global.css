@@ -756,6 +756,16 @@ a:hover { text-decoration: underline; }
 
 /* Seitenauswahl: umbricht bei Platzmangel, statt zu scrollen */
 .tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--separator); }
+/* „+“ am Ende der Reiter, z.B. für ein weiteres Gewerk */
+.tab-plus {
+  display: inline-flex; align-items: center; justify-content: center;
+  /* schmaler als ein Reiter, aber mit Platz für das Zeichen */
+  padding: 9px 10px; margin-bottom: -1px;
+  border: none; background: none; border-radius: 8px 8px 0 0;
+  color: var(--text-tertiary); cursor: pointer;
+}
+.tab-plus svg { flex: none; }
+.tab-plus:hover { background: var(--bg-hover); color: var(--accent); }
 .tabs button {
   border: none; background: none;
   padding: 9px 14px;

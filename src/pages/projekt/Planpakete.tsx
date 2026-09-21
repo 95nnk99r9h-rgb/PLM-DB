@@ -6,7 +6,7 @@
  * Fristen und Workflows bleiben davon unberührt.
  */
 import { Fragment, useState } from 'react';
-import { DOCUMENT_KIND_LABEL, GEWERKE, INDEX_LABEL, type PlanDocument, type Project } from '../../domain/types';
+import { DOCUMENT_KIND_LABEL, INDEX_LABEL, type PlanDocument, type Project } from '../../domain/types';
 import { useStore } from '../../store/store';
 import { useToast } from '../../components/toast';
 import { DocKindIcon } from '../../components/common';
@@ -226,7 +226,7 @@ function PaketDialog({
   paket?: PlanDocument;
   onClose: () => void;
 }) {
-  const { addDocument, updateDocument, deleteDocument } = useStore();
+  const { data, addDocument, updateDocument, deleteDocument } = useStore();
   const toast = useToast();
   const [loeschen, setLoeschen] = useState(false);
   const [form, setForm] = useState({
@@ -302,7 +302,7 @@ function PaketDialog({
               placeholder="KIB, VA, OLA …"
             />
             <datalist id="paket-gewerke">
-              {GEWERKE.map((g) => (
+              {data.gewerke.map((g) => (
                 <option key={g} value={g} />
               ))}
             </datalist>

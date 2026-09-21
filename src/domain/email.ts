@@ -69,7 +69,7 @@ export function werteFuerKontext(ctx: MailKontext): Record<string, string> {
   };
 }
 
-/** Bildet die Anredezeile aus der im Adressbuch hinterlegten Anrede. */
+/** Bildet die Anredezeile aus der bei der Person hinterlegten Anrede. */
 function anredeZeile(contact: Contact | null): string {
   if (!contact) return 'Guten Tag,';
   const anrede = contact.anrede.trim().toLowerCase();

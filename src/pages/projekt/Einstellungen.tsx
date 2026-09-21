@@ -121,7 +121,7 @@ export function Einstellungen({ project }: { project: Project }) {
       </Card>
 
       <Card>
-        <CardHeader titel="Projekt löschen" sub="Entfernt Pläne, Adressbuch und Planläufe dauerhaft" />
+        <CardHeader titel="Projekt löschen" sub="Entfernt Pläne, Rollen und Planläufe dauerhaft" />
         <div className="card-pad">
           <button type="button" className="btn btn-danger" onClick={() => setLoeschen(true)}>
             <Icon name="loeschen" size={14} /> Projekt löschen

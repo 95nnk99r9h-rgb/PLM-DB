@@ -101,14 +101,25 @@ eigenen Person belegt – es gibt also z.B. einen Fachplaner je Gewerk. Beim Sta
 setzt die Anwendung die Verantwortlichen **nach dem Gewerk des Plans** ein: Zwei Pläne nach
 demselben Workflow, aber mit unterschiedlichem Gewerk, erhalten unterschiedliche Verantwortliche.
 
-Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – ergänzt um freie Eingaben.
+Gewerke zur Auswahl: EEA, KIB, LST, OLA, OSE, TK, VA – weitere lassen sich über das **+** an den
+Gewerk-Reitern anlegen; sie gelten dann überall.
 
-### Adressbuch
-Im Projekt zeigt das Adressbuch die Rollen des Projekts und **wer sie ausfüllt**: Personen werden
-den Rollen direkt zugewiesen, Rollen lassen sich umbenennen, aus den Standardrollen ergänzen oder
-als projekteigene Rolle neu anlegen. Zu jedem Kontakt werden Anrede, Firma, E-Mail, Telefon und
-Anschrift geführt. Über die Rolle findet die Anwendung beim Start eines Planlaufs automatisch die
-zuständige Person.
+### Rollen & Funktionen (im Projekt)
+Im Vordergrund steht die **Funktion, nicht die Person**: Die Seite ist – wie der projektübergreifende
+Reiter *Funktionen* – nach **Gewerken** gegliedert (je Gewerk eine Seite, dazu „Übergreifend“). Je
+Funktion steht in der Zeile, wer sie ausfüllt; ein Klick öffnet die Besetzung, in der eine im Projekt
+bekannte Person übernommen oder eine neue mit Anrede, Firma, E-Mail, Telefon und Anschrift erfasst
+wird. Jede Funktion wird von genau einer Person ausgefüllt; eine Person kann mehrere Funktionen
+haben.
+
+Über das **+** an den Gewerk-Reitern entsteht ein weiteres Gewerk, über *Neue Funktion* eine weitere
+Funktion im gewählten Gewerk. Personen ohne Funktion – etwa aus einem Import – stehen in einer
+eigenen Liste darunter.
+
+**Excel-Import:** Je Zeile *Gewerk · Funktion · Kürzel · Anrede · Vorname · Name · Firma · Telefon ·
+Email · Straße · Nr. · PLZ · Ort · Notiz*. Gewerke und Funktionen, die es noch nicht gibt, werden
+beim Import angelegt; „Übergreifend“ steht für Funktionen ohne Gewerkbezug. Die Vorschau nennt je
+Zeile, was angelegt wird und wen eine Besetzung ersetzt.
 
 ### Pläne & Planläufe
 Planbestand aus Plänen, Planpaketen und Planverzeichnissen. Je Eintrag
@@ -156,7 +167,7 @@ Die **Suche** über Nummer, Titel und Schritt steht oben in der Kartenzeile nebe
 daneben erscheint bei gesetzten Filtern *Filter zurücksetzen*.
 
 ### Zuständigkeiten
-Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht im **Adressbuch** des Projekts. Die
+Ein Schritt nennt eine **Funktion**; wer sie ausfüllt, steht unter **Rollen & Funktionen** des Projekts. Die
 Zuordnung wird laufend nachgezogen: Wird eine Person erst nach dem Start eines Planlaufs eingetragen
 oder wechselt sie während des Projekts, gilt die neue Besetzung sofort auch in laufenden Planläufen.
 Bereits erledigte Schritte behalten ihre Person, ebenso Schritte, in denen im Planlauf eine Person
@@ -259,7 +270,7 @@ Alle Bearbeiter sehen alle Projekte. Mit ★ markierte Projekte erscheinen in de
 Seitenleiste (mit vorangestellter Projektnummer); ohne Markierung werden alle angezeigt. Die
 Übersicht zeigt Kennzahlen, die eigenen **To-Dos** (laufende Schritte des Planlaufmanagements) und
 die laufenden Planläufe nach Projekt gegliedert. In einem markierten Projekt ist die angemeldete
-Person automatisch im Adressbuch als **Planlaufmanagement** geführt und damit für dessen Schritte
+Person automatisch unter **Rollen & Funktionen** als **Planlaufmanagement** geführt und damit für dessen Schritte
 zuständig.
 
 ### Angemeldet als

@@ -12,7 +12,7 @@ export type ID = string;
 export type ISODate = string;
 
 /** Aktuelle Fassung des Datenbestands – steuert die Migration beim Laden. */
-export const DATEN_VERSION = 10;
+export const DATEN_VERSION = 11;
 
 /**
  * Fassung der mitgelieferten Stammdaten (Funktionen und Standard-Prozess-
@@ -103,7 +103,7 @@ export const EMAIL_ANLASS_LABEL: Record<EmailAnlass, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Adressbuch & Rollen                                                 */
+/* Rollen & Funktionen                                                 */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -129,6 +129,17 @@ export const UEBERGREIFEND = 'Übergreifend';
 
 export function istUebergreifend(funktion: { gewerk: string | null }): boolean {
   return funktion.gewerk === null;
+}
+
+/**
+ * Kürzel aus einer Bezeichnung: Anfangsbuchstaben der Wörter, bei einem
+ * einzelnen Wort dessen erste drei Buchstaben.
+ */
+export function kuerzelAus(name: string): string {
+  const woerter = name.trim().split(/\s+/).filter(Boolean);
+  if (woerter.length === 0) return '';
+  const roh = woerter.length > 1 ? woerter.map((w) => w[0]).join('') : woerter[0].slice(0, 3);
+  return roh.slice(0, 4).toUpperCase();
 }
 
 /** Vollständige Bezeichnung einer Funktion inklusive Gewerk. */
@@ -204,7 +215,10 @@ export const INDEX_LABEL: Record<DocumentKind, string> = {
   verzeichnis: 'Ausgabe',
 };
 
-/** Gewerke zur Auswahl; freie Eingabe bleibt zusätzlich möglich. */
+/**
+ * Mitgelieferte Gewerke. Der gepflegte Bestand steht in `AppData.gewerke`;
+ * dort lassen sich weitere Gewerke ergänzen.
+ */
 export const GEWERKE = ['EEA', 'KIB', 'LST', 'OLA', 'OSE', 'TK', 'VA'] as const;
 
 /** Planungsphasen zur Auswahl; freie Eingabe bleibt zusätzlich möglich. */
@@ -390,14 +404,14 @@ export interface RunStep {
   /** Verantwortliche Rolle. */
   roleName: string;
   /**
-   * Konkret zuständige Person aus dem Adressbuch. Sie ergibt sich laufend aus
+   * Konkret zuständige Person. Sie ergibt sich laufend aus
    * der Besetzung der Funktion im Projekt – ändert sich diese, zieht der
    * Planlauf nach.
    */
   contactId: ID | null;
   /**
    * Von Hand gesetzte Person. Sie bleibt stehen, auch wenn die Funktion im
-   * Adressbuch anders besetzt ist.
+   * Besetzung der Funktion anders lautet.
    */
   contactManuell: boolean;
   fristTage: number;
@@ -439,6 +453,8 @@ export interface AppData {
   /** Fassung der übernommenen Stammdaten (siehe STAMMDATEN_VERSION). */
   stammdatenVersion: number;
   bearbeiter: Bearbeiter;
+  /** Gepflegte Gewerke – mitgeliefert und selbst ergänzt. */
+  gewerke: string[];
   /** Projektübergreifende Funktionen. */
   standardRollen: StandardRolle[];
   /** Projektübergreifende E-Mail-Vorlagen (Reiter „Vorlagen“). */

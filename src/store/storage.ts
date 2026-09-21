@@ -98,7 +98,7 @@ function durchrechnen(daten: AppData): AppData {
 
 const neueId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 
-/** Führt die angemeldete Person im Adressbuch ihrer markierten Projekte. */
+/** Führt die angemeldete Person in den Rollen ihrer markierten Projekte. */
 const eigenerKontakt = (daten: AppData): AppData => eigeneKontakteSichern(daten, neueId);
 
 /**
@@ -175,9 +175,22 @@ function migriere(daten: AppData): AppData {
     ] as never;
   };
 
+  // Gewerke werden jetzt gepflegt: mitgelieferte und alle, die in Funktionen,
+  // Projektrollen oder Plänen vorkommen.
+  const gewerkeBestand = [
+    ...new Set([
+      ...GEWERKE,
+      ...(daten.gewerke ?? []),
+      ...(daten.standardRollen ?? []).map((r) => r.gewerk),
+      ...(daten.roles ?? []).map((r) => r.gewerk),
+      ...(daten.documents ?? []).map((d) => d.gewerk),
+    ].filter((g): g is string => Boolean(g && g.trim()))),
+  ].sort((a, b) => a.localeCompare(b, 'de'));
+
   return {
     version: DATEN_VERSION,
     stammdatenVersion: daten.stammdatenVersion ?? 0,
+    gewerke: gewerkeBestand,
     // Rolle und E-Mail der angemeldeten Person entfallen: die Funktion ist
     // immer das Planlaufmanagement, die Kommunikation läuft über Outlook.
     bearbeiter: {
@@ -297,7 +310,7 @@ function migriere(daten: AppData): AppData {
           durchlauf: s.durchlauf ?? 1,
           nachweis: s.nachweis ?? 'keine',
           nachweisNummer: s.nachweisNummer ?? null,
-          // Bisher fest vergebene Zuständigkeiten folgen künftig dem Adressbuch
+          // Bisher fest vergebene Zuständigkeiten folgen künftig der Besetzung
           contactManuell: s.contactManuell ?? false,
           mailFrage: s.mailFrage ?? false,
           mailVorlageId: s.mailVorlageId ?? null,

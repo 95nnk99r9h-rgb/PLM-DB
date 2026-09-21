@@ -33,6 +33,8 @@ interface StoreValue {
   data: AppData;
   /* Bearbeiter */
   setBearbeiter: (b: Partial<Bearbeiter>) => void;
+  /* Gewerke */
+  addGewerk: (name: string) => void;
   /* Projekte */
   addProject: (p: Omit<Project, 'id'>) => ID;
   toggleMarkiert: (id: ID) => void;
@@ -93,7 +95,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Die angemeldete Person wird in ihren Projekten stets als
       // Planlaufmanagement geführt – auch nach einem neuen Projekt,
       // einer Markierung oder einer Namensänderung.
-      // Zuständigkeiten folgen dem Adressbuch: neue oder gewechselte
+      // Zuständigkeiten folgen der Besetzung der Funktionen: neue oder gewechselte
       // Besetzungen greifen sofort auch in laufenden Planläufen.
       const neu = zustaendigkeitenNachziehen(eigeneKontakteSichern(fn(alt), newId));
       return {
@@ -118,6 +120,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setBearbeiter: (b) =>
         mutate((d) => ({ ...d, bearbeiter: { ...d.bearbeiter, ...b } })),
+
+      // Gewerke sind Stammdaten: einmal ergänzt, stehen sie überall zur Auswahl
+      addGewerk: (name) =>
+        mutate((d) =>
+          d.gewerke.some((g) => g.trim().toLowerCase() === name.trim().toLowerCase())
+            ? d
+            : { ...d, gewerke: [...d.gewerke, name.trim()].sort((a, b) => a.localeCompare(b, 'de')) },
+        ),
 
       toggleMarkiert: (id) =>
         mutate((d) => ({

@@ -427,11 +427,11 @@ function namensTeile(name: string): { vorname: string; nachname: string } {
 }
 
 /**
- * Führt die angemeldete Person im Adressbuch jedes markierten Projekts und
+ * Führt die angemeldete Person in jedem markierten Projekt und
  * besetzt dort das Planlaufmanagement.
  *
  * Markiert jemand ein Projekt („meine Projekte“), ist er dort immer der
- * Zuständige des Planlaufmanagements – auch wenn er im Adressbuch noch nicht
+ * Zuständige des Planlaufmanagements – auch wenn er dort noch nicht
  * geführt wurde. Der Eintrag wird deshalb bei jeder Änderung angelegt bzw.
  * nachgezogen, die Funktion bei anderen Kontakten desselben Projekts
  * entfernt und die zugehörigen Schritte laufender Planläufe umgehängt.
@@ -508,10 +508,10 @@ export function eigeneKontakteSichern(daten: AppData, neueId: (prefix: string) =
 }
 
 /**
- * Zieht die Zuständigkeiten laufender Planläufe aus dem Adressbuch nach.
+ * Zieht die Zuständigkeiten laufender Planläufe aus der Besetzung nach.
  *
- * Ein Schritt nennt eine Funktion; wer sie ausfüllt, steht im Adressbuch des
- * Projekts. Wird eine Person erst später eingetragen oder wechselt sie
+ * Ein Schritt nennt eine Funktion; wer sie ausfüllt, steht unter Rollen &
+ * Funktionen des Projekts. Wird eine Person erst später eingetragen oder wechselt sie
  * während des Projekts, gilt die neue Besetzung sofort – auch für bereits
  * gestartete Planläufe. Von Hand gesetzte Personen (`contactManuell`) und
  * abgeschlossene Schritte bleiben unangetastet: sie halten fest, wer den

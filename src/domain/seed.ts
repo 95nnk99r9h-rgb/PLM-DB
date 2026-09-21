@@ -306,6 +306,7 @@ export function seedData(): AppData {
     version: DATEN_VERSION,
     stammdatenVersion: STAMMDATEN_VERSION,
     bearbeiter: { name: STANDARD_BEARBEITER, mailNachfrage: true, farbmodus: 'standard' },
+    gewerke: [...GEWERKE],
     standardRollen: STANDARD_ROLLEN.map((r) => ({ ...r })),
     emailVorlagen: standardVorlagen(),
     projects: [

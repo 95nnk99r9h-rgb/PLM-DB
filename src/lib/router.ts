@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { ID } from '../domain/types';
 
-export type ProjektTab = 'uebersicht' | 'plaene' | 'pakete' | 'adressbuch' | 'ketten' | 'einstellungen';
+export type ProjektTab = 'uebersicht' | 'plaene' | 'pakete' | 'rollen' | 'ketten' | 'einstellungen';
 
 export type Route =
   | { view: 'dashboard' }
@@ -14,7 +14,10 @@ export type Route =
   | { view: 'projekt'; projectId: ID; tab: ProjektTab }
   | { view: 'planlauf'; projectId: ID; runId: ID };
 
-const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'pakete', 'adressbuch', 'ketten', 'einstellungen'];
+const TABS: ProjektTab[] = ['uebersicht', 'plaene', 'pakete', 'rollen', 'ketten', 'einstellungen'];
+
+/** Frühere Adressen bleiben gültig: „adressbuch“ führt auf „rollen“. */
+const ALTE_TABS: Record<string, ProjektTab> = { adressbuch: 'rollen' };
 
 export function routeToHash(r: Route): string {
   switch (r.view) {
@@ -35,7 +38,9 @@ export function hashToRoute(hash: string): Route {
     }
     // Frühere Adressen mit eigenem Planlauf-Reiter führen auf die Planliste
     const gewaehlt = teile[2] === 'planlaeufe' ? 'plaene' : teile[2];
-    const tab = (TABS as string[]).includes(gewaehlt ?? '') ? (gewaehlt as ProjektTab) : 'uebersicht';
+    const tab = (TABS as string[]).includes(gewaehlt ?? '')
+      ? (gewaehlt as ProjektTab)
+      : (ALTE_TABS[gewaehlt ?? ''] ?? 'uebersicht');
     return { view: 'projekt', projectId: teile[1], tab };
   }
   if (teile[0] === 'fristen') return { view: 'fristen' };

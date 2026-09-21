@@ -239,7 +239,7 @@ function BearbeiterDialog({ onClose }: { onClose: () => void }) {
         <Field
           label="Name"
           full
-          hint={`In markierten Projekten sind Sie automatisch im Adressbuch als ${EIGENE_ROLLE} geführt.`}
+          hint={`In markierten Projekten sind Sie automatisch unter „Rollen & Funktionen“ als ${EIGENE_ROLLE} geführt.`}
         >
           <TextInput value={name} onChange={setName} placeholder="Vor- und Nachname" />
         </Field>

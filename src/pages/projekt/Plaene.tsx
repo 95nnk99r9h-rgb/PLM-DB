@@ -11,7 +11,6 @@ import { lfdNummern, kontaktFuerRolleUndGewerk, stepsAusTemplate } from '../../d
 import { formatDate, tageLabel, today } from '../../lib/dates';
 import {
   DOCUMENT_KIND_LABEL,
-  GEWERKE,
   INDEX_LABEL,
   NUMMER_LABEL,
   PLANUNGSPHASEN,
@@ -625,7 +624,7 @@ function PlanDialog({
                 placeholder="KIB, VA, OLA …"
               />
               <datalist id="gewerke-liste">
-                {GEWERKE.map((g) => (
+                {data.gewerke.map((g) => (
                   <option key={g} value={g} />
                 ))}
               </datalist>

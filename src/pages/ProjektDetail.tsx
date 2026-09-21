@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import type { Project } from '../domain/types';
 import type { ProjektTab, Route } from '../lib/router';
-import { Adressbuch } from './projekt/Adressbuch';
+import { RollenFunktionen } from './projekt/RollenFunktionen';
 import { Einstellungen } from './projekt/Einstellungen';
 import { ExportDialog } from './projekt/ExportDialog';
 import { Plaene } from './projekt/Plaene';
@@ -15,7 +15,7 @@ const TABS: { id: ProjektTab; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' },
   { id: 'plaene', label: 'Planliste' },
   { id: 'pakete', label: 'Planpakete' },
-  { id: 'adressbuch', label: 'Adressbuch' },
+  { id: 'rollen', label: 'Rollen & Funktionen' },
   { id: 'ketten', label: 'Workflows' },
   { id: 'einstellungen', label: 'Einstellungen' },
 ];
@@ -51,7 +51,7 @@ export function ProjektDetail({
       {tab === 'uebersicht' ? <Uebersicht project={project} gotoTab={gotoTab} oeffneLauf={oeffneLauf} /> : null}
       {tab === 'plaene' ? <Plaene project={project} oeffneLauf={oeffneLauf} /> : null}
       {tab === 'pakete' ? <Planpakete project={project} /> : null}
-      {tab === 'adressbuch' ? <Adressbuch project={project} /> : null}
+      {tab === 'rollen' ? <RollenFunktionen project={project} /> : null}
       {tab === 'ketten' ? <Workflows projectId={project.id} /> : null}
       {tab === 'einstellungen' ? <Einstellungen project={project} /> : null}
 

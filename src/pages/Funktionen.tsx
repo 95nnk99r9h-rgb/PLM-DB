@@ -3,10 +3,10 @@
  *
  * Je Gewerk gibt es eine eigene Seite; „Übergreifend“ führt die Funktionen,
  * die für alle Gewerke gelten und nur einmal besetzt werden. Neue Projekte
- * übernehmen diese Funktionen; Personen werden im Adressbuch zugewiesen.
+ * übernehmen diese Funktionen; besetzt werden sie im Projekt unter „Rollen & Funktionen“.
  */
 import { useState } from 'react';
-import { GEWERKE, UEBERGREIFEND, type StandardRolle } from '../domain/types';
+import { UEBERGREIFEND, kuerzelAus, type StandardRolle } from '../domain/types';
 import { useStore } from '../store/store';
 import { useToast } from '../components/toast';
 import {
@@ -22,6 +22,7 @@ import {
   TextInput,
 } from '../components/ui';
 import { Icon } from '../components/icons';
+import { GewerkDialog } from '../components/GewerkDialog';
 
 const FARBEN = ['#24456e', '#5856d6', '#ff9500', '#34c759', '#ff3b30', '#af52de', '#00a0a0', '#c77700'];
 
@@ -32,10 +33,11 @@ export function Funktionen() {
   const [dialog, setDialog] = useState<{ funktion?: StandardRolle } | null>(null);
   const [ergaenzen, setErgaenzen] = useState(false);
   const [loeschen, setLoeschen] = useState<StandardRolle | null>(null);
+  const [gewerkDialog, setGewerkDialog] = useState(false);
 
-  // Alle vorkommenden Gewerke – vorgegebene und selbst ergänzte
+  // Alle vorkommenden Gewerke – gepflegte Stammdaten und die der Funktionen
   const gewerke = [
-    ...new Set([...GEWERKE, ...data.standardRollen.map((r) => r.gewerk).filter((g): g is string => Boolean(g))]),
+    ...new Set([...data.gewerke, ...data.standardRollen.map((r) => r.gewerk).filter((g): g is string => Boolean(g))]),
   ].sort((a, b) => a.localeCompare(b, 'de'));
 
   const uebergreifend = seite === UEBERGREIFEND;
@@ -61,6 +63,9 @@ export function Funktionen() {
             {g}
           </button>
         ))}
+        <button type="button" className="tab-plus" title="Neues Gewerk anlegen" onClick={() => setGewerkDialog(true)}>
+          <Icon name="plus" size={13} />
+        </button>
       </div>
 
       <div className="row-between wrap">
@@ -181,6 +186,8 @@ export function Funktionen() {
         </Modal>
       ) : null}
 
+      {gewerkDialog ? <GewerkDialog onClose={() => setGewerkDialog(false)} onAngelegt={setSeite} /> : null}
+
       {dialog ? (
         <FunktionsDialog
           funktion={dialog.funktion}
@@ -244,7 +251,7 @@ function FunktionsDialog({
     }
     const werte = {
       ...form,
-      kuerzel: form.kuerzel.trim() || form.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase(),
+      kuerzel: form.kuerzel.trim() || kuerzelAus(form.name),
     };
     if (funktion) {
       updateStandardRolle(funktion.id, werte);

@@ -88,16 +88,17 @@ export function planVorlageLaden(): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* Kontakte                                                            */
+/* Rollen & Funktionen samt Besetzung                                  */
 /* ------------------------------------------------------------------ */
 
-export const KONTAKT_KOPFZEILE = [
+export const ROLLEN_KOPFZEILE = [
+  'Gewerk',
+  'Funktion',
+  'Kürzel',
   'Anrede',
   'Vorname',
   'Name',
   'Firma',
-  'Gewerk',
-  'Funktion',
   'Telefon',
   'Email',
   'Straße',
@@ -107,13 +108,14 @@ export const KONTAKT_KOPFZEILE = [
   'Notiz',
 ];
 
-export const KONTAKT_SPALTEN: Record<string, string[]> = {
+export const ROLLEN_SPALTEN: Record<string, string[]> = {
+  gewerk: ['Gewerk'],
+  funktion: ['Funktion', 'Rolle'],
+  kuerzel: ['Kürzel', 'Kuerzel', 'Abkürzung'],
   anrede: ['Anrede'],
   vorname: ['Vorname'],
   nachname: ['Name', 'Nachname'],
   firma: ['Firma', 'Büro', 'Unternehmen'],
-  gewerk: ['Gewerk'],
-  funktion: ['Funktion', 'Rolle'],
   telefon: ['Telefon', 'Tel', 'Telefonnummer'],
   email: ['Email', 'E-Mail', 'Mail'],
   strasse: ['Straße', 'Strasse'],
@@ -123,22 +125,24 @@ export const KONTAKT_SPALTEN: Record<string, string[]> = {
   notiz: ['Notiz', 'Bemerkung'],
 };
 
-export const KONTAKT_BEISPIELE: string[][] = [
-  ['Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', 'KIB', 'Fachplaner', '+49 40 998877-12', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau'],
-  ['Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', 'LST', 'Fachtechnischer Prüfer', '+49 4131 309-0', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', ''],
-  ['Frau', 'Sabine', 'Ortmann', 'Projektleitung', 'Übergreifend', 'Projektleitung', '+49 40 123456-01', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', ''],
+export const ROLLEN_BEISPIELE: string[][] = [
+  ['KIB', 'Fachplaner', 'FP', 'Frau', 'Katrin', 'Berger', 'Ingenieurbüro Berger', '+49 40 998877-12', 'k.berger@example.de', 'Billstraße', '88', '20539', 'Hamburg', 'Fachplanung Ingenieurbau'],
+  ['LST', 'Fachtechnischer Prüfer', 'PSV', 'Herr', 'Dietmar', 'Krause', 'Prüfstelle Krause', '+49 4131 309-0', 'd.krause@example.de', 'Am Ochsenmarkt', '1', '21335', 'Lüneburg', ''],
+  ['Übergreifend', 'Projektleitung', 'PL', 'Frau', 'Sabine', 'Ortmann', 'Projektleitung', '+49 40 123456-01', 's.ortmann@example.de', 'Hafenstraße', '12', '20359', 'Hamburg', ''],
+  ['BÜ', 'Fachplaner', 'FP', 'Herr', 'Jens', 'Harms', 'Harms Planung', '+49 40 556677-3', 'j.harms@example.de', 'Deichweg', '4', '21079', 'Hamburg', 'Gewerk und Funktion werden beim Import angelegt'],
 ];
 
-export const KONTAKT_HINWEISE: [string, string][] = [
-  ['Name', 'einzige Pflichtangabe'],
-  ['Gewerk', 'Gewerk der Funktion; „Übergreifend“ für gewerkübergreifende Funktionen'],
-  ['Funktion', 'Bezeichnung aus dem Reiter „Funktionen“, z.B. Fachplaner'],
+export const ROLLEN_HINWEISE: [string, string][] = [
+  ['Gewerk', 'Gewerk der Funktion; „Übergreifend“ für gewerkübergreifende Funktionen. Unbekannte Gewerke werden angelegt'],
+  ['Funktion', 'Bezeichnung der Funktion, z.B. Fachplaner – ist sie im Projekt nicht vorhanden, wird sie angelegt'],
+  ['Kürzel', 'nur für neu angelegte Funktionen; leer = aus der Bezeichnung gebildet'],
+  ['Name', 'Nachname der Person – einzige Pflichtangabe der Besetzung'],
   ['Straße · Nr. · PLZ · Ort', 'werden zur Anschrift zusammengefasst'],
 ];
 
-export function kontaktVorlageLaden(): void {
+export function rollenVorlageLaden(): void {
   dateiLaden(
-    xlsxErzeugen([{ name: 'Kontakte', zeilen: [KONTAKT_KOPFZEILE, ...KONTAKT_BEISPIELE] }]),
-    'Vorlage-Adressliste.xlsx',
+    xlsxErzeugen([{ name: 'Rollen & Funktionen', zeilen: [ROLLEN_KOPFZEILE, ...ROLLEN_BEISPIELE] }]),
+    'Vorlage-Rollen-und-Funktionen.xlsx',
   );
 }

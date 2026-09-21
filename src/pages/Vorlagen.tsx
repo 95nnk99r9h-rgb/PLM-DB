@@ -10,11 +10,11 @@ import { useRef, useState } from 'react';
 import { EMAIL_ANLASS_LABEL, type EmailAnlass, type EmailTemplate } from '../domain/types';
 import { PLATZHALTER, fuelleVorlage } from '../domain/email';
 import {
-  KONTAKT_HINWEISE,
-  KONTAKT_KOPFZEILE,
+  ROLLEN_HINWEISE,
+  ROLLEN_KOPFZEILE,
   PLAN_HINWEISE,
   PLAN_KOPFZEILE,
-  kontaktVorlageLaden,
+  rollenVorlageLaden,
   planVorlageLaden,
 } from '../domain/importVorlagen';
 import { newId, useStore } from '../store/store';
@@ -57,7 +57,8 @@ export function Vorlagen() {
         <>
           <p className="muted small" style={{ maxWidth: 720 }}>
             Die Vorlagen enthalten die erwarteten Spalten und einige Beispielzeilen. Eingelesen werden sie im
-            Projekt unter <strong>Planliste</strong> bzw. <strong>Adressbuch</strong> über <em>Excel-Import</em>.
+            Projekt unter <strong>Planliste</strong> bzw. <strong>Rollen &amp; Funktionen</strong> über
+            <em> Excel-Import</em>.
           </p>
 
           <ListenKarte
@@ -70,12 +71,12 @@ export function Vorlagen() {
           />
 
           <ListenKarte
-            titel="Adressliste"
-            sub="Kontakte des Projektadressbuchs"
-            spalten={KONTAKT_KOPFZEILE}
-            hinweise={KONTAKT_HINWEISE}
-            onLaden={kontaktVorlageLaden}
-            text="Gewerk und Funktion müssen zu den im Reiter „Funktionen“ hinterlegten Bezeichnungen passen; sonst wird der Kontakt ohne Funktion übernommen."
+            titel="Rollen & Funktionen"
+            sub="Funktionen eines Projekts samt Besetzung"
+            spalten={ROLLEN_KOPFZEILE}
+            hinweise={ROLLEN_HINWEISE}
+            onLaden={rollenVorlageLaden}
+            text="Je Zeile eine Funktion mit der Person, die sie ausfüllt. Gewerke und Funktionen, die im Projekt noch nicht vorhanden sind, werden beim Import angelegt."
           />
         </>
       ) : (
