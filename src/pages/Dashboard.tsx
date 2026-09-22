@@ -159,7 +159,7 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                   <th className="zahl">Laufende Planläufe</th>
                   <th className="zahl">Demnächst fällig</th>
                   <th className="zahl">Überfällig</th>
-                  <th style={{ width: 190 }}>Fortschritt</th>
+                  <th style={{ width: 170 }}>Fortschritt</th>
                   <th className="actions" />
                 </tr>
               </thead>
@@ -200,9 +200,9 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                         {spaet}
                       </td>
                       <td>
-                        <span className="row" style={{ gap: 10 }}>
+                        <span className="row" style={{ gap: 8 }}>
                           <Progress wert={pct} ton={spaet ? 'red' : pct === 100 ? 'green' : ''} />
-                          <b style={{ minWidth: 40, textAlign: 'right' }}>{pct}%</b>
+                          <span className="small tertiary">{pct}%</span>
                         </span>
                       </td>
                       <td className="actions">
