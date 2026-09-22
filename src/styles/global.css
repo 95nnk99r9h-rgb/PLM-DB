@@ -39,9 +39,8 @@
   --gelb-soft: rgba(255, 204, 0, 0.16);
   --gelb-soft-stark: rgba(255, 204, 0, 0.3);
   --gelb-text: #8a6100;
-  /* Abgeschlossen – leicht grün hinterlegt */
-  --gruen-soft: rgba(52, 199, 89, 0.12);
-  --gruen-soft-stark: rgba(52, 199, 89, 0.22);
+  /* Abgeschlossen – grüne Bezeichnung */
+  --gruen-text: #1f7a37;
 
   --radius-sm: 6px;
   --radius: 10px;
@@ -664,14 +663,14 @@ a:hover { text-decoration: underline; }
 .chev-btn.offen { transform: rotate(90deg); }
 .table tr.unterzeile td { background: rgba(0, 0, 0, 0.015); }
 /* Verworfene Fassungen (abgebrochener Lauf) bleiben grau sichtbar */
-/* Angekündigte Pläne: der Eingang beim Planlaufmanagement steht noch aus */
-.table tr.zeile-eingang td { background: var(--gelb-soft); }
-.table tr.zeile-eingang:hover td { background: var(--gelb-soft-stark); }
-
-/* Abgeschlossene Planläufe */
-.table tr.zeile-fertig td { background: var(--gruen-soft); }
-.table tr.zeile-fertig:hover td { background: var(--gruen-soft-stark); }
-.badge.gelb { background: var(--gelb-soft-stark); color: var(--gelb-text); margin-left: 6px; }
+/*
+ * Stand eines Eintrags am Titel ablesbar: angekündigt (der Eingang beim
+ * Planlaufmanagement steht aus) in Gelb, abgeschlossen in Grün. Gefärbt wird
+ * nur die Bezeichnung, nicht die ganze Zeile.
+ */
+.table tr.zeile-eingang strong { color: var(--gelb-text); }
+.table tr.zeile-fertig strong { color: var(--gruen-text); }
+.badge.gelb { background: var(--gelb-soft-stark); color: var(--gelb-text); }
 /* Grauer Zusatz hinter einem Titel, z.B. „Index B → C“ */
 .badge.zusatz { margin-left: 6px; font-weight: 400; }
 
@@ -892,8 +891,7 @@ a:hover { text-decoration: underline; }
   --gelb-soft: rgba(255, 214, 51, 0.28);
   --gelb-soft-stark: rgba(255, 214, 51, 0.5);
   --gelb-text: #5c4100;
-  --gruen-soft: rgba(0, 120, 106, 0.14);
-  --gruen-soft-stark: rgba(0, 120, 106, 0.26);
+  --gruen-text: #00594c;
 }
 
 /* Status wird zusätzlich durch Rahmen und kräftigere Schrift unterscheidbar */

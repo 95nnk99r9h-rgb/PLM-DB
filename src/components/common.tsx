@@ -26,6 +26,11 @@ export function AmpelBadge({ ampel }: { ampel: Ampel }) {
   return <Badge ton={AMPEL_TON[ampel]}>{AMPEL_LABEL[ampel]}</Badge>;
 }
 
+/** Der Plan ist angekündigt: Der Eingang beim Planlaufmanagement steht aus. */
+export function AngekuendigtBadge() {
+  return <Badge ton="gelb">Angekündigt</Badge>;
+}
+
 export function AmpelPunkt({ ampel }: { ampel: Ampel }) {
   return <span className={`dot ${AMPEL_TON[ampel] || ''}`} title={AMPEL_LABEL[ampel]} />;
 }

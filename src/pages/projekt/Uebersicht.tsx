@@ -7,7 +7,7 @@ import {
   fortschritt,
   offeneFristen,
 } from '../../domain/engine';
-import { type Contact, type DocumentKind, type Project } from '../../domain/types';
+import { istEingangPLM, type Contact, type DocumentKind, type Project } from '../../domain/types';
 import type { ProjektTab } from '../../lib/router';
 import { useStore } from '../../store/store';
 import { Card, CardHeader, EmptyState, Progress, Search, Segmented, Stat } from '../../components/ui';
@@ -15,6 +15,7 @@ import { PlanlaufListe } from '../../components/PlanlaufListe';
 
 /** Auswahl der Statusspalte – laufende Läufe nach ihrer Ampel. */
 const STATUS_FILTER = [
+  { value: 'angekuendigt', label: 'Angekündigt' },
   { value: 'geplant', label: 'Im Plan' },
   { value: 'faellig', label: 'Fällig' },
   { value: 'ueberfaellig', label: 'Überfällig' },
@@ -56,10 +57,14 @@ export function Uebersicht({
   const massgeblich = [...laeufe]
     .sort((a, b) => rang(a) - rang(b))
     .filter((r, i, alle) => alle.findIndex((x) => x.documentId === r.documentId) === i);
-  /** Status eines Laufs als Filterwert – laufende nach ihrer Ampel. */
+  /**
+   * Status eines Laufs als Filterwert – laufende nach ihrer Ampel, solange der
+   * Eingang beim Planlaufmanagement aussteht dagegen „angekündigt“.
+   */
   const statusVon = (r: (typeof laeufe)[number]) => {
     if (r.status !== 'laufend') return r.status;
     const step = aktuellerSchritt(r);
+    if (step && istEingangPLM(step.name)) return 'angekuendigt';
     return step ? ampelFuerSchritt(step, project.settings.erinnerungVorlaufTage) : 'neutral';
   };
 

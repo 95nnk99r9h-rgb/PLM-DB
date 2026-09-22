@@ -59,7 +59,7 @@ export function Badge({
   ton = '',
 }: {
   children: ReactNode;
-  ton?: '' | 'green' | 'orange' | 'red' | 'blue' | 'purple';
+  ton?: '' | 'green' | 'orange' | 'red' | 'blue' | 'purple' | 'gelb';
 }) {
   return <span className={`badge ${ton}`}>{children}</span>;
 }

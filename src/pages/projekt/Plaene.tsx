@@ -278,7 +278,11 @@ export function Plaene({ project, oeffneLauf }: { project: Project; oeffneLauf: 
                       </span>
                       <div>
                         <strong>{doc.titel}</strong>
-                        {wartetAufEingang(doc) ? <span className="badge gelb">{SCHRITT_EINGANG}</span> : null}
+                        {wartetAufEingang(doc) ? (
+                          <span className="badge gelb" style={{ marginLeft: 6 }} title={`„${SCHRITT_EINGANG}“ steht noch aus`}>
+                            Angekündigt
+                          </span>
+                        ) : null}
                         {(() => {
                           const zusatz = abbruchZusatz(doc);
                           return zusatz ? (

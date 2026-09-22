@@ -19,7 +19,7 @@ import {
   type RunStep,
 } from '../domain/types';
 import { useStore } from '../store/store';
-import { AmpelBadge, DocKindIcon, RunStatusBadge } from './common';
+import { AmpelBadge, AngekuendigtBadge, DocKindIcon, RunStatusBadge } from './common';
 import { EmailDialog } from './EmailDialog';
 import { ErledigtButton, useSchrittStatus } from './SchrittStatus';
 import { EmptyState, Progress } from './ui';
@@ -52,9 +52,10 @@ const STATUS_RANG: Record<string, number> = {
   ueberfaellig: 0,
   faellig: 1,
   geplant: 2,
-  neutral: 3,
-  abgeschlossen: 4,
-  abgebrochen: 5,
+  angekuendigt: 3,
+  neutral: 4,
+  abgeschlossen: 5,
+  abgebrochen: 6,
 };
 
 export function PlanlaufListe({
@@ -190,6 +191,7 @@ export function PlanlaufListe({
         return fortschritt(e.run);
       case 'status': {
         if (e.run.status !== 'laufend') return STATUS_RANG[e.run.status];
+        if (e.step && istEingangPLM(e.step.name)) return STATUS_RANG.angekuendigt;
         const ampel = e.step ? ampelFuerSchritt(e.step, project.settings.erinnerungVorlaufTage) : 'neutral';
         return STATUS_RANG[ampel] ?? 9;
       }
@@ -447,7 +449,13 @@ export function PlanlaufListe({
           </>
         )}
         <td>
-          {run.status === 'laufend' ? <AmpelBadge ampel={ampel} /> : <RunStatusBadge status={run.status} />}
+          {run.status !== 'laufend' ? (
+            <RunStatusBadge status={run.status} />
+          ) : wartetAufEingang ? (
+            <AngekuendigtBadge />
+          ) : (
+            <AmpelBadge ampel={ampel} />
+          )}
         </td>
         <td className="actions">
           {step ? (
