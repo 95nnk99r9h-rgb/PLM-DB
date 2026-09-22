@@ -155,11 +155,11 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
               <thead>
                 <tr>
                   <th>Projekt</th>
-                  <th>Pläne &amp; Verzeichnisse</th>
-                  <th>Laufende Planläufe</th>
-                  <th>Demnächst fällig</th>
-                  <th>Überfällig</th>
-                  <th style={{ width: 170 }}>Fortschritt</th>
+                  <th className="zahl">Pläne &amp; Verzeichnisse</th>
+                  <th className="zahl">Laufende Planläufe</th>
+                  <th className="zahl">Demnächst fällig</th>
+                  <th className="zahl">Überfällig</th>
+                  <th style={{ width: 190 }}>Fortschritt</th>
                   <th className="actions" />
                 </tr>
               </thead>
@@ -191,18 +191,18 @@ export function Dashboard({ navigate }: { navigate: (r: Route) => void }) {
                           <strong>{project.name}</strong>
                         </div>
                       </td>
-                      <td className="num">{eintraege.length}</td>
-                      <td className="num">{laufendeLaeufe.length}</td>
-                      <td className="num" style={{ color: bald ? 'var(--orange)' : undefined }}>
+                      <td className={`zahl ${eintraege.length ? '' : 'leer'}`}>{eintraege.length}</td>
+                      <td className={`zahl ${laufendeLaeufe.length ? '' : 'leer'}`}>{laufendeLaeufe.length}</td>
+                      <td className={`zahl ${bald ? '' : 'leer'}`} style={{ color: bald ? 'var(--orange)' : undefined }}>
                         {bald}
                       </td>
-                      <td className="num" style={{ color: spaet ? 'var(--red)' : undefined }}>
+                      <td className={`zahl ${spaet ? '' : 'leer'}`} style={{ color: spaet ? 'var(--red)' : undefined }}>
                         {spaet}
                       </td>
                       <td>
-                        <span className="row" style={{ gap: 8 }}>
+                        <span className="row" style={{ gap: 10 }}>
                           <Progress wert={pct} ton={spaet ? 'red' : pct === 100 ? 'green' : ''} />
-                          <span className="small tertiary">{pct}%</span>
+                          <b style={{ minWidth: 40, textAlign: 'right' }}>{pct}%</b>
                         </span>
                       </td>
                       <td className="actions">
